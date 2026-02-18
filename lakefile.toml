@@ -12,7 +12,7 @@ maxSynthPendingDepth = 3
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.29.0-rc1"
+rev = "86d0bf37418c1b2448cbd82bc71c28a3fc6528c6"
 
 [[lean_lib]]
 name = "GameHoppingInLean"
