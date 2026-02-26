@@ -16,10 +16,68 @@ noncomputable def applySimpleReduction {I₁ I₂ : Type} {O₁ : OracleSpec I�
     impl q := OracleComp.simulateQ oracle.queries (reduction.impl q)
   }
 
-/-- Oracle indices for a source oracle set, plus reduction randomness and reduction-state effects. -/
-inductive withCoinFlipAndStateI (I : Type u) : Type u
+/-- Oracle indices for a source oracle set plus a generic "sample from a PMF" operation. -/
+inductive withPMFI (I : Type u) : Type (max u 1)
   | oracle (i : I)
-  | coinFlip
+  | sample (α : Type)
+
+/-- Include an existing oracle index into the extended index type with PMF sampling. -/
+def withPMF {I : Type u} : I → withPMFI I :=
+  withPMFI.oracle
+
+/-- Extend an oracle spec with a generic PMF sampling query. -/
+def withPMFSpec {I : Type u} (O : OracleSpec I) : OracleSpec (withPMFI I)
+  | .oracle i => O i
+  | .sample α => (PMF α, α)
+
+@[simp] lemma withPMFSpec_apply_withPMF {I : Type u} (O : OracleSpec I) (i : I) :
+    withPMFSpec O (withPMF i) = O i := rfl
+
+@[simp] lemma withPMFSpec_apply_sample {I : Type u} (O : OracleSpec I) (α : Type) :
+    withPMFSpec O (withPMFI.sample α) = (PMF α, α) := rfl
+
+/-- Computations available to a randomized (stateless) reduction over source oracle spec `O`. -/
+abbrev RReductionComp {I : Type u} (O : OracleSpec I) :=
+  OracleComp (withPMFSpec O)
+
+namespace RReduction
+
+/-- Query the underlying source oracle from inside a randomized reduction. -/
+@[reducible, inline] def query {I : Type u} {O : OracleSpec I}
+    (i : I) (t : O.domain i) : RReductionComp O (O.range i) :=
+  (withPMFSpec O).query (withPMFI.oracle i) t
+
+/-- Sample from an arbitrary `PMF` from inside a randomized reduction. -/
+@[reducible, inline] def sample {I : Type u} {O : OracleSpec I} {α : Type}
+    (p : PMF α) : RReductionComp O α :=
+  (withPMFSpec O).query (withPMFI.sample α) p
+
+end RReduction
+
+/-- A reduction that can query the source oracles and draw samples from arbitrary `PMF`s,
+but does not maintain its own internal state. -/
+def RReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : OracleSpec I₂) :=
+  QueryImpl O₂ (RReductionComp O₁)
+
+/-- Apply a randomized (stateless) reduction to an underlying stateful oracle implementation. -/
+noncomputable def applyRReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+    (reduction : RReduction O₁ O₂) (oracle : RStateOracle O₁) : RStateOracle O₂ where
+  stateType := oracle.stateType
+  initialState := oracle.initialState
+  queries := {
+    impl q :=
+      let aux : QueryImpl (withPMFSpec O₁) (RState oracle.stateType) := {
+        impl := fun
+          | OracleSpec.query (withPMFI.oracle i) t => oracle.queries.impl (OracleSpec.query i t)
+          | OracleSpec.query (withPMFI.sample α) p => StateT.lift p
+      }
+      OracleComp.simulateQ aux (reduction.impl q)
+  }
+
+/-- Oracle indices for a source oracle set, plus PMF sampling and reduction-state effects. -/
+inductive withCoinFlipAndStateI (I : Type u) : Type (max u 1)
+  | oracle (i : I)
+  | sample (α : Type)
   | getState
   | setState
 
@@ -27,11 +85,11 @@ inductive withCoinFlipAndStateI (I : Type u) : Type u
 def withCoinFlipAndState {I : Type u} : I → withCoinFlipAndStateI I :=
   withCoinFlipAndStateI.oracle
 
-/-- Extend an oracle spec with reduction coin-flips and reduction-local `get`/`set` operations. -/
+/-- Extend an oracle spec with PMF sampling and reduction-local `get`/`set` operations. -/
 def withCoinFlipAndStateSpec {I : Type u} (s : Type) (O : OracleSpec I) :
     OracleSpec (withCoinFlipAndStateI I)
   | .oracle i => O i
-  | .coinFlip => (Unit, Bool)
+  | .sample α => (PMF α, α)
   | .getState => (Unit, s)
   | .setState => (s, Unit)
 
@@ -39,9 +97,9 @@ def withCoinFlipAndStateSpec {I : Type u} (s : Type) (O : OracleSpec I) :
     {I : Type u} {s : Type} (O : OracleSpec I) (i : I) :
     withCoinFlipAndStateSpec s O (withCoinFlipAndState i) = O i := rfl
 
-@[simp] lemma withCoinFlipAndStateSpec_apply_coinFlip
-    {I : Type u} {s : Type} (O : OracleSpec I) :
-    withCoinFlipAndStateSpec s O withCoinFlipAndStateI.coinFlip = (Unit, Bool) := rfl
+@[simp] lemma withCoinFlipAndStateSpec_apply_sample
+    {I : Type u} {s : Type} (O : OracleSpec I) (α : Type) :
+    withCoinFlipAndStateSpec s O (withCoinFlipAndStateI.sample α) = (PMF α, α) := rfl
 
 @[simp] lemma withCoinFlipAndStateSpec_apply_getState
     {I : Type u} {s : Type} (O : OracleSpec I) :
@@ -62,10 +120,15 @@ namespace SRReduction
     (i : I) (t : O.domain i) : SRReductionComp O s (O.range i) :=
   (withCoinFlipAndStateSpec s O).query (withCoinFlipAndStateI.oracle i) t
 
+/-- Sample from an arbitrary `PMF` from inside a stateful randomized reduction. -/
+@[reducible, inline] def sample {I : Type u} {O : OracleSpec I} {s : Type} {α : Type}
+    (p : PMF α) : SRReductionComp O s α :=
+  (withCoinFlipAndStateSpec s O).query (withCoinFlipAndStateI.sample α) p
+
 /-- Flip a fair coin from inside a stateful randomized reduction. -/
-@[reducible, inline] def coinFlip {I : Type u} {O : OracleSpec I} {s : Type} :
+@[reducible, inline] noncomputable def coinFlip {I : Type u} {O : OracleSpec I} {s : Type} :
     SRReductionComp O s Bool :=
-  (withCoinFlipAndStateSpec s O).query withCoinFlipAndStateI.coinFlip ()
+  sample (O := O) (s := s) (PMF.uniformOfFintype Bool)
 
 /-- Read the reduction's local internal state. -/
 @[reducible, inline] def get {I : Type u} {O : OracleSpec I} {s : Type} :
@@ -106,6 +169,8 @@ end SRReduction
 syntax "srQuery(" term ", " term ")" : term
 /-- Syntax sugar for `SRReduction.coinFlip`. -/
 syntax "srCoin!" : term
+/-- Syntax sugar for `SRReduction.sample p`. -/
+syntax "srSample(" term ")" : term
 /-- Syntax sugar for `SRReduction.get`. -/
 syntax "srGet!" : term
 /-- Syntax sugar for `srSet(x)` = `SRReduction.set x`. -/
@@ -116,6 +181,7 @@ syntax "srModify(" term ")" : term
 macro_rules
   | `(srQuery($i, $t)) => `(SRReduction.query $i $t)
   | `(srCoin!) => `(SRReduction.coinFlip)
+  | `(srSample($p)) => `(SRReduction.sample $p)
   | `(srGet!) => `(SRReduction.get)
   | `(srSet($st)) => `(SRReduction.set $st)
   | `(srModify($f)) => `(SRReduction.modify $f)
@@ -136,7 +202,7 @@ noncomputable def applySRReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {
           | OracleSpec.query (withCoinFlipAndStateI.oracle i) t => fun st => do
               let (u, sₒ') ← StateT.run (oracle.queries.impl (OracleSpec.query i t)) st.2
               pure (u, (st.1, sₒ'))
-          | OracleSpec.query withCoinFlipAndStateI.coinFlip _ => RState.coinFlip
+          | OracleSpec.query (withCoinFlipAndStateI.sample α) p => StateT.lift p
           | OracleSpec.query withCoinFlipAndStateI.getState _ => fun st => pure (st.1, st)
           | OracleSpec.query withCoinFlipAndStateI.setState sᵣ' => fun st => pure ((), (sᵣ', st.2))
       }
