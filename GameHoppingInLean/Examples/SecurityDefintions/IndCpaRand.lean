@@ -17,8 +17,9 @@ noncomputable def IndCpaRandReal {K : Type} (scheme : SymEncScheme K) :
   initialState := scheme.keyGen
   queries := {
     impl := fun
-      | OracleSpec.query n m => fun key =>
-          (fun c => (c, key)) <$> scheme.encrypt (n := n) key m
+      | OracleSpec.query _ m => do
+           let key <- get
+           scheme.encrypt key m
   }
 
 /-- IND-CPA "random ciphertext" oracle for the `ctxt(m)` interface.
@@ -29,8 +30,8 @@ noncomputable def IndCpaRandRand {K : Type} (_scheme : SymEncScheme K) :
   initialState := pure ()
   queries := {
     impl := fun
-      | OracleSpec.query n _m => fun st =>
-          (fun c => (c, st)) <$> PMF.uniformOfFintype (BitVec n)
+      | OracleSpec.query n _m => do
+          PMF.uniformOfFintype (BitVec n)
   }
 
 /-- The oracle pair corresponding to the IND-CPA-rand security definition, for use in an
@@ -42,8 +43,7 @@ noncomputable def IndCpaRandAssumption {K : Type} (scheme : SymEncScheme K) :
 /-- IND-CPA-rand security definition as an instance of `Indistinguishable`. -/
 def IndCpaRandDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (SimpleReductions : IndistinguishabilitySimpleReductions)
     (Reductions : IndistinguishabilityReductions)
     {K : Type} (scheme : SymEncScheme K) : Prop :=
-  Indistinguishable Assumptions SimpleReductions Reductions
+  Indistinguishable Assumptions Reductions
     IndCpaRandSpec (IndCpaRandReal scheme) (IndCpaRandRand scheme)

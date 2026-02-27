@@ -41,8 +41,7 @@ noncomputable def OTUCAssumption {K : Type} (scheme : SymEncScheme K) :
 /-- OTUC indistinguishability definition as an instance of `Indistinguishable`. -/
 def OTUCDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (SimpleReductions : IndistinguishabilitySimpleReductions)
     (Reductions : IndistinguishabilityReductions)
     {K : Type} (scheme : SymEncScheme K) : Prop :=
-  Indistinguishable Assumptions SimpleReductions Reductions
+  Indistinguishable Assumptions Reductions
     OTUCSpec (OTUC_Real scheme) (OTUC_Rand scheme)

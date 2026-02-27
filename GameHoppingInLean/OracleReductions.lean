@@ -69,7 +69,8 @@ noncomputable def applyRReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O
       let aux : QueryImpl (withPMFSpec O₁) (RState oracle.stateType) := {
         impl := fun
           | OracleSpec.query (withPMFI.oracle i) t => oracle.queries.impl (OracleSpec.query i t)
-          | OracleSpec.query (withPMFI.sample α) p => StateT.lift p
+          | OracleSpec.query (withPMFI.sample α) p =>
+              (liftM (m := PMF) (n := RState oracle.stateType) p)
       }
       OracleComp.simulateQ aux (reduction.impl q)
   }
@@ -202,7 +203,8 @@ noncomputable def applySRReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {
           | OracleSpec.query (withCoinFlipAndStateI.oracle i) t => fun st => do
               let (u, sₒ') ← StateT.run (oracle.queries.impl (OracleSpec.query i t)) st.2
               pure (u, (st.1, sₒ'))
-          | OracleSpec.query (withCoinFlipAndStateI.sample α) p => StateT.lift p
+          | OracleSpec.query (withCoinFlipAndStateI.sample α) p =>
+              (liftM (m := PMF) (n := RState (reduction.stateType × oracle.stateType)) p)
           | OracleSpec.query withCoinFlipAndStateI.getState _ => fun st => pure (st.1, st)
           | OracleSpec.query withCoinFlipAndStateI.setState sᵣ' => fun st => pure ((), (sᵣ', st.2))
       }

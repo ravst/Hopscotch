@@ -29,6 +29,18 @@ context of prior queries, they induce the same output distribution on every next
 def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
   ∀ queriesList, runQueries ro₁ queriesList = runQueries ro₂ queriesList
 
+
+-- The simples suffictient condition of ObsEq is simple equality:
+
+def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
+  ObsEq ro₁ ro₂ := by
+    rw [hEq]
+    simp [ObsEq]
+
+-- In more complicated passes, e.g. thoose that change states, we may need more flexible cryterions,
+-- such as the correct abstraction explained below. But for now the simple equality has been working
+-- fine.
+
 -- Now, we would like to show a sufficient condition for two oracles to be observationally equivalent.
 -- Suppose that we have a a pair of functions `f₁ : S₁ → S` and `f₂ : S₂ → S` where `S` is some "abstract state space" that captures
 -- all the relevant information. Then, if the initial states induce the same distribution on `s`, and the query imlementation
@@ -37,21 +49,19 @@ def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
 -- This is a kind of "bisimulation" condition, and is often easier to check than the full definition of observational equivalence.
 
 -- I think I need an aux function that takes a function, a pair and applies this function to the second element of the pair, and leaves the first element alone.
-def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
-  (p.1, f p.2)
 
-def correctAbstraction {S I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-    (f₁ : ro₁.stateType → S) (f₂ : ro₂.stateType → S) : Prop :=
-  ro₁.initialState.map f₁ = ro₂.initialState.map f₂ ∧
-  ∀ (s₁ : ro₁.stateType) (s₂ : ro₂.stateType) (i) (t : O.domain i),
-    f₁ s₁ = f₂ s₂ →
-      (mapSecond f₁) <$> (StateT.run (ro₁.queries.impl (OracleSpec.query i t)) s₁) =
-      (mapSecond f₂) <$> (StateT.run (ro₂.queries.impl (OracleSpec.query i t)) s₂)
+-- def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
+--   (p.1, f p.2)
 
-def correctAbstractionImpliesObsEq {S : Type} (ro₁ ro₂ : RStateOracle O)
-    (f₁ : ro₁.stateType → S) (f₂ : ro₂.stateType → S) :
-    correctAbstraction ro₁ ro₂ f₁ f₂ → ObsEq ro₁ ro₂ := by
-    sorry
+-- def correctAbstraction {S I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+--     (f₁ : ro₁.stateType → S) (f₂ : ro₂.stateType → S) : Prop :=
+--   ro₁.initialState.map f₁ = ro₂.initialState.map f₂ ∧
+--   ∀ (s₁ : ro₁.stateType) (s₂ : ro₂.stateType) (i) (t : O.domain i),
+--     f₁ s₁ = f₂ s₂ →
+--       (mapSecond f₁) <$> (StateT.run (ro₁.queries.impl (OracleSpec.query i t)) s₁) =
+--       (mapSecond f₂) <$> (StateT.run (ro₂.queries.impl (OracleSpec.query i t)) s₂)
 
-def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
-  ObsEq ro₁ ro₂ := sorry
+-- def correctAbstractionImpliesObsEq {S : Type} (ro₁ ro₂ : RStateOracle O)
+--     (f₁ : ro₁.stateType → S) (f₂ : ro₂.stateType → S) :
+--     correctAbstraction ro₁ ro₂ f₁ f₂ → ObsEq ro₁ ro₂ := by
+--     sorry

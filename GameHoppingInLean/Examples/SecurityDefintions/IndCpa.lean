@@ -16,8 +16,9 @@ noncomputable def IndCpaL {K : Type} (scheme : SymEncScheme K) : RStateOracle In
   initialState := scheme.keyGen
   queries := {
     impl := fun
-      | OracleSpec.query n (m₀, _m₁) => fun key =>
-          (fun c => (c, key)) <$> scheme.encrypt (n := n) key m₀
+      | OracleSpec.query _ (m₀, _m₁) => do
+          let key <- get
+          scheme.encrypt key m₀
   }
 
 /-- Right IND-CPA oracle: encrypts the right message `m₁`. -/
@@ -26,8 +27,9 @@ noncomputable def IndCpaR {K : Type} (scheme : SymEncScheme K) : RStateOracle In
   initialState := scheme.keyGen
   queries := {
     impl := fun
-      | OracleSpec.query n (_m₀, m₁) => fun key =>
-          (fun c => (c, key)) <$> scheme.encrypt (n := n) key m₁
+      | OracleSpec.query _ (_m₀, m₁) => do
+          let key <- get
+          scheme.encrypt key m₁
   }
 
 /-- The oracle pair corresponding to the IND-CPA security definition, for use in an
@@ -39,8 +41,7 @@ noncomputable def IndCpaAssumption {K : Type} (scheme : SymEncScheme K) :
 /-- IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (SimpleReductions : IndistinguishabilitySimpleReductions)
     (Reductions : IndistinguishabilityReductions)
     {K : Type} (scheme : SymEncScheme K) : Prop :=
-  Indistinguishable Assumptions SimpleReductions Reductions
+  Indistinguishable Assumptions Reductions
     IndCpaSpec (IndCpaL scheme) (IndCpaR scheme)

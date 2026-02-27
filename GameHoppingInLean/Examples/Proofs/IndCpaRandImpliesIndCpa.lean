@@ -20,15 +20,13 @@ theorem obsEq_indCpaL_apply_left_real {K : Type} (scheme : SymEncScheme K) :
   apply obsEqReflexive
   simp [IndCpaL, IndCpaRandReal, applySimpleReduction]
   ext1 α; ext1 q
-  cases q with
-  | query n msg =>
-      cases msg with
-      | mk m₀ m₁ =>
-          simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
-          ext1 k
-          congr
-          simp [FreeMonad.lift]
-          rfl
+  cases q
+  case query n msg =>
+  cases msg
+  case  mk m₀ m₁ =>
+  simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
+  ext1 k
+  simp [FreeMonad.lift]
 
 /-- Under the random ciphertext oracle, forwarding the left vs right challenge message is
 observationally equivalent (the message is ignored). -/
@@ -55,65 +53,63 @@ theorem obsEq_apply_right_real_indCpaR {K : Type} (scheme : SymEncScheme K) :
           ext1 k
           congr
           simp [FreeMonad.lift]
-          rfl
 
 /-- IND-CPA left/right indistinguishability derived from IND-CPA-rand indistinguishability,
 via the two simple reductions. -/
 theorem indCpaRandImpliesIndCpa
     {Assumptions : IndistinguishabilityAssumptions}
-    {SimpleReductions : IndistinguishabilitySimpleReductions}
     {Reductions : IndistinguishabilityReductions}
     {K : Type} (scheme : SymEncScheme K)
-    (hLeftRed : IndCpaRand_to_IndCpaL ∈ SimpleReductions IndCpaRandSpec IndCpaSpec)
-    (hRightRed : IndCpaRand_to_IndCpaR ∈ SimpleReductions IndCpaRandSpec IndCpaSpec)
-    (hIndCpaRand : IndCpaRandDef Assumptions SimpleReductions Reductions scheme) :
-    IndCpaDef Assumptions SimpleReductions Reductions scheme := by
+    (hLeftRed : IndCpaRand_to_IndCpaL ∈ Reductions.simpleReductions IndCpaRandSpec IndCpaSpec)
+    (hRightRed : IndCpaRand_to_IndCpaR ∈ Reductions.simpleReductions IndCpaRandSpec IndCpaSpec)
+    (hIndCpaRand : IndCpaRandDef Assumptions Reductions scheme) :
+    IndCpaDef Assumptions Reductions scheme := by
   have hRealRand :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaRandSpec (IndCpaRandReal scheme) (IndCpaRandRand scheme) := by
     simpa [IndCpaRandDef] using hIndCpaRand
 
   have hRandReal :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaRandSpec (IndCpaRandRand scheme) (IndCpaRandReal scheme) :=
     Indistinguishable.symm hRealRand
 
   have h1 :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec (IndCpaL scheme)
           (applySimpleReduction IndCpaRand_to_IndCpaL (IndCpaRandReal scheme)) :=
     Indistinguishable.of_ObsEq (obsEq_indCpaL_apply_left_real scheme)
 
   have h2 :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec
           (applySimpleReduction IndCpaRand_to_IndCpaL (IndCpaRandReal scheme))
           (applySimpleReduction IndCpaRand_to_IndCpaL (IndCpaRandRand scheme)) :=
     Indistinguishable.simpleReduction (r := IndCpaRand_to_IndCpaL) hRealRand hLeftRed
 
   have h3 :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec
           (applySimpleReduction IndCpaRand_to_IndCpaL (IndCpaRandRand scheme))
           (applySimpleReduction IndCpaRand_to_IndCpaR (IndCpaRandRand scheme)) :=
     Indistinguishable.of_ObsEq (obsEq_apply_left_rand_apply_right_rand scheme)
 
   have h4 :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec
           (applySimpleReduction IndCpaRand_to_IndCpaR (IndCpaRandRand scheme))
           (applySimpleReduction IndCpaRand_to_IndCpaR (IndCpaRandReal scheme)) :=
     Indistinguishable.simpleReduction (r := IndCpaRand_to_IndCpaR) hRandReal hRightRed
 
   have h5 :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec
           (applySimpleReduction IndCpaRand_to_IndCpaR (IndCpaRandReal scheme))
           (IndCpaR scheme) :=
     Indistinguishable.of_ObsEq (obsEq_apply_right_real_indCpaR scheme)
 
   have h :
-      Indistinguishable Assumptions SimpleReductions Reductions
+      Indistinguishable Assumptions Reductions
         IndCpaSpec (IndCpaL scheme) (IndCpaR scheme) :=
     Indistinguishable.trans h1 <|
       Indistinguishable.trans h2 <|
