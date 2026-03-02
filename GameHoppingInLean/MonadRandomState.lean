@@ -5,6 +5,25 @@ import Mathlib.Probability.Distributions.Uniform
 -- RState: state transformer over the probabilistic Pmf monad
 abbrev RState (σ : Type _) (α : Type _) : Type _ := StateT σ PMF α
 
+namespace PMF
+
+/-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
+@[simp] lemma uniformOfFintype_prod_bind
+    {A B α : Type}
+    [Fintype A] [Nonempty A] [Fintype B] [Nonempty B]
+    (f : A × B → PMF α) :
+    (PMF.uniformOfFintype (A × B)).bind f =
+      (PMF.uniformOfFintype A).bind (fun a =>
+        (PMF.uniformOfFintype B).bind (fun b => f (a, b))) := by
+  ext x
+  have hprod :
+      (∑' i : A × B, (f i) x) = ∑' i : A, ∑' j : B, (f (i, j)) x := by
+    simpa using (ENNReal.tsum_prod' (f := fun p : A × B => (f p) x))
+  simp [PMF.bind_apply, Fintype.card_prod, ENNReal.mul_inv, ENNReal.tsum_mul_left,
+    mul_assoc, mul_left_comm, mul_comm, hprod]
+
+end PMF
+
 namespace RState
 
 noncomputable
@@ -96,6 +115,26 @@ def exec {σ α} (s : PMF σ) (m : RState σ α) : PMF σ :=
   rw [StateT.run_lift, StateT.run_pure]
   simpa [PMF.monad_map_eq_map] using (map_pure (f := PMF) (g := fun a => (a, s)) a)
 
+@[simp] lemma liftM_uniformOfFintype_prod
+    {σ A B : Type}
+    [Fintype A] [Nonempty A] [Fintype B] [Nonempty B] :
+    (liftM (PMF.uniformOfFintype (A × B)) : RState σ (A × B)) =
+      (liftM
+        (do
+          let a ← PMF.uniformOfFintype A
+          let b ← PMF.uniformOfFintype B
+          pure (a, b)) : RState σ (A × B)) := by
+  have h :
+      PMF.uniformOfFintype (A × B) =
+        (do
+          let a ← PMF.uniformOfFintype A
+          let b ← PMF.uniformOfFintype B
+          pure (a, b)) := by
+    simpa using
+      (PMF.uniformOfFintype_prod_bind (A := A) (B := B)
+        (f := fun p : A × B => PMF.pure p))
+  simp [h]
+
 @[simp] lemma bind_liftM_pmf_bind {σ α β γ}
     (x : PMF α) (g : α → PMF β) (rest : β → RState σ γ) :
     ((liftM (x.bind g) : RState σ β) >>= rest) =
@@ -157,6 +196,237 @@ lemma do_liftM_comm {σ α β γ}
   rw [StateT.run_bind, StateT.run_bind]
   simp [StateT.run_bind]
   simpa using (PMF.bind_comm (p := A) (q := B) (f := fun a b => StateT.run (rest a b) s))
+
+/-- Rewriting a lifted uniform draw over pairs as two lifted independent uniform draws. -/
+@[simp] lemma do_liftM_uniformOfFintype_prod
+    {σ A B α : Type}
+    [Fintype A] [Nonempty A] [Fintype B] [Nonempty B]
+    (rest : A × B → RState σ α) :
+    (do
+      let p ← (liftM (PMF.uniformOfFintype (A × B)) : RState σ (A × B))
+      rest p) =
+    (do
+      let a ← (liftM (PMF.uniformOfFintype A) : RState σ A)
+      let b ← (liftM (PMF.uniformOfFintype B) : RState σ B)
+      rest (a, b)) := by
+  funext s
+  change
+    StateT.run (((liftM (PMF.uniformOfFintype (A × B)) : RState σ (A × B)) >>= fun p => rest p) :
+      RState σ α) s =
+      StateT.run (((liftM (PMF.uniformOfFintype A) : RState σ A) >>= fun a =>
+        ((liftM (PMF.uniformOfFintype B) : RState σ B) >>= fun b => rest (a, b))) :
+          RState σ α) s
+  rw [StateT.run_bind, StateT.run_bind]
+  simpa [StateT.run_lift, PMF.bind_bind]
+
+/-- Transporting a uniform `PMF` sample across an equivalence. -/
+lemma bind_uniformOfFintype_equiv {X Y α : Type}
+    [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y]
+    (e : X ≃ Y) (g : Y → PMF α) :
+    (PMF.uniformOfFintype Y).bind g =
+      (PMF.uniformOfFintype X).bind (fun x => g (e x)) := by
+  ext a
+  have htsum :
+      ∑' y : Y, ((Fintype.card Y : ENNReal)⁻¹ * (g y) a) =
+        ∑' x : X, ((Fintype.card Y : ENNReal)⁻¹ * (g (e x)) a) := by
+    simpa using
+      (Equiv.tsum_eq e (fun y : Y => ((Fintype.card Y : ENNReal)⁻¹ * (g y) a))).symm
+  calc
+    ((PMF.uniformOfFintype Y).bind g) a =
+        ∑' y : Y, ((Fintype.card Y : ENNReal)⁻¹ * (g y) a) := by
+          simp [PMF.bind_apply, PMF.uniformOfFintype_apply]
+    _ = ∑' x : X, ((Fintype.card Y : ENNReal)⁻¹ * (g (e x)) a) := htsum
+    _ = ((PMF.uniformOfFintype X).bind (fun x => g (e x))) a := by
+          simp [PMF.bind_apply, PMF.uniformOfFintype_apply, Fintype.card_congr e]
+
+/-- Transporting a lifted uniform sample across an equivalence in `RState`.
+
+Not marked `[simp]`; use explicitly where needed. -/
+lemma do_liftM_uniformOfFintype_equiv {σ X Y α : Type}
+    [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y]
+    (e : X ≃ Y) (g : Y → RState σ α) :
+    (do
+      let y ← (liftM (PMF.uniformOfFintype Y) : RState σ Y)
+      g y) =
+    (do
+      let x ← (liftM (PMF.uniformOfFintype X) : RState σ X)
+      g (e x)) := by
+  funext s
+  change
+    StateT.run (((liftM (PMF.uniformOfFintype Y) : RState σ Y) >>= fun y => g y) : RState σ α) s =
+      StateT.run (((liftM (PMF.uniformOfFintype X) : RState σ X) >>= fun x => g (e x)) :
+        RState σ α) s
+  rw [StateT.run_bind, StateT.run_bind]
+  simp [StateT.run_lift]
+  simpa using bind_uniformOfFintype_equiv (e := e) (g := fun y => StateT.run (g y) s)
+
+/-- Rewriting a lifted uniform sample via an equivalence, in direct `liftM` form. -/
+lemma liftM_uniformOfFintype_equiv {σ X Y : Type}
+    [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y]
+    (e : X ≃ Y) :
+    (liftM (PMF.uniformOfFintype Y) : RState σ Y) =
+      (liftM
+        (do
+          let x ← PMF.uniformOfFintype X
+          pure (e x)) : RState σ Y) := by
+  have h :
+      PMF.uniformOfFintype Y =
+        (do
+          let x ← PMF.uniformOfFintype X
+          pure (e x)) := by
+    calc
+      PMF.uniformOfFintype Y = (PMF.uniformOfFintype Y).bind PMF.pure := by simp
+      _ = (PMF.uniformOfFintype X).bind (fun x => PMF.pure (e x)) := by
+            simpa using (bind_uniformOfFintype_equiv (e := e) (g := PMF.pure))
+      _ = (do
+            let x ← PMF.uniformOfFintype X
+            pure (e x)) := rfl
+  simp [h]
+
+/-- Equivalence between `(BitVec n × BitVec m)` and `BitVec (n + m)` via concatenation. -/
+def bitVecAppendEquiv (n m : ℕ) : (BitVec n × BitVec m) ≃ BitVec (n + m) where
+  toFun p := p.1 ++ p.2
+  invFun z := (z.extractLsb' m n, z.setWidth m)
+  left_inv := by
+    intro p
+    rcases p with ⟨x, y⟩
+    apply Prod.ext
+    · simpa using
+        (BitVec.extractLsb'_append_eq_of_le
+          (xhi := x) (xlo := y) (start := m) (len := n)
+          (h := Nat.le_refl m))
+    · simpa using (BitVec.setWidth_append (x := x) (y := y) (k := m))
+  right_inv := by
+    intro z
+    apply BitVec.eq_of_getElem_eq
+    intro i hi
+    by_cases hlt : i < m
+    · rw [BitVec.getElem_append (x := z.extractLsb' m n) (y := z.setWidth m) (h := hi)]
+      simp [hlt]
+      exact BitVec.getLsbD_eq_getElem (x := z) (i := i) hi
+    · rw [BitVec.getElem_append (x := z.extractLsb' m n) (y := z.setWidth m) (h := hi)]
+      simp [hlt]
+      have hi' : m + (i - m) = i := by omega
+      simpa [hi'] using
+        (BitVec.getLsbD_eq_getElem (x := z) (i := m + (i - m)) (h := by omega))
+
+/-- The low `k` bits of `y ++ x` are exactly `x`. -/
+@[simp] lemma extractLsb'_zero_append_right {k m : ℕ}
+    (x : BitVec k) (y : BitVec m) :
+    BitVec.extractLsb' 0 k (y ++ x) = x := by
+  rw [← BitVec.setWidth_eq_extractLsb' (x := y ++ x) (w := k) (h := by omega)]
+  simp [BitVec.setWidth_append]
+
+/-- The high `k` bits of `x ++ y` (starting at offset `m`) are exactly `x`. -/
+@[simp] lemma extractLsb'_append_high_right {k m : ℕ}
+    (x : BitVec k) (y : BitVec m) :
+    BitVec.extractLsb' m k (x ++ y) = x := by
+  simpa using
+    (BitVec.extractLsb'_append_eq_of_le
+      (xhi := x) (xlo := y) (start := m) (len := k)
+      (h := Nat.le_refl m))
+
+/-- Relating generic `cast` on `BitVec` to `BitVec.cast`. -/
+lemma cast_congrArg_bitVec_eq_bitVec_cast {n m : ℕ} (h : n = m) (z : BitVec n) :
+    (cast (congrArg BitVec h) z : BitVec m) = BitVec.cast h z := by
+  cases h
+  rfl
+
+/-- Specialized cast-normalization for `BitVec (k + k)` to `BitVec (2 * k)`. -/
+@[simp] lemma cast_bitVec_two_mul_eq {k : ℕ} (z : BitVec (k + k)) :
+    (cast (by simp [two_mul]) z : BitVec (2 * k)) = BitVec.cast (by simp [two_mul]) z := by
+  have h : (k + k) = (2 * k) := by simp [two_mul]
+  simpa [h] using (cast_congrArg_bitVec_eq_bitVec_cast (h := h) (z := z))
+
+/-- Direct `liftM` form of the append equivalence rewrite for `BitVec`. -/
+@[simp] lemma liftM_uniformOfFintype_bitVec_append
+    {σ : Type} {n m : ℕ}
+    [Fintype (BitVec n)] [Nonempty (BitVec n)]
+    [Fintype (BitVec m)] [Nonempty (BitVec m)]
+    [Fintype (BitVec (n + m))] [Nonempty (BitVec (n + m))] :
+    (liftM (PMF.uniformOfFintype (BitVec (n + m))) : RState σ (BitVec (n + m))) =
+      (liftM
+        (do
+          let p ← PMF.uniformOfFintype (BitVec n × BitVec m)
+          pure (p.1 ++ p.2)) : RState σ (BitVec (n + m))) := by
+  simpa [bitVecAppendEquiv] using
+    (liftM_uniformOfFintype_equiv (σ := σ)
+      (X := BitVec n × BitVec m) (Y := BitVec (n + m))
+      (e := bitVecAppendEquiv n m))
+
+/-- Instantiation of `do_liftM_uniformOfFintype_equiv` for `BitVec` concatenation.
+
+Not marked `[simp]`; use explicitly where needed. -/
+lemma do_liftM_uniformOfFintype_bitVec_append
+    {σ α : Type} {n m : ℕ}
+    [Fintype (BitVec n)] [Nonempty (BitVec n)]
+    [Fintype (BitVec m)] [Nonempty (BitVec m)]
+    [Fintype (BitVec (n + m))] [Nonempty (BitVec (n + m))]
+    (g : BitVec (n + m) → RState σ α) :
+    (do
+      let z ← (liftM (PMF.uniformOfFintype (BitVec (n + m))) : RState σ (BitVec (n + m)))
+      g z) =
+    (do
+      let p ← (liftM (PMF.uniformOfFintype (BitVec n × BitVec m)) : RState σ (BitVec n × BitVec m))
+      g (p.1 ++ p.2)) := by
+  simpa [bitVecAppendEquiv] using
+    (do_liftM_uniformOfFintype_equiv (σ := σ)
+      (X := BitVec n × BitVec m) (Y := BitVec (n + m))
+      (e := bitVecAppendEquiv n m) (g := g))
+
+/-- Bind-form variant of `do_liftM_uniformOfFintype_bitVec_append`.
+
+Not marked `[simp]`; use explicitly where needed. -/
+lemma bind_uniformOfFintype_bitVec_append
+    {σ α : Type} {n m : ℕ}
+    [Fintype (BitVec n)] [Nonempty (BitVec n)]
+    [Fintype (BitVec m)] [Nonempty (BitVec m)]
+    [Fintype (BitVec (n + m))] [Nonempty (BitVec (n + m))]
+    (g : BitVec (n + m) → RState σ α) :
+    ((liftM (PMF.uniformOfFintype (BitVec (n + m))) : RState σ (BitVec (n + m))) >>= g) =
+      ((liftM (PMF.uniformOfFintype (BitVec n × BitVec m)) : RState σ (BitVec n × BitVec m)) >>=
+        fun p => g (p.1 ++ p.2)) := by
+  simpa using do_liftM_uniformOfFintype_bitVec_append (σ := σ) (n := n) (m := m) (g := g)
+
+/-- Equivalence between `BitVec (k + k)` and `BitVec (2 * k)`. -/
+def bitVecAddEquivTwoMul (k : ℕ) : BitVec (k + k) ≃ BitVec (2 * k) where
+  toFun x := BitVec.cast (by simp [two_mul]) x
+  invFun y := BitVec.cast (by simp [two_mul]) y
+  left_inv := by intro x; simp
+  right_inv := by intro y; simp
+
+/-- Rewriting uniform sampling on `BitVec (2 * k)` as sampling on `BitVec (k + k)`.
+
+Marked `[simp]` so terms that sample `BitVec (2 * k)` can normalize to `k + k` shape. -/
+@[simp] lemma do_liftM_uniformOfFintype_bitVec_two_mul
+    {σ α : Type} {k : ℕ}
+    [Fintype (BitVec (k + k))] [Nonempty (BitVec (k + k))]
+    [Fintype (BitVec (2 * k))] [Nonempty (BitVec (2 * k))]
+    (g : BitVec (2 * k) → RState σ α) :
+    (do
+      let y ← (liftM (PMF.uniformOfFintype (BitVec (2 * k))) : RState σ (BitVec (2 * k)))
+      g y) =
+    (do
+      let x ← (liftM (PMF.uniformOfFintype (BitVec (k + k))) : RState σ (BitVec (k + k)))
+      g (cast (by simp [two_mul]) x)) := by
+  simpa [bitVecAddEquivTwoMul] using
+    (do_liftM_uniformOfFintype_equiv (σ := σ)
+      (X := BitVec (k + k)) (Y := BitVec (2 * k))
+      (e := bitVecAddEquivTwoMul k) (g := g))
+
+@[simp] lemma liftM_uniformOfFintype_bitVec_two_mul
+    {σ : Type} {k : ℕ}
+    [Fintype (BitVec (k + k))] [Nonempty (BitVec (k + k))]
+    [Fintype (BitVec (2 * k))] [Nonempty (BitVec (2 * k))] :
+    (liftM (PMF.uniformOfFintype (BitVec (2 * k))) : RState σ (BitVec (2 * k))) =
+      (liftM
+        (do
+          let x ← PMF.uniformOfFintype (BitVec (k + k))
+          pure (cast (by simp [two_mul]) x)) : RState σ (BitVec (2 * k))) := by
+  simpa [bitVecAddEquivTwoMul] using
+    (liftM_uniformOfFintype_equiv (σ := σ)
+      (X := BitVec (k + k)) (Y := BitVec (2 * k))
+      (e := bitVecAddEquivTwoMul k))
 
 noncomputable
 def coinFlip {σ} : RState σ Bool :=
