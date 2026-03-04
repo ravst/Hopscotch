@@ -25,6 +25,42 @@ noncomputable def runQueries {I : Type} {O : OracleSpec I} (ro : RStateOracle O)
   (runQueriesAux ro.queries queries).eval ro.initialState
 
 
+/-- Two stateful random oracles are observationally equal if, after any finite replay
+context of prior queries, they induce the same output distribution on every next query. -/
+def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
+  ∀ queriesList, runQueries ro₁ queriesList = runQueries ro₂ queriesList
+
+-- The simples suffictient condition of ObsEq is simple equality:
+
+def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
+  ObsEq ro₁ ro₂ := by
+    rw [hEq]
+    simp [ObsEq]
+
+-- In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
+-- for observational equivalece. We start with the "correct abstraction", explained below.
+
+-- Suppose we have a pair of oracles O₁ and O₂, which operates on states S₁ and S₂.
+-- We say that a function f : S₁ → S₂ is a correct abstraction from O₁ to O₂, if
+-- (a) After applying f to the initial state distribution of O₁, we get the initial state distribution of O₂
+-- (b) The function `f` commutes with each query (see `correctAbstraction` below).
+-- This is a kind of "bisimulation" condition, and is often easier to check than
+-- the full definition of observational equivalence.
+
+def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
+  (p.1, f p.2)
+
+def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+    (f : ro₁.stateType → ro₂.stateType) : Prop :=
+  ro₁.initialState.map f = ro₂.initialState ∧
+  ∀ (s₁ : ro₁.stateType) i (query : O.OracleQuery (O.range i)),
+      (mapSecond f) <$> (StateT.run (ro₁.queries.impl query) s₁) =
+      (StateT.run (ro₂.queries.impl query) (f s₁))
+
+-- We now want to prove that existence of a correctAbstraction impliesObsEq.
+-- This is shown as correctAbstractionImpliesObsEq, but before that we need
+-- a few auxiliary lemma, starting with an alternative definition of runQueries.
+
 noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List (QueryS O)) (init : S):
   PMF (List (QueryResult O) × S) :=
   match queries with
@@ -39,47 +75,20 @@ noncomputable def runQueries2 {I : Type} {O : OracleSpec I} (ro : RStateOracle O
 
 lemma runQueriesEquiv {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queries : List (QueryS O)) : runQueries ro queries =
    (runQueries2 ro queries).map Prod.fst
- := sorry
-
-/-- Two stateful random oracles are observationally equal if, after any finite replay
-context of prior queries, they induce the same output distribution on every next query. -/
-def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
-  ∀ queriesList, runQueries ro₁ queriesList = runQueries ro₂ queriesList
-
--- def ObsEqStr (ro₁ ro₂ : RStateOracle O) : Prop :=
-  -- ∀ queriesList, runQueries2 ro₁ queriesList = (runQueries2 ro₂ queriesList).map (fun (x,y) => )
-
-
--- The simples suffictient condition of ObsEq is simple equality:
-
-def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
-  ObsEq ro₁ ro₂ := by
-    rw [hEq]
-    simp [ObsEq]
-
--- In more complicated passes, e.g. thoose that change states, we may need more flexible cryterions,
--- such as the correct abstraction explained below. But for now the simple equality has been working
--- fine.
-
--- Now, we would like to show a sufficient condition for two oracles to be observationally equivalent.
--- Suppose that we have a a pair of functions `f₁ : S₁ → S` and `f₂ : S₂ → S` where `S` is some "abstract state space" that captures
--- all the relevant information. Then, if the initial states induce the same distribution on `s`, and the query imlementation
--- if each oracle is compatible with the abstraction, i.e. if two states `f₁(s₁) = f₂(s₂)` then the implementation of each
--- query on `S₁` and `S₂` induces the same distribution on (Output × S), then the two oracles are observationally equivalent.
--- This is a kind of "bisimulation" condition, and is often easier to check than the full definition of observational equivalence.
-
--- I think I need an aux function that takes a function, a pair and applies this function to the second element of the pair, and leaves the first element alone.
-
-def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
-  (p.1, f p.2)
-
-def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-    (f : ro₁.stateType → ro₂.stateType) : Prop :=
-  ro₁.initialState.map f = ro₂.initialState ∧
-  ∀ (s₁ : ro₁.stateType) i (query : O.OracleQuery (O.range i)),
-      (mapSecond f) <$> (StateT.run (ro₁.queries.impl query) s₁) =
-      (StateT.run (ro₂.queries.impl query) (f s₁))
-
+ := by
+  have hAux :
+      ∀ (queries : List (QueryS O)) (init : ro.stateType),
+        StateT.run (runQueriesAux ro.queries queries) init =
+          runQueries2Aux ro.queries queries init := by
+    intro queries
+    induction queries with
+    | nil =>
+        intro init
+        simp [runQueriesAux, runQueries2Aux]
+    | cons q qs ih =>
+        intro init
+        simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
+  simp [runQueries, runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
 
 def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → ro₂.stateType)
@@ -100,22 +109,26 @@ def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I} (ro₁ ro�
         intro a
         arg 1
         rw [<- Hind]
-      -- rw [<- Hind]
       simp []
       congr
 
-
-def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I} {S : Type} (ro₁ ro₂ : RStateOracle O)
+def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → ro₂.stateType)
-    (HCor : correctAbstraction ro₁ ro₂ f) queriesList:
-
-      (runQueries2 ro₁ queriesList).map (fun (x,y) => (x, f y)) = (runQueries2 ro₂ queriesList) := by
-    simp [runQueries2]
-    rw [<- HCor.1]
-    simp [PMF.map]
-    conv =>
-      rhs
-      arg 2
-      intro a
-      rw [<- correctAbstractionImpliesObsEqInner _ _ _ HCor]
-    simp [PMF.map]
+    (HCor : correctAbstraction ro₁ ro₂ f) : ObsEq ro₁ ro₂ := by
+    intro queriesList
+    rw [runQueriesEquiv (ro := ro₁) (queries := queriesList)]
+    rw [runQueriesEquiv (ro := ro₂) (queries := queriesList)]
+    have hRun2 :
+        (runQueries2 ro₁ queriesList).map (fun (x, y) => (x, f y)) =
+          (runQueries2 ro₂ queriesList) := by
+      simp [runQueries2]
+      rw [<- HCor.1]
+      simp [PMF.map]
+      conv =>
+        rhs
+        arg 2
+        intro a
+        rw [<- correctAbstractionImpliesObsEqInner _ _ _ HCor]
+      simp [PMF.map]
+    simpa [PMF.map_comp, Function.comp] using
+      congrArg (fun p => p.map Prod.fst) hRun2
