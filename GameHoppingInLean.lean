@@ -2,3 +2,4 @@ import GameHoppingInLean.Basic
 import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 import GameHoppingInLean.Examples.Proofs.OUTCInnerImpliesOUTCDouble
 import GameHoppingInLean.Examples.Proofs.LengthTripplingPRGSecure
+import GameHoppingInLean.Examples.Proofs.EncryptThenMacIndCca

@@ -3,15 +3,17 @@ import GameHoppingInLean.Examples.Schemes.SymEnc
 
 /-- IND-CPA eavesdropping oracle spec.
 The query indexed by `n` takes a pair of `n`-bit messages and returns an `n`-bit ciphertext. -/
-def IndCpaSpec : OracleSpec ℕ :=
-  fun n => (BitVec n × BitVec n, BitVec n)
+def IndCpaSpec (C : ℕ → Type) : OracleSpec ℕ :=
+  fun n => (BitVec n × BitVec n, C n)
 
 /-- Convenience query constructor for the IND-CPA eavesdropping oracle. -/
-@[reducible, inline] def eavesdrop {n : ℕ} (m₀ m₁ : BitVec n) : OracleComp IndCpaSpec (BitVec n) :=
-  IndCpaSpec.query n (m₀, m₁)
+@[reducible, inline] def eavesdrop {C : ℕ → Type} {n : ℕ} (m₀ m₁ : BitVec n) :
+    OracleComp (IndCpaSpec C) (C n) :=
+  (IndCpaSpec C).query n (m₀, m₁)
 
 /-- Left IND-CPA oracle: encrypts the left message `m₀`. -/
-noncomputable def IndCpaL {K : Type} (scheme : SymEncScheme K) : RStateOracle IndCpaSpec where
+noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
+    RStateOracle (IndCpaSpec C) where
   stateType := K
   initialState := scheme.keyGen
   queries := {
@@ -22,7 +24,8 @@ noncomputable def IndCpaL {K : Type} (scheme : SymEncScheme K) : RStateOracle In
   }
 
 /-- Right IND-CPA oracle: encrypts the right message `m₁`. -/
-noncomputable def IndCpaR {K : Type} (scheme : SymEncScheme K) : RStateOracle IndCpaSpec where
+noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
+    RStateOracle (IndCpaSpec C) where
   stateType := K
   initialState := scheme.keyGen
   queries := {
@@ -34,14 +37,14 @@ noncomputable def IndCpaR {K : Type} (scheme : SymEncScheme K) : RStateOracle In
 
 /-- The oracle pair corresponding to the IND-CPA security definition, for use in an
 `Assumptions` set. -/
-noncomputable def IndCpaAssumption {K : Type} (scheme : SymEncScheme K) :
-    RStateOracle IndCpaSpec × RStateOracle IndCpaSpec :=
+noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
+    RStateOracle (IndCpaSpec C) × RStateOracle (IndCpaSpec C) :=
   (IndCpaL scheme, IndCpaR scheme)
 
 /-- IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {K : Type} (scheme : SymEncScheme K) : Prop :=
+    {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Prop :=
   Indistinguishable Assumptions Reductions
-    IndCpaSpec (IndCpaL scheme) (IndCpaR scheme)
+    (IndCpaSpec C) (IndCpaL scheme) (IndCpaR scheme)

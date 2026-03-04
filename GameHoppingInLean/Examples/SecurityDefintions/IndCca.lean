@@ -7,42 +7,44 @@ inductive IndCcaQ where
   | decrypt (n : ℕ)
 
 /-- Ciphertexts tracked by the IND-CCA oracles, bundled with their bit-length. -/
-abbrev IndCcaCiphertext := Σ n : ℕ, BitVec n
+abbrev IndCcaCiphertext (C : ℕ → Type) := Σ n : ℕ, C n
 
 /-- Coerce a length-indexed ciphertext into the bundled IND-CCA ciphertext type. -/
-instance {n : ℕ} : CoeOut (BitVec n) IndCcaCiphertext where
+instance {C : ℕ → Type} {n : ℕ} : CoeOut (C n) (IndCcaCiphertext C) where
   coe c := ⟨n, c⟩
 
 /-- State carried by IND-CCA oracles: secret key and set of challenge ciphertexts. -/
-abbrev IndCcaState (K : Type) := K × Finset IndCcaCiphertext
+abbrev IndCcaState (K : Type) (C : ℕ → Type) := K × Finset (IndCcaCiphertext C)
 
 /-- IND-CCA oracle spec with two query kinds:
-* `eavesdrop n`: input `(m₀, m₁)` and output a ciphertext `c : BitVec n`
-* `decrypt n`: input ciphertext `c : BitVec n` and output `Option (BitVec n)` -/
-def IndCcaSpec : OracleSpec IndCcaQ
-  | .eavesdrop n => (BitVec n × BitVec n, BitVec n)
-  | .decrypt n => (BitVec n, Option (BitVec n))
+* `eavesdrop n`: input `(m₀, m₁)` and output a ciphertext `c : C n`
+* `decrypt n`: input ciphertext `c : C n` and output `Option (BitVec n)` -/
+def IndCcaSpec (C : ℕ → Type) : OracleSpec IndCcaQ
+  | .eavesdrop n => (BitVec n × BitVec n, C n)
+  | .decrypt n => (C n, Option (BitVec n))
 
 /-- Coerce decrypt-query domain values into bundled IND-CCA ciphertexts. -/
-instance {n : ℕ} : CoeOut (IndCcaSpec.domain (IndCcaQ.decrypt n)) IndCcaCiphertext where
+instance {C : ℕ → Type} {n : ℕ} :
+    CoeOut ((IndCcaSpec C).domain (IndCcaQ.decrypt n)) (IndCcaCiphertext C) where
   coe c := ⟨n, c⟩
 
 /-- Convenience query constructor for IND-CCA `eavesdrop(m₀, m₁)`. -/
-@[reducible, inline] def ccaEavesdrop {n : ℕ} (m₀ m₁ : BitVec n) :
-    OracleComp IndCcaSpec (BitVec n) :=
-  IndCcaSpec.query (.eavesdrop n) (m₀, m₁)
+@[reducible, inline] def ccaEavesdrop {C : ℕ → Type} {n : ℕ} (m₀ m₁ : BitVec n) :
+    OracleComp (IndCcaSpec C) (C n) :=
+  (IndCcaSpec C).query (.eavesdrop n) (m₀, m₁)
 
 /-- Convenience query constructor for IND-CCA `decrypt(c)`. -/
-@[reducible, inline] def ccaDecrypt {n : ℕ} (c : BitVec n) :
-    OracleComp IndCcaSpec (Option (BitVec n)) :=
-  IndCcaSpec.query (.decrypt n) c
+@[reducible, inline] def ccaDecrypt {C : ℕ → Type} {n : ℕ} (c : C n) :
+    OracleComp (IndCcaSpec C) (Option (BitVec n)) :=
+  (IndCcaSpec C).query (.decrypt n) c
 
 /-- Left IND-CCA oracle:
 * `eavesdrop(m₀, m₁)` returns `Enc_k(m₀)` and records the ciphertext
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
-noncomputable def IndCcaL {K : Type} (scheme : SymEncScheme K) : RStateOracle IndCcaSpec where
-  stateType := IndCcaState K
+noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
+    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
+  stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
     pure (k, ∅)
@@ -51,11 +53,11 @@ noncomputable def IndCcaL {K : Type} (scheme : SymEncScheme K) : RStateOracle In
       | OracleSpec.query (IndCcaQ.eavesdrop _) (m₀, _m₁) => do
           let (key, seen) ← get
           let c ← scheme.encrypt key m₀
-          set (key, insert ↑c seen)
+          set (key, insert (c : IndCcaCiphertext C) seen)
           pure c
       | OracleSpec.query (IndCcaQ.decrypt _) c => do
           let (key, seen) ← get
-          if ↑c ∈ seen then
+          if (c : IndCcaCiphertext C) ∈ seen then
             pure none
           else
             pure (some (scheme.decrypt key c))
@@ -65,8 +67,9 @@ noncomputable def IndCcaL {K : Type} (scheme : SymEncScheme K) : RStateOracle In
 * `eavesdrop(m₀, m₁)` returns `Enc_k(m₁)` and records the ciphertext
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
-noncomputable def IndCcaR {K : Type} (scheme : SymEncScheme K) : RStateOracle IndCcaSpec where
-  stateType := IndCcaState K
+noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
+    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
+  stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
     pure (k, ∅)
@@ -75,25 +78,25 @@ noncomputable def IndCcaR {K : Type} (scheme : SymEncScheme K) : RStateOracle In
       | OracleSpec.query (IndCcaQ.eavesdrop _) (_m₀, m₁) => do
           let (key, seen) ← get
           let c ← scheme.encrypt key m₁
-          set (key, insert ↑c seen)
+          set (key, insert (c : IndCcaCiphertext C) seen)
           pure c
       | OracleSpec.query (IndCcaQ.decrypt n) c => do
           let (key, seen) ← get
-          if ↑c ∈ seen then
+          if (c : IndCcaCiphertext C) ∈ seen then
             pure none
           else
             pure (some (scheme.decrypt key c))
   }
 
 /-- The oracle pair corresponding to the IND-CCA assumption, for use in an `Assumptions` set. -/
-noncomputable def IndCcaAssumption {K : Type} (scheme : SymEncScheme K) :
-    RStateOracle IndCcaSpec × RStateOracle IndCcaSpec :=
+noncomputable def IndCcaAssumption {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
+    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) × RStateOracle (IndCcaSpec C) :=
   (IndCcaL scheme, IndCcaR scheme)
 
 /-- IND-CCA security definition as an instance of `Indistinguishable`. -/
 def IndCcaDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {K : Type} (scheme : SymEncScheme K) : Prop :=
+    {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)] (scheme : SymEncScheme K C) : Prop :=
   Indistinguishable Assumptions Reductions
-    IndCcaSpec (IndCcaL scheme) (IndCcaR scheme)
+    (IndCcaSpec C) (IndCcaL scheme) (IndCcaR scheme)

@@ -197,6 +197,25 @@ lemma do_liftM_comm {σ α β γ}
   simp [StateT.run_bind]
   simpa using (PMF.bind_comm (p := A) (q := B) (f := fun a b => StateT.run (rest a b) s))
 
+/-- Commuting an independent lifted sample past a subsequent lifted sample that depends on
+an earlier draw. -/
+lemma do_liftM_comm_dep {σ α β γ δ}
+    (B : PMF β) (A : PMF α) (C : β → PMF γ) (rest : β → α → γ → RState σ δ) :
+    (do
+      let b ← (liftM B : RState σ β)
+      let a ← (liftM A : RState σ α)
+      let c ← (liftM (C b) : RState σ γ)
+      rest b a c) =
+    (do
+      let b ← (liftM B : RState σ β)
+      let c ← (liftM (C b) : RState σ γ)
+      let a ← (liftM A : RState σ α)
+      rest b a c) := by
+  refine congrArg (fun f => Bind.bind (liftM B : RState σ β) f) ?_
+  funext b
+  simpa using
+    (do_liftM_comm (A := A) (B := C b) (rest := fun a c => rest b a c))
+
 /-- Rewriting a lifted uniform draw over pairs as two lifted independent uniform draws. -/
 @[simp] lemma do_liftM_uniformOfFintype_prod
     {σ A B α : Type}
