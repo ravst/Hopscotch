@@ -90,11 +90,12 @@ lemma runQueriesEquiv {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queri
         simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
   simp [runQueries, runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
 
-def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-    (f : ro₁.stateType → ro₂.stateType)
-    (HCor : correctAbstraction ro₁ ro₂ f) queriesList :
-    forall   (init : ro₁.stateType),
-      (runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f y))  = (runQueries2Aux ro₂.queries queriesList (f init)) := by
+def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f) queriesList
+  : forall (init : ro₁.stateType),
+      (runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f y)) =
+      (runQueries2Aux ro₂.queries queriesList (f init))
+  := by
     induction queriesList
     simp [runQueries2Aux, PMF.map]
     case cons head tail Hind =>
@@ -112,9 +113,9 @@ def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I} (ro₁ ro�
       simp []
       congr
 
-def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-    (f : ro₁.stateType → ro₂.stateType)
-    (HCor : correctAbstraction ro₁ ro₂ f) : ObsEq ro₁ ro₂ := by
+def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f)
+  : ObsEq ro₁ ro₂ := by
     intro queriesList
     rw [runQueriesEquiv (ro := ro₁) (queries := queriesList)]
     rw [runQueriesEquiv (ro := ro₂) (queries := queriesList)]
