@@ -59,8 +59,11 @@ noncomputable def addInvariantFunction2 (f : A -> PMF (B × C)) (phi : C -> Prop
   let x := invertToSupport (f a) (fun (b, c) => phi c) (H a)
   x.map (reduceElem)
 
+noncomputable def forgetInvFromPair {B C} (phi : C -> Prop) : B × { x // phi x } → B × C
+  := fun (a, b) => (a, b.1)
+
 noncomputable def addInvariantFunction2Eq (f : A -> PMF (B × C)) (phi : C -> Prop) (H : forall a x, f a x > 0 -> phi x.2) (a : A) :
-  (addInvariantFunction2 f phi H a).map (fun (a, b) => (a, b.1)) = f a :=
+  (addInvariantFunction2 f phi H a).map (forgetInvFromPair phi) = f a :=
 by
   simp [addInvariantFunction2]
   conv =>
@@ -97,5 +100,23 @@ noncomputable def withInvariant (O : RStateOracle I) (φ : O.stateType → Prop)
     impl := fun q =>
       fun s => by
         let monadComp := O.queries.impl q
-        exact addInvariantFunction2 monadComp φ (fun s res => by sorry) s
+        exact addInvariantFunction2 monadComp φ (fun s res => H.1 _ _ _) s
   }
+
+noncomputable def withInvMap (O : RStateOracle I) (φ : O.stateType → Prop)
+  : {s : O.stateType | φ s} -> O.stateType
+  := fun x => x.1
+
+lemma invariantIsAbstraction (O : RStateOracle I) (φ : O.stateType → Prop) (H : correctInvariant O φ) :
+  correctAbstraction (withInvariant O φ H) O (withInvMap O φ) := by
+  simp [correctAbstraction]
+  constructor
+  · simp [withInvMap, withInvariant]
+    apply invertToSupportId
+  · intro s₁ i query
+    simp [withInvariant, StateT.run]
+    conv =>
+      rhs
+      arg 3
+      simp [withInvMap]
+    apply addInvariantFunction2Eq
