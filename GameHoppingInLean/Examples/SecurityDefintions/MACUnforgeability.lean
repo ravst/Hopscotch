@@ -9,6 +9,11 @@ inductive MACUFQ where
 /-- A length-indexed `(message, tag)` pair stored by the ideal oracle. -/
 abbrev MACTaggedMessage (Tag : Type) := Σ n : ℕ, BitVec n × Tag
 
+/-- State of the ideal MAC oracle: secret key and the set of issued `(message, tag)` pairs. -/
+structure MACUFIdealState (K Tag : Type) where
+  key : K
+  seen : Finset (MACTaggedMessage Tag)
+
 /-- Oracle spec with two query kinds:
 * `getTag n`: input message `m : BitVec n`, output tag `t : Tag`
 * `checkTag n`: input `(m, t)`, output verification bit -/
@@ -49,20 +54,20 @@ noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme
 * `CheckTag(m, t)` returns `true` iff `(m, t)` is in the recorded set -/
 noncomputable def MACUFIdeal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
     RStateOracle (MACUFSpec Tag) where
-  stateType := K × Finset (MACTaggedMessage Tag)
+  stateType := MACUFIdealState K Tag
   initialState := do
     let key ← scheme.keyGen
-    pure (key, ∅)
+    pure { key := key, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (MACUFQ.getTag n) m => do
-          let (key, seen) ← get
-          let t := scheme.tag key m
-          set (key, insert ⟨n, (m, t)⟩ seen)
+          let st ← get
+          let t := scheme.tag st.key m
+          set { st with seen := insert (⟨n, (m, t)⟩ : MACTaggedMessage Tag) st.seen }
           pure t
       | OracleSpec.query (MACUFQ.checkTag n) (m, t) => do
-          let (_key, seen) ← get
-          pure (decide (⟨n, (m, t)⟩ ∈ seen))
+          let st ← get
+          pure (decide ((⟨n, (m, t)⟩ : MACTaggedMessage Tag) ∈ st.seen))
   }
 
 /-- The oracle pair corresponding to the MAC unforgeability assumption. -/

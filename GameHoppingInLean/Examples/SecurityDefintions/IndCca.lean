@@ -14,7 +14,9 @@ instance {C : ℕ → Type} {n : ℕ} : CoeOut (C n) (IndCcaCiphertext C) where
   coe c := ⟨n, c⟩
 
 /-- State carried by IND-CCA oracles: secret key and set of challenge ciphertexts. -/
-abbrev IndCcaState (K : Type) (C : ℕ → Type) := K × Finset (IndCcaCiphertext C)
+structure IndCcaState (K : Type) (C : ℕ → Type) where
+  key : K
+  seen : Finset (IndCcaCiphertext C)
 
 /-- IND-CCA oracle spec with two query kinds:
 * `eavesdrop n`: input `(m₀, m₁)` and output a ciphertext `c : C n`
@@ -47,20 +49,20 @@ noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
   stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
-    pure (k, ∅)
+    pure { key := k, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop _) (m₀, _m₁) => do
-          let (key, seen) ← get
-          let c ← scheme.encrypt key m₀
-          set (key, insert (c : IndCcaCiphertext C) seen)
+          let st ← get
+          let c ← scheme.encrypt st.key m₀
+          set { st with seen := insert (c : IndCcaCiphertext C) st.seen }
           pure c
       | OracleSpec.query (IndCcaQ.decrypt _) c => do
-          let (key, seen) ← get
-          if (c : IndCcaCiphertext C) ∈ seen then
+          let st ← get
+          if (c : IndCcaCiphertext C) ∈ st.seen then
             pure none
           else
-            pure (some (scheme.decrypt key c))
+            pure (some (scheme.decrypt st.key c))
   }
 
 /-- Right IND-CCA oracle:
@@ -72,20 +74,20 @@ noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
   stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
-    pure (k, ∅)
+    pure { key := k, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop _) (_m₀, m₁) => do
-          let (key, seen) ← get
-          let c ← scheme.encrypt key m₁
-          set (key, insert (c : IndCcaCiphertext C) seen)
+          let st ← get
+          let c ← scheme.encrypt st.key m₁
+          set { st with seen := insert (c : IndCcaCiphertext C) st.seen }
           pure c
       | OracleSpec.query (IndCcaQ.decrypt n) c => do
-          let (key, seen) ← get
-          if (c : IndCcaCiphertext C) ∈ seen then
+          let st ← get
+          if (c : IndCcaCiphertext C) ∈ st.seen then
             pure none
           else
-            pure (some (scheme.decrypt key c))
+            pure (some (scheme.decrypt st.key c))
   }
 
 /-- The oracle pair corresponding to the IND-CCA assumption, for use in an `Assumptions` set. -/

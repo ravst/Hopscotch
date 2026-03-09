@@ -108,7 +108,7 @@ by
 
 
 def correctInvariantTrans (O : RStateOracle I) (φ : O.stateType → Prop) : Prop :=
-  forall {α} (s : O.stateType) (q : OracleSpec.OracleQuery I α) (z : α × O.stateType),
+  forall {α} (s : O.stateType) (hs : φ s) (q : OracleSpec.OracleQuery I α) (z : α × O.stateType),
   let monadComp := (O.queries.impl q)
   let outDistr := StateT.run monadComp s
   outDistr z > 0 -> φ z.2
@@ -128,8 +128,7 @@ noncomputable def withInvariant (O : RStateOracle I) (φ : O.stateType → Prop)
     impl := (fun q =>
       fun s => by
         let monadComp := O.queries.impl q
-        exact addInvariantFunction2 monadComp φ (fun s => H.1 s q) s
-        -- exact addInvariantPair (monadComp s) φ (H.1 s q)
+        exact addInvariantPair (monadComp s) φ (fun z hz => H.1 s s.2 q z hz)
     )
   }
 
@@ -149,5 +148,4 @@ lemma invariantIsAbstraction (O : RStateOracle I) (φ : O.stateType → Prop) (H
       rhs
       arg 3
       simp [withInvMap]
-    apply addInvariantFunction2Eq
-    -- apply (fun a => H.1 a query)
+    apply addInvariantPairEq

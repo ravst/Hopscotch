@@ -9,31 +9,41 @@ abbrev EtMSpec (Tag : Type) : OracleSpec IndCcaQ :=
 abbrev EtMCiphertext (Tag : Type) :=
   IndCcaCiphertext (fun n => EtMC Tag n)
 
+/-- Local state for EtM reductions that use encryption and track issued challenge ciphertexts. -/
+structure EtMFromMacState (KEnc Tag : Type) where
+  encKey : KEnc
+  seen : Finset (EtMCiphertext Tag)
+
+/-- Local state for the IND-CPA-to-EtM reduction: MAC key and seen challenge ciphertexts. -/
+structure EtMFromIndCpaState (KMac Tag : Type) where
+  macKey : KMac
+  seen : Finset (EtMCiphertext Tag)
+
 /-- Reduction from MAC-unforgeability oracle to the IND-CCA left game for Encrypt-then-MAC.
 It delegates tagging/checking to the MAC oracle while keeping encryption state locally. -/
 noncomputable def EtMFromMACLReduction {KEnc Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) :
     SRReduction (MACUFSpec Tag) (EtMSpec Tag) where
-  stateType := KEnc × Finset (EtMCiphertext Tag)
+  stateType := EtMFromMacState KEnc Tag
   initialState := do
     let ke ← enc.keyGen
-    pure (ke, ∅)
+    pure { encKey := ke, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, _m₁) => do
-          let (ke, seen) ← SRReduction.get
-          let c ← SRReduction.sample (enc.encrypt ke m₀)
+          let st ← SRReduction.get
+          let c ← SRReduction.sample (enc.encrypt st.encKey m₀)
           let t ← SRReduction.query (MACUFQ.getTag n) c
-          SRReduction.set (ke, insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) seen)
+          SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (ke, seen) ← SRReduction.get
-          if (ct : EtMCiphertext Tag) ∈ seen then
+          let st ← SRReduction.get
+          if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none
           else
             let b : Bool ← SRReduction.query (MACUFQ.checkTag n) ct
             if b then
-              pure (some (enc.decrypt ke ct.1))
+              pure (some (enc.decrypt st.encKey ct.1))
             else
               pure (some (BitVec.zero n))
   }
@@ -43,26 +53,26 @@ It is symmetric to `EtMFromMACLReduction`, using the right message in eavesdrop 
 noncomputable def EtMFromMACRReduction {KEnc Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) :
     SRReduction (MACUFSpec Tag) (EtMSpec Tag) where
-  stateType := KEnc × Finset (EtMCiphertext Tag)
+  stateType := EtMFromMacState KEnc Tag
   initialState := do
     let ke ← enc.keyGen
-    pure (ke, ∅)
+    pure { encKey := ke, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (_m₀, m₁) => do
-          let (ke, seen) ← SRReduction.get
-          let c ← SRReduction.sample (enc.encrypt ke m₁)
+          let st ← SRReduction.get
+          let c ← SRReduction.sample (enc.encrypt st.encKey m₁)
           let t ← SRReduction.query (MACUFQ.getTag n) c
-          SRReduction.set (ke, insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) seen)
+          SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (ke, seen) ← SRReduction.get
-          if (ct : EtMCiphertext Tag) ∈ seen then
+          let st ← SRReduction.get
+          if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none
           else
             let b : Bool ← SRReduction.query (MACUFQ.checkTag n) ct
             if b then
-              pure (some (enc.decrypt ke ct.1))
+              pure (some (enc.decrypt st.encKey ct.1))
             else
               pure (some (BitVec.zero n))
   }
@@ -72,39 +82,82 @@ returns `none` on challenge ciphertexts and zero otherwise. -/
 noncomputable def EtMFromIndCpaReduction {KMac Tag : Type} [DecidableEq Tag]
     (mac : MACScheme KMac Tag) :
     SRReduction (IndCpaSpec BitVec) (EtMSpec Tag) where
-  stateType := KMac × Finset (EtMCiphertext Tag)
+  stateType := EtMFromIndCpaState KMac Tag
   initialState := do
     let km ← mac.keyGen
-    pure (km, ∅)
+    pure { macKey := km, seen := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, m₁) => do
-          let (km, seen) ← SRReduction.get
+          let st ← SRReduction.get
           let c ← SRReduction.query n (m₀, m₁)
-          let t := mac.tag km c
-          SRReduction.set (km, insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) seen)
+          let t := mac.tag st.macKey c
+          SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (_km, seen) ← SRReduction.get
-          if (ct : EtMCiphertext Tag) ∈ seen then
+          let st ← SRReduction.get
+          if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none
           else
             pure (some (BitVec.zero n))
   }
 
-private def macStateToCcaState {KEnc KMac Tag : Type} :
-    (KEnc × Finset (EtMCiphertext Tag)) × KMac →
-      (KMac × KEnc) × Finset (EtMCiphertext Tag)
-  | ((ke, seen), km) => ((km, ke), seen)
+
+def IndCCAToRedEncTimesMac {KMac KEnc Tag}
+    (s : IndCcaState (KMac × KEnc) (fun n => BitVec n × Tag)) :
+    EtMFromMacState KEnc Tag × KMac :=
+  ({ encKey := s.key.2, seen := s.seen }, s.key.1)
+
 
 /-- `IND-CCA-L` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACLReduction`. -/
 theorem obsEq_indCcaL_apply_macReal
     {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
-    ObsEq (IndCcaL (C := fun n => EtMC Tag n) (encryptThenMac enc mac))
-      (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFReal mac)) := by
-  sorry
+    ObsEq
+      (IndCcaL (encryptThenMac enc mac))
+      (applySRReduction (EtMFromMACLReduction enc) (MACUFReal mac)) := by
+    refine correctAbstractionImpliesObsEq
+      (ro₁ := IndCcaL (encryptThenMac enc mac))
+      (ro₂ := applySRReduction (EtMFromMACLReduction enc) (MACUFReal mac))
+      (f := IndCCAToRedEncTimesMac)
+      ?_
+
+    constructor
+    · simp [IndCCAToRedEncTimesMac, IndCcaL, applySRReduction, EtMFromMACLReduction, MACUFReal, encryptThenMac]
+      simp only [PMF.map_bind, PMF.pure_map, IndCCAToRedEncTimesMac]
+    · intro s₁ i query
+      cases i with
+      | eavesdrop n =>
+          refine
+            match (IndCcaSpec (fun n => BitVec n × Tag)).range (IndCcaQ.eavesdrop n), query with
+            | _, OracleSpec.query (IndCcaQ.eavesdrop n') x => ?_
+            | _, OracleSpec.query (IndCcaQ.decrypt n') x => ?_
+          · unfold IndCcaL applySRReduction EtMFromMACLReduction MACUFReal
+            dsimp
+            simp[OracleSpec.domain, IndCcaSpec] at x
+            dsimp
+            dsimp [OracleComp.simulateQ]
+            simp
+
+
+
+            sorry
+          · unfold IndCcaL applySRReduction EtMFromMACLReduction MACUFReal
+            dsimp
+            sorry
+      | decrypt n =>
+          refine
+            match (IndCcaSpec (fun n => BitVec n × Tag)).range (IndCcaQ.decrypt n), query with
+            | _, OracleSpec.query (IndCcaQ.eavesdrop n') x => ?_
+            | _, OracleSpec.query (IndCcaQ.decrypt n') x => ?_
+          · unfold IndCcaL applySRReduction EtMFromMACLReduction MACUFReal
+            dsimp
+            sorry
+          · unfold IndCcaL applySRReduction EtMFromMACLReduction MACUFReal
+            dsimp
+            sorry
+
 
 /-- `IND-CCA-R` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACRReduction`. -/
@@ -117,8 +170,11 @@ theorem obsEq_apply_macReal_indCcaR
 
 /-- State for the explicit EtM intermediate games:
 encryption key, IND-CCA seen set, MAC key, MAC seen-pairs set. -/
-abbrev EtMGameState (KEnc KMac Tag : Type) :=
-  KEnc × Finset (EtMCiphertext Tag) × KMac × Finset (EtMCiphertext Tag)
+structure EtMGameState (KEnc KMac Tag : Type) where
+  encKey : KEnc
+  seenCca : Finset (EtMCiphertext Tag)
+  macKey : KMac
+  seenMac : Finset (EtMCiphertext Tag)
 
 /-- Explicit game after replacing MAC-real by MAC-ideal (left branch), written without
 oracle composition. -/
@@ -129,24 +185,24 @@ noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
   initialState := do
     let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure (ke, ∅, km, ∅)
+    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, _m₁) => do
-          let (ke, seenCca, km, seenMac) ← get
-          let c ← enc.encrypt ke m₀
-          let t := mac.tag km c
+          let st ← get
+          let c ← enc.encrypt st.encKey m₀
+          let t := mac.tag st.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set (ke, insert p seenCca, km, insert p seenMac)
+          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (ke, seenCca, _km, seenMac) ← get
-          if (ct : EtMCiphertext Tag) ∈ seenCca then
+          let st ← get
+          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
             pure none
-          else if (ct : EtMCiphertext Tag) ∉ seenMac then
+          else if (ct : EtMCiphertext Tag) ∉ st.seenMac then
             pure (some (BitVec.zero n))
           else
-            pure (some (enc.decrypt ke ct.1))
+            pure (some (enc.decrypt st.encKey ct.1))
   }
 
 /-- Right-branch version of `EtMGameMacIdealL`. -/
@@ -157,24 +213,24 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
   initialState := do
     let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure (ke, ∅, km, ∅)
+    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (_m₀, m₁) => do
-          let (ke, seenCca, km, seenMac) ← get
-          let c ← enc.encrypt ke m₁
-          let t := mac.tag km c
+          let st ← get
+          let c ← enc.encrypt st.encKey m₁
+          let t := mac.tag st.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set (ke, insert p seenCca, km, insert p seenMac)
+          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (ke, seenCca, _km, seenMac) ← get
-          if (ct : EtMCiphertext Tag) ∈ seenCca then
+          let st ← get
+          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
             pure none
-          else if (ct : EtMCiphertext Tag) ∉ seenMac then
+          else if (ct : EtMCiphertext Tag) ∉ st.seenMac then
             pure (some (BitVec.zero n))
           else
-            pure (some (enc.decrypt ke ct.1))
+            pure (some (enc.decrypt st.encKey ct.1))
   }
 
 /-- Simplified left intermediate game: decryption no longer uses `enc.decrypt`. -/
@@ -185,19 +241,19 @@ noncomputable def EtMGameZeroL {KEnc KMac Tag : Type} [DecidableEq Tag]
   initialState := do
     let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure (ke, ∅, km, ∅)
+    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, _m₁) => do
-          let (ke, seenCca, km, seenMac) ← get
-          let c ← enc.encrypt ke m₀
-          let t := mac.tag km c
+          let st ← get
+          let c ← enc.encrypt st.encKey m₀
+          let t := mac.tag st.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set (ke, insert p seenCca, km, insert p seenMac)
+          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (_ke, seenCca, _km, _seenMac) ← get
-          if (ct : EtMCiphertext Tag) ∈ seenCca then
+          let st ← get
+          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
             pure none
           else
             pure (some (BitVec.zero n))
@@ -211,19 +267,19 @@ noncomputable def EtMGameZeroR {KEnc KMac Tag : Type} [DecidableEq Tag]
   initialState := do
     let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure (ke, ∅, km, ∅)
+    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
   queries := {
     impl := fun
       | OracleSpec.query (IndCcaQ.eavesdrop n) (_m₀, m₁) => do
-          let (ke, seenCca, km, seenMac) ← get
-          let c ← enc.encrypt ke m₁
-          let t := mac.tag km c
+          let st ← get
+          let c ← enc.encrypt st.encKey m₁
+          let t := mac.tag st.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set (ke, insert p seenCca, km, insert p seenMac)
+          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
           pure (c, t)
       | OracleSpec.query (IndCcaQ.decrypt n) ct => do
-          let (_ke, seenCca, _km, _seenMac) ← get
-          if (ct : EtMCiphertext Tag) ∈ seenCca then
+          let st ← get
+          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
             pure none
           else
             pure (some (BitVec.zero n))
