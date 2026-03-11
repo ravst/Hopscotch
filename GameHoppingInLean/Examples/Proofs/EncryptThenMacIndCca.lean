@@ -123,6 +123,14 @@ lemma push_map_second2 {A B C D : Type} {x : PMF A} (f : A -> (B × C))  (g : C 
     simp [PMF.map]
     rfl
 
+
+-- @[simp]
+-- lemma push_map_second3 {B C : Type} {x : PMF (B × C)}  (g : C → D)
+--   :  PMF.map (mapSecond g) (PMF.pure x) = PMF.pure (mapSecond g sorry) :=
+--   by
+
+--     rfl
+
 /-- `IND-CCA-L` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACLReduction`. -/
 theorem obsEq_indCcaL_apply_macReal
