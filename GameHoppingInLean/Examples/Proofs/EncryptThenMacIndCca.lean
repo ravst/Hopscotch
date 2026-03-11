@@ -115,13 +115,21 @@ lemma push_map_second {A B C D : Type} {x : PMF A} (f : A -> PMF (B × C))  (g :
     exact PMF.map_bind x f (mapSecond g)
 
 
--- @[simp]
+@[simp]
 lemma push_map_second2 {A B C D : Type} {x : PMF A} (f : A -> (B × C))  (g : C → D)
   :  PMF.map (mapSecond g) (f <$> x) = PMF.map (fun x' => (mapSecond g) (f x')) x :=
   by
     simp [Functor.map]
     simp [PMF.map]
     rfl
+
+
+-- @[simp]
+-- lemma push_map_second3 {B C : Type} {x : PMF (B × C)}  (g : C → D)
+--   :  PMF.map (mapSecond g) (PMF.pure x) = PMF.pure (mapSecond g sorry) :=
+--   by
+
+--     rfl
 
 /-- `IND-CCA-L` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACLReduction`. -/
@@ -156,18 +164,30 @@ theorem obsEq_indCcaL_apply_macReal
         simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
         -- we should commute PMF.map with binds in lhs! DOing so, we push PMF.map (mapSecond) to very end, where it oculd be simplified.
         simp [encryptThenMac]
+        simp [mapSecond]
+        simp [MACUFReal]
+        simp [PMF.map]
+        simp [IndCCAToRedEncTimesMac]
+        congr
+        ext x y
+
+        --  following line produce nonsence. Why?
+        -- simp [get]
+        -- on the other hand:
         conv =>
-          lhs
-          arg 2
-          intro p
-          arg 2
-          dsimp [Function.comp, mapSecond, IndCCAToRedEncTimesMac]
+          rhs
+          arg 1
+          arg 1
+          simp [get]
+          simp [getThe, MonadStateOf.get]
+          simp [Functor.map, StateT.map, StateT.get]
 
-        -- simp [EtMFromMACLReduction]
-
-        -- simp [applySRReduction]
-
-        sorry
+        -- now simp [] procduces nonsence. Why?
+        conv =>
+          rhs
+          arg 1
+          simp [Functor.map]
+          simp [StateT.map]
       | decrypt m =>
         sorry
 
