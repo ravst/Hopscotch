@@ -17,8 +17,7 @@ noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query n m => do
+    impl := fun n m => do
           let k ← scheme.keyGen
           let c ← scheme.encrypt k m
           pure c
@@ -32,7 +31,7 @@ noncomputable def OTUC_Rand {K : Type} {C : ℕ → Type}
   initialState := pure ()
   queries := {
     impl := fun
-      | OracleSpec.query n _m => do
+       n _m => do
           let c ← PMF.uniformOfFintype (C n)
           pure c
   }

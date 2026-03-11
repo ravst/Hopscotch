@@ -5,20 +5,20 @@ structure QueryS {I : Type} (O : OracleSpec I) where
   index : I
   input : O.domain index
 
-def QueryS.toQuery {I : Type} {O : OracleSpec I} (q : QueryS O) :
-  OracleSpec.OracleQuery O (O.range q.index) :=
-  OracleSpec.query q.index q.input
+-- def QueryS.toQuery {I : Type} {O : OracleSpec I} (q : QueryS O) :
+--   OracleSpec.OracleQuery O (O.range q.index) :=
+--   OracleSpec.query q.index q.input
 
 structure QueryResult {I : Type} (O : OracleSpec I) where
   index : I
   output : O.range index
 
-noncomputable def runQueriesAux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List (QueryS O)) :
+noncomputable def runQueriesAux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl3 O (RState S)) (queries : List (QueryS O)) :
   RState S (List (QueryResult O)) :=
   match queries with
   | [] => pure []
   | q :: qs => do
-    let o ← impl.impl (q.toQuery)
+    let o ← impl.impl q.index q.input
     (fun os =>  ({index := q.index, output := o} :: os)) <$> runQueriesAux impl qs
 
 noncomputable def runQueries {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queries : List (QueryS O)) : PMF (List (QueryResult O)) :=
@@ -53,20 +53,20 @@ def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
 def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → ro₂.stateType) : Prop :=
   ro₁.initialState.map f = ro₂.initialState ∧
-  ∀ (s₁ : ro₁.stateType) i (query : O.OracleQuery (O.range i)),
-      (mapSecond f) <$> (StateT.run (ro₁.queries.impl query) s₁) =
-      (StateT.run (ro₂.queries.impl query) (f s₁))
+  ∀ (s₁ : ro₁.stateType) i (query : O.domain i),
+      (StateT.run (ro₁.queries.impl i query) s₁).map (mapSecond f) =
+      (StateT.run (ro₂.queries.impl i query) (f s₁))
 
 -- We now want to prove that existence of a correctAbstraction impliesObsEq.
 -- This is shown as correctAbstractionImpliesObsEq, but before that we need
 -- a few auxiliary lemma, starting with an alternative definition of runQueries.
 
-noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List (QueryS O)) (init : S):
+noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl3 O (RState S)) (queries : List (QueryS O)) (init : S):
   PMF (List (QueryResult O) × S) :=
   match queries with
   | [] => pure ([], init)
   | q :: qs => do
-    let (out, s) <- StateT.run (impl.impl (q.toQuery)) init
+    let (out, s) <- StateT.run (impl.impl q.index q.input) init
     let (outL, sF) <- runQueries2Aux impl qs s
     return ({index := q.index, output := out}::outL, sF)
 

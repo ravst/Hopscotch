@@ -94,22 +94,22 @@ by
   exact invertToSupportId p (fun x => phi x.2) (fun x Hx => H x Hx)
 
 
-noncomputable def addInvariantFunction2 (f : A -> PMF (B × C)) (phi : C -> Prop) (H : forall a x, f a x > 0 -> phi x.2) : (A -> PMF (B × {x // phi x})) := fun a =>
-  addInvariantPair (f a) phi (H a)
+-- noncomputable def addInvariantFunction2 (f : A -> PMF (B × C)) (phi : C -> Prop) (H : forall a x, f a x > 0 -> phi x.2) : (A -> PMF (B × {x // phi x})) := fun a =>
+--   addInvariantPair (f a) phi (H a)
 
 
-noncomputable def addInvariantFunction2Eq (f : A -> PMF (B × C)) (phi : C -> Prop) {H : forall a x, f a x > 0 -> phi x.2} (a : A) :
-  (addInvariantFunction2 f phi H a).map (forgetInvFromPair phi) = f a :=
-by
-  simp [addInvariantFunction2, addInvariantPairEq]
+-- noncomputable def addInvariantFunction2Eq (f : A -> PMF (B × C)) (phi : C -> Prop) {H : forall a x, f a x > 0 -> phi x.2} (a : A) :
+--   (addInvariantFunction2 f phi H a).map (forgetInvFromPair phi) = f a :=
+-- by
+--   simp [addInvariantFunction2, addInvariantPairEq]
 
 
 -- Now we introdcuce invarints to RStateOracle
 
 
-def correctInvariantTrans (O : RStateOracle I) (φ : O.stateType → Prop) : Prop :=
-  forall {α} (s : O.stateType) (hs : φ s) (q : OracleSpec.OracleQuery I α) (z : α × O.stateType),
-  let monadComp := (O.queries.impl q)
+def correctInvariantTrans {I : OracleSpec X} (O : RStateOracle I) (φ : O.stateType → Prop) : Prop :=
+  forall {i : X} (s : O.stateType) (hs : φ s) (q : I.domain i) (z : (I.range i) × O.stateType),
+  let monadComp := (O.queries.impl i q)
   let outDistr := StateT.run monadComp s
   outDistr z > 0 -> φ z.2
 
@@ -125,9 +125,9 @@ noncomputable def withInvariant (O : RStateOracle I) (φ : O.stateType → Prop)
   stateType := {s : O.stateType | φ s}
   initialState := invertToSupport (O.initialState) φ H.2
   queries := {
-    impl := (fun q =>
+    impl := (fun i q =>
       fun s => by
-        let monadComp := O.queries.impl q
+        let monadComp := O.queries.impl i q
         exact addInvariantPair (monadComp s) φ (fun z hz => H.1 s s.2 q z hz)
     )
   }
@@ -143,9 +143,62 @@ lemma invariantIsAbstraction (O : RStateOracle I) (φ : O.stateType → Prop) (H
   · simp [withInvMap, withInvariant]
     apply invertToSupportId
   · intro s₁ i query
-    simp [withInvariant, StateT.run]
-    conv =>
-      rhs
-      arg 3
-      simp [withInvMap]
+    simp [withInvariant, StateT.run, withInvMap]
     apply addInvariantPairEq
+
+-- def fL {A B : Type} (H : A = B) (x : A) : B := H ▸ x
+-- def fR {A B : Type} (H : A = B) (x : B) : A := (Eq.symm H) ▸ x
+
+-- lemma fBij {A B : Type} (H : A = B) (x : A) : fR H (fL H x) = x :=
+--   by
+--     cases H
+--     simp [fR, fL]
+
+--     sorry
+
+-- lemma eqWithInv {I : OracleSpec X} (O1 O2 : RStateOracle I)
+--   (f : O2.stateType -> O1.stateType) (Hf : Function.Bijective f)
+--   (φ : O1.stateType → Prop) (H : correctInvariant O1 φ)
+--   (HInit : O2.initialState.map f = O1.initialState )
+--   (HEq : forall α s (q : I.OracleQuery α),
+--     φ (f s) ->  (O2.queries.impl q s).map (fun (a, b) => (a, f b)) = (O1.queries.impl q (f s)) ) :
+--    correctInvariant O2 (fun x => φ (f x)) :=
+-- by
+--   -- have HRw : forall A B (H : A = B) (x : A), (Eq.symm H) ▸ (H ▸ x) = x := by
+--   --   sorry
+--   -- have HRw2 : forall {X A B : Type} (H : A = B) (x : PMF (X × B)), (H) ▸ ((Eq.symm  H) ▸ x) = x := by
+--   --   sorry
+--   -- have HEq2 :  forall α s, forall (q : I.OracleQuery α), φ (HState ▸ s) ->  (O2.queries.impl q s) = HState ▸ (O1.queries.impl q (HState ▸ s)) :=
+--   -- by
+--   --   intro a s q Hphi
+--   --   rw [HEq]
+--   --   rw [HRw]
+--   --   -- apply [HRw2]
+--   --   sorry
+--   --   sorry
+--   -- --
+--     -- simp [HEq]
+
+--   -- conv =>
+--   --   rhs
+--   --   arg 1
+--   --   rw [HEq]
+
+--   -- sorry
+--   constructor
+--   · simp [correctInvariantTrans]
+--     intro α s Hphi q i s Hw
+--     -- rw [HEq2] at Hw
+
+--     sorry
+
+
+--   · intro s Hphi
+--     have HI : ((O2.initialState.map f) (f s) = O2.initialState s) :=
+--     by
+
+--       sorry
+--     apply H.2
+--     rw [<- HInit]
+--     rw [HI]
+--     assumption

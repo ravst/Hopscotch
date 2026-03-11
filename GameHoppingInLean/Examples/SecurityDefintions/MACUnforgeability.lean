@@ -40,10 +40,10 @@ noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme
   initialState := scheme.keyGen
   queries := {
     impl := fun
-      | OracleSpec.query (MACUFQ.getTag _) m => do
+      | (MACUFQ.getTag _), m => do
           let key ← get
           pure (scheme.tag key m)
-      | OracleSpec.query (MACUFQ.checkTag _) (m, t) => do
+      | (MACUFQ.checkTag _), (m, t) => do
           let key ← get
           pure (scheme.check key m t)
   }
@@ -60,12 +60,12 @@ noncomputable def MACUFIdeal {K Tag : Type} [DecidableEq Tag] (scheme : MACSchem
     pure { key := key, seen := ∅ }
   queries := {
     impl := fun
-      | OracleSpec.query (MACUFQ.getTag n) m => do
+      | (MACUFQ.getTag n), m => do
           let st ← get
           let t := scheme.tag st.key m
           set { st with seen := insert (⟨n, (m, t)⟩ : MACTaggedMessage Tag) st.seen }
           pure t
-      | OracleSpec.query (MACUFQ.checkTag n) (m, t) => do
+      | (MACUFQ.checkTag n), (m, t) => do
           let st ← get
           pure (decide ((⟨n, (m, t)⟩ : MACTaggedMessage Tag) ∈ st.seen))
   }

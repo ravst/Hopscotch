@@ -22,12 +22,13 @@ theorem obsEq_indCpaL_apply_left_real {K : Type} {C : ℕ → Type} (scheme : Sy
   simp [IndCpaL, IndCpaRandReal, applySimpleReduction]
   ext1 α; ext1 q
   cases q
-  case query n msg =>
-  cases msg
+  -- case query n msg =>
+  -- cases msg
   case  mk m₀ m₁ =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
   ext1 k
   simp [FreeMonad.lift]
+  simp [query_impl_convert]
 
 /-- Under the random ciphertext oracle, forwarding the left vs right challenge message is
 observationally equivalent (the message is ignored). -/
@@ -50,13 +51,14 @@ theorem obsEq_apply_right_real_indCpaR {K : Type} {C : ℕ → Type} (scheme : S
   simp [IndCpaR, IndCpaRandReal, applySimpleReduction]
   ext1 α; ext1 q
   cases q with
-  | query n msg =>
-      cases msg with
-      | mk m₀ m₁ =>
-          simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaR, ctxt]
-          ext1 k
-          congr
-          simp [FreeMonad.lift]
+  | mk m₀ m₁ =>
+    simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaR, ctxt]
+    ext1 k
+    congr
+    simp [FreeMonad.lift]
+    simp [query_impl_convert]
+  -- | hEq =>
+  --
 
 /-- IND-CPA left/right indistinguishability derived from IND-CPA-rand indistinguishability,
 via the two simple reductions. -/

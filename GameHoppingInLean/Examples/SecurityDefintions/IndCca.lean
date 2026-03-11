@@ -51,13 +51,13 @@ noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
     let k ← scheme.keyGen
     pure { key := k, seen := ∅ }
   queries := {
-    impl := fun
-      | OracleSpec.query (IndCcaQ.eavesdrop _) (m₀, _m₁) => do
+    impl := fun a b => match a, b with
+      | (IndCcaQ.eavesdrop _), (m₀, _m₁) => do
           let st ← get
           let c ← scheme.encrypt st.key m₀
           set { st with seen := insert (c : IndCcaCiphertext C) st.seen }
           pure c
-      | OracleSpec.query (IndCcaQ.decrypt _) c => do
+      | (IndCcaQ.decrypt _), c => do
           let st ← get
           if (c : IndCcaCiphertext C) ∈ st.seen then
             pure none
@@ -76,13 +76,13 @@ noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
     let k ← scheme.keyGen
     pure { key := k, seen := ∅ }
   queries := {
-    impl := fun
-      | OracleSpec.query (IndCcaQ.eavesdrop _) (_m₀, m₁) => do
+    impl := fun a b => match a, b with
+      |  (IndCcaQ.eavesdrop _), (_m₀, m₁) => do
           let st ← get
           let c ← scheme.encrypt st.key m₁
           set { st with seen := insert (c : IndCcaCiphertext C) st.seen }
           pure c
-      | OracleSpec.query (IndCcaQ.decrypt n) c => do
+      |  (IndCcaQ.decrypt n), c => do
           let st ← get
           if (c : IndCcaCiphertext C) ∈ st.seen then
             pure none

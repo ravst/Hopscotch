@@ -8,8 +8,8 @@ def OraclesEqualOnInvariant {I : Type} (O : OracleSpec I) (o₁ o₂ : RStateOra
     o₁.initialState = h_eq ▸ o₂.initialState ∧
     ∀ (i : I) (t : O.domain i) (s : o₁.stateType),
       φ s →
-      StateT.run (o₁.queries.impl (OracleSpec.query i t)) s =
-      h_eq ▸ StateT.run (o₂.queries.impl (OracleSpec.query i t)) (h_eq ▸ s)
+      StateT.run (o₁.queries.impl i t) s =
+      h_eq ▸ StateT.run (o₂.queries.impl i t) (h_eq ▸ s)
 
 lemma oraclesEqualOnInvariant_preservesCorrectInvariant
     {I : Type} {O : OracleSpec I}
@@ -29,7 +29,7 @@ lemma oraclesEqualOnInvariant_preservesCorrectInvariant
           constructor
           · simp [correctInvariantTrans]
             intros a s q a₁ b hs hsup
-            obtain ⟨x, y⟩ := a₁
+            -- obtain ⟨x, y⟩ := a₁
             rw [← hEqInv.2] at hsup <;> try assumption
             simp [correctInvariant, correctInvariantTrans] at hInv₁
             apply hInv₁.1 <;> try assumption
@@ -62,19 +62,17 @@ lemma oraclesEqualOnInvariant_implies_obsEq
           have hQueryEq' :
               ∀ (i : I) (t : O.domain i) (s : S₁),
                 φ s →
-                StateT.run (o₁'.queries.impl (OracleSpec.query i t)) s =
-                StateT.run (o₂'.queries.impl (OracleSpec.query i t)) s := by
+                StateT.run (o₁'.queries.impl i t) s =
+                StateT.run (o₂'.queries.impl i t) s := by
             intro i t s hs
             simpa [o₁', o₂'] using hQueryEq i t s hs
           have hQueryEqGen :
-              ∀ {α} (q : OracleSpec.OracleQuery O α) (s : S₁),
+              ∀ {i} (q : O.domain i) (s : S₁),
                 φ s →
-                StateT.run (o₁'.queries.impl q) s =
-                StateT.run (o₂'.queries.impl q) s := by
-            intro α q s hs
-            cases q with
-            | query i t =>
-                simpa using hQueryEq' i t s hs
+                StateT.run (o₁'.queries.impl i q) s =
+                StateT.run (o₂'.queries.impl i q) s := by
+            intro i t s hs
+            simpa using hQueryEq' i t s hs
           change ObsEq o₁' o₂'
           let w : RStateOracle O := withInvariant o₁' φ hInv₁'
           have hAbs₁ : correctAbstraction w o₁' (withInvMap o₁' φ) :=
@@ -86,11 +84,11 @@ lemma oraclesEqualOnInvariant_implies_obsEq
                   simpa [w] using hAbs₁.1
                 _ = o₂'.initialState := hInitEq'
             · intro s i query
-              have hw : (mapSecond (withInvMap o₁' φ)) <$> StateT.run (w.queries.impl query) s =
-                  StateT.run (o₁'.queries.impl query) ((withInvMap o₁' φ) s) := by
+              have hw : (mapSecond (withInvMap o₁' φ)) <$> StateT.run (w.queries.impl i query) s =
+                  StateT.run (o₁'.queries.impl i query) ((withInvMap o₁' φ) s) := by
                 simpa [w] using hAbs₁.2 s i query
-              have hq : StateT.run (o₁'.queries.impl query) ((withInvMap o₁' φ) s) =
-                  StateT.run (o₂'.queries.impl query) ((withInvMap o₁' φ) s) := by
+              have hq : StateT.run (o₁'.queries.impl i query) ((withInvMap o₁' φ) s) =
+                  StateT.run (o₂'.queries.impl i query) ((withInvMap o₁' φ) s) := by
                 simpa [withInvMap] using hQueryEqGen query s.1 s.2
               exact hw.trans hq
           have hObs₁ : ObsEq w o₁' :=

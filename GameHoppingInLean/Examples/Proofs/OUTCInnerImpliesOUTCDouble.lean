@@ -23,8 +23,7 @@ noncomputable def OUTC_G1 {K₁ K₂ : Type} {C : ℕ → Type}
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query n m => do
+    impl := fun n m => do
           let ks ← S.keyGen
           let _m' ← S.encrypt ks m
           let c ← PMF.uniformOfFintype (C n)
@@ -40,7 +39,7 @@ theorem obsEq_outcRealDouble_applyR1_realT
   simp [OTUC_Real, applyRReduction]
   ext1 α; ext1 q;
   cases q
-  case query i msg =>
+  -- case query i msg =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift,
     doubleSymEnc]
   rfl
@@ -55,7 +54,7 @@ theorem obsEq_applyR1_randT_G1
   simp [OUTCInner_to_OUTCDouble_R1, OUTC_G1, applyRReduction, OTUC_Rand]
   ext1 α; ext1 q
   cases q
-  case query i msg =>
+  -- case query i msg =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift, doubleSymEnc]
 
 /-- `G1` is observationally equivalent to `OTUC_Rand(Double(S,T))`. -/
@@ -65,10 +64,6 @@ theorem obsEq_G1_outcRandDouble
     ObsEq (OUTC_G1 S T) (OTUC_Rand (doubleSymEnc S T)) := by
   apply obsEqReflexive
   simp [OUTCInner_to_OUTCDouble_R1, OUTC_G1, applyRReduction, OTUC_Rand]
-  ext1 α; ext1 q
-  cases q
-  case query i msg =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift, doubleSymEnc]
 
 /-- OUTC/OTUC of inner scheme `T` implies OUTC/OTUC of `Double(S,T)`, via reduction `R1`. -/
 theorem outcInnerImpliesOutcDouble

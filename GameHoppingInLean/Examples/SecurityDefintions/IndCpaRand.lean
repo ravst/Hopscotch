@@ -17,8 +17,7 @@ noncomputable def IndCpaRandReal {K : Type} {C : ℕ → Type} (scheme : SymEncS
   stateType := K
   initialState := scheme.keyGen
   queries := {
-    impl := fun
-      | OracleSpec.query _ m => do
+    impl := fun  _ m => do
            let key <- get
            scheme.encrypt key m
   }
@@ -31,8 +30,7 @@ noncomputable def IndCpaRandRand {K : Type} {C : ℕ → Type}
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query n _m => do
+    impl := fun n _m => do
           PMF.uniformOfFintype (C n)
   }
 

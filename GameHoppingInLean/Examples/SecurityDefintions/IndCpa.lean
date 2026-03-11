@@ -17,8 +17,7 @@ noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
   stateType := K
   initialState := scheme.keyGen
   queries := {
-    impl := fun
-      | OracleSpec.query _ (m₀, _m₁) => do
+    impl := fun _ (m₀, _m₁) => do
           let key <- get
           scheme.encrypt key m₀
   }
@@ -29,8 +28,7 @@ noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
   stateType := K
   initialState := scheme.keyGen
   queries := {
-    impl := fun
-      | OracleSpec.query _ (_m₀, m₁) => do
+    impl := fun  _ (_m₀, m₁) => do
           let key <- get
           scheme.encrypt key m₁
   }

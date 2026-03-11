@@ -18,8 +18,7 @@ noncomputable def PRG_real {k l : ℕ} (prg : PRG k l) :
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query _ _ => do
+    impl := fun _ _ => do
           let seed ← PMF.uniformOfFintype (BitVec k)
           pure (prg.draw seed)
   }
@@ -30,8 +29,7 @@ noncomputable def PRG_rand (k l : ℕ) : RStateOracle (SecurePRGSpec k l) where
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query _ _ => do
+    impl := fun _ _ => do
           PMF.uniformOfFintype (BitVec (k + l))
   }
 

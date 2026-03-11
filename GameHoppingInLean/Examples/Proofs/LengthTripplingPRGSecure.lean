@@ -35,8 +35,7 @@ noncomputable def PRG_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query _ _ => do
+    impl := fun  _ _ => do
           let xy ← PMF.uniformOfFintype (BitVec (k + k))
           let x : BitVec k := BitVec.extractLsb' k k xy
           let y : BitVec k := BitVec.extractLsb' 0 k xy
@@ -51,8 +50,7 @@ noncomputable def PRG_G2 {k : ℕ} (prg : lengthDoublingPRG k) :
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query _ _ => do
+    impl := fun  _ _ => do
           let x ← PMF.uniformOfFintype (BitVec k)
           let y ← PMF.uniformOfFintype (BitVec k)
           let dy : BitVec (2 * k) := cast (by simp [two_mul]) (prg.draw y)
@@ -66,8 +64,7 @@ noncomputable def PRG_G3 {k : ℕ} :
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun
-      | OracleSpec.query _ _ => do
+    impl := fun  _ _ => do
           let x ← PMF.uniformOfFintype (BitVec k)
           let y ← PMF.uniformOfFintype (BitVec (2 * k))
           pure (BitVec.append x y)
@@ -81,7 +78,7 @@ theorem obsEq_prgRealTripple_applyR1_realDouble {k : ℕ} (prg : lengthDoublingP
   simp[PRG_real, applyRReduction]
   funext α x
   cases x
-  case query =>
+  -- case query =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
 
 
@@ -93,7 +90,7 @@ theorem obsEq_applyR1_randDouble_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
   simp[PRG_real, PRG_G1, PRG_rand, applyRReduction]
   funext α x
   cases x
-  case query =>
+  -- case query =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
 
 
@@ -113,7 +110,7 @@ theorem obsEq_G2_applyR2_realDouble {k : ℕ} (prg : lengthDoublingPRG k) :
   simp[PRG_real, PRG_G2, PRGDouble_to_Tripple_R2, applyRReduction]
   funext α x
   cases x
-  case query =>
+  -- case query =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
 
 /-- `PRG_rand(2k)` composed with `R2` is observationally equivalent to `G3`. -/
@@ -123,7 +120,7 @@ theorem obsEq_applyR2_randDouble_G3 {k : ℕ} :
   simp[PRG_real, PRG_G3, PRGDouble_to_Tripple_R2, PRG_rand, applyRReduction]
   funext α x
   cases x
-  case query =>
+  -- case query =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
 
 /-- `G3` is observationally equivalent to `PRG_rand(3k)`. -/
@@ -131,10 +128,6 @@ theorem obsEq_G3_prgRandTripple {k : ℕ} :
     ObsEq (PRG_G3 (k := k)) (PRG_rand k (2 * k)) := by
   apply obsEqReflexive
   simp[PRG_real, PRG_G3, PRGDouble_to_Tripple_R2, PRG_rand, applyRReduction]
-  funext α x
-  cases x
-  case query =>
-  simp
 
 /-- Security of the length-tripling construction from security of the length-doubling PRG,
 via reductions `R1` and `R2`. -/
