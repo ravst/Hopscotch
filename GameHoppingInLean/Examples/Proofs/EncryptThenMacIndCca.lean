@@ -115,7 +115,7 @@ lemma push_map_second {A B C D : Type} {x : PMF A} (f : A -> PMF (B × C))  (g :
     exact PMF.map_bind x f (mapSecond g)
 
 
--- @[simp]
+@[simp]
 lemma push_map_second2 {A B C D : Type} {x : PMF A} (f : A -> (B × C))  (g : C → D)
   :  PMF.map (mapSecond g) (f <$> x) = PMF.map (fun x' => (mapSecond g) (f x')) x :=
   by
@@ -136,7 +136,6 @@ theorem obsEq_indCcaL_apply_macReal
       (ro₂ := applySRReduction (EtMFromMACLReduction enc) (MACUFReal mac))
       (f := IndCCAToRedEncTimesMac)
       ?_
-
     constructor
     · simp [IndCCAToRedEncTimesMac, IndCcaL, applySRReduction, EtMFromMACLReduction, MACUFReal, encryptThenMac]
       simp only [PMF.map_bind, PMF.pure_map, IndCCAToRedEncTimesMac]
@@ -147,30 +146,28 @@ theorem obsEq_indCcaL_apply_macReal
         simp [EtMFromMACLReduction]
         -- simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
         dsimp [applySRReduction]
-        simp [query_impl_convert]
-        simp [OracleComp.simulateQ]
-        simp [IndCcaL]
+        simp [query_impl_convert, OracleComp.simulateQ, IndCcaL, IndCCAToRedEncTimesMac, OracleSpec.range, OracleSpec.domain, IndCcaSpec,encryptThenMac]
+        simp [MACUFReal]
         simp [StateT.run]
+        simp [PMF.pure_map]
+        simp [mapSecond]
+        simp [PMF.monad_map_eq_map]
+        simp [PMF.pure_map]
         simp [IndCCAToRedEncTimesMac]
-        -- the line below improves shown types a lot
-        simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
-        -- we should commute PMF.map with binds in lhs! DOing so, we push PMF.map (mapSecond) to very end, where it oculd be simplified.
-        simp [encryptThenMac]
-        conv =>
-          lhs
-          arg 2
-          intro p
-          arg 2
-          dsimp [Function.comp, mapSecond, IndCCAToRedEncTimesMac]
-
-        -- simp [EtMFromMACLReduction]
-
-        -- simp [applySRReduction]
-
-        sorry
       | decrypt m =>
-        sorry
-
+        simp [OracleSpec.domain, IndCcaSpec] at query
+        simp [EtMFromMACLReduction]
+        -- simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
+        dsimp [applySRReduction]
+        dsimp only [OracleComp.simulateQ, FreeMonad.roll, FreeMonad.mapM]
+        simp [query_impl_convert, OracleComp.simulateQ, IndCcaL, IndCCAToRedEncTimesMac, OracleSpec.range, OracleSpec.domain, IndCcaSpec,encryptThenMac, EtMFromMacState]
+        simp [MACUFReal]
+        simp [StateT.run]
+        simp [apply_ite  FreeMonad.mapM, FreeMonad.mapM, ite_apply]
+        simp [apply_ite (PMF.map (mapSecond IndCCAToRedEncTimesMac)), pure, ite_apply, StateT.pure]
+        split <;> try simp[PMF.pure_map, StateT.pure, IndCCAToRedEncTimesMac, mapSecond]
+        simp [get, Functor.map, StateT.map, getThe, MonadStateOf.get, StateT.get, PMF.pure_bind, bind, StateT.bind]
+        split <;> try simp [StateT.pure]
 
 
 /-- `IND-CCA-R` for EtM is observationally equivalent to composing MAC-real with
