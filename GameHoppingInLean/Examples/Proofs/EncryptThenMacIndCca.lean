@@ -108,6 +108,20 @@ def IndCCAToRedEncTimesMac {KMac KEnc Tag}
     EtMFromMacState KEnc Tag × KMac :=
   ({ encKey := s.key.2, seen := s.seen }, s.key.1)
 
+@[simp]
+lemma push_map_second {A B C D : Type} {x : PMF A} (f : A -> PMF (B × C))  (g : C → D)
+  :  PMF.map (mapSecond g) (PMF.bind x f) = PMF.bind x (fun x' => (f x').map (mapSecond g)) :=
+  by
+    exact PMF.map_bind x f (mapSecond g)
+
+
+-- @[simp]
+lemma push_map_second2 {A B C D : Type} {x : PMF A} (f : A -> (B × C))  (g : C → D)
+  :  PMF.map (mapSecond g) (f <$> x) = PMF.map (fun x' => (mapSecond g) (f x')) x :=
+  by
+    simp [Functor.map]
+    simp [PMF.map]
+    rfl
 
 /-- `IND-CCA-L` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACLReduction`. -/
@@ -131,14 +145,17 @@ theorem obsEq_indCcaL_apply_macReal
       | eavesdrop n =>
         simp [OracleSpec.domain, IndCcaSpec] at query
         simp [EtMFromMACLReduction]
+        -- simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
         dsimp [applySRReduction]
         simp [query_impl_convert]
         simp [OracleComp.simulateQ]
         simp [IndCcaL]
         simp [StateT.run]
         simp [IndCCAToRedEncTimesMac]
+        -- the line below improves shown types a lot
         simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
-        simp [PMF.map]
+        -- we should commute PMF.map with binds in lhs! DOing so, we push PMF.map (mapSecond) to very end, where it oculd be simplified.
+        simp [encryptThenMac]
         conv =>
           lhs
           arg 2
