@@ -255,7 +255,7 @@ def RedMacIdealEtMGameStateEquiv {KEnc KMac Tag} :
 
 /-- Explicit game after replacing MAC-real by MAC-ideal (left branch), written without
 oracle composition. -/
-noncomputable def lakEtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
+noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
   stateType := EtMGameState KEnc KMac Tag
