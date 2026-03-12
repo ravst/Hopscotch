@@ -50,12 +50,146 @@ def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
 def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
   (p.1, f p.2)
 
+def mapInputState (f : S₁ → S₂) (m : RState S₂ α) (s : S₁) : PMF (α × S₂) :=
+  StateT.run m (f s)
+
+noncomputable
+def mapOutputState (f : S₁ → S₂) (m : RState S₁ α) (s : S₁) : PMF (α × S₂) :=
+  (StateT.run m s).map (mapSecond f)
+
 def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → ro₂.stateType) : Prop :=
   ro₁.initialState.map f = ro₂.initialState ∧
-  ∀ (s₁ : ro₁.stateType) i (query : O.domain i),
-      (StateT.run (ro₁.queries.impl i query) s₁).map (mapSecond f) =
-      (StateT.run (ro₂.queries.impl i query) (f s₁))
+  ∀ i (query : O.domain i),
+      mapOutputState f (ro₁.queries.impl i query) =
+      mapInputState f (ro₂.queries.impl i query)
+
+lemma mapStateBijImpliesCorrectAbstraction {I : Type} {O : OracleSpec I}
+    (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType ≃ ro₂.stateType)
+    (hInit : ro₁.initialState.map f = ro₂.initialState)
+    (hStep : ∀ i (query : O.domain i),
+      RState.mapStateBij f (ro₁.queries.impl i query) = ro₂.queries.impl i query) :
+    correctAbstraction ro₁ ro₂ (f : ro₁.stateType → ro₂.stateType) := by
+  refine ⟨hInit, ?_⟩
+  intro i query
+  funext s
+  have hRun :
+      StateT.run (RState.mapStateBij f (ro₁.queries.impl i query)) (f s) =
+        StateT.run (ro₂.queries.impl i query) (f s) := by
+    simpa using (congrArg (fun m => StateT.run m (f s)) (hStep i query))
+  have hMap :
+      mapOutputState (f : ro₁.stateType → ro₂.stateType) (ro₁.queries.impl i query) s =
+        StateT.run (RState.mapStateBij f (ro₁.queries.impl i query)) (f s) := by
+    change PMF.map (fun p : O.range i × ro₁.stateType => (p.1, f p.2))
+      (StateT.run (ro₁.queries.impl i query) s) =
+      PMF.map (fun p : O.range i × ro₁.stateType => (p.1, f p.2))
+        (StateT.run (ro₁.queries.impl i query) (f.invFun (f s)))
+    simp [f.left_inv]
+  calc
+    mapOutputState (f : ro₁.stateType → ro₂.stateType) (ro₁.queries.impl i query) s =
+        StateT.run (RState.mapStateBij f (ro₁.queries.impl i query)) (f s) := hMap
+    _ = StateT.run (ro₂.queries.impl i query) (f s) := hRun
+    _ = mapInputState (f : ro₁.stateType → ro₂.stateType) (ro₂.queries.impl i query) s := by
+          rfl
+
+-- def correctAbstraction2 {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+--     [Nonempty ro₁.stateType]
+--     (f : ro₁.stateType → ro₂.stateType) : Prop :=
+--   ro₁.initialState.map f = ro₂.initialState ∧
+--   ∀ i (query : O.domain i),
+--       RState.mapState f (ro₁.queries.impl i query) = ro₂.queries.impl i query
+
+-- /-- If two concrete states collapse to the same abstract state through `f`,
+-- then one query step induces the same abstracted transition law. -/
+-- def stepCongr {I : Type} {O : OracleSpec I} (ro : RStateOracle O)
+--     {S' : Type} (f : ro.stateType → S') : Prop :=
+--   ∀ (s s' : ro.stateType) i (query : O.domain i),
+--       f s = f s' →
+--       mapOutputState f (ro.queries.impl i query) s =
+--       mapOutputState f (ro.queries.impl i query) s'
+
+-- lemma correctAbstraction_implies_correctAbstraction2 {I : Type} {O : OracleSpec I}
+--     (ro₁ ro₂ : RStateOracle O) [Nonempty ro₁.stateType]
+--     (f : ro₁.stateType → ro₂.stateType) (hf : Function.Surjective f) :
+--     correctAbstraction ro₁ ro₂ f → correctAbstraction2 ro₁ ro₂ f := by
+--   intro h
+--   rcases h with ⟨hInit, hStep⟩
+--   refine ⟨hInit, ?_⟩
+--   intro i query
+--   funext s₂
+--   have hStepAt :
+--       (StateT.run (ro₁.queries.impl i query) (Function.invFun f s₂)).map (mapSecond f) =
+--         StateT.run (ro₂.queries.impl i query) (f (Function.invFun f s₂)) := by
+--     simpa [mapOutputState, mapInputState] using
+--       congrArg (fun g => g (Function.invFun f s₂)) (hStep i query)
+--   calc
+--     StateT.run (RState.mapState f (ro₁.queries.impl i query)) s₂ =
+--         (StateT.run (ro₁.queries.impl i query) (Function.invFun f s₂)).map (mapSecond f) := by
+--           rfl
+--     _ = StateT.run (ro₂.queries.impl i query) (f (Function.invFun f s₂)) := hStepAt
+--     _ = StateT.run (ro₂.queries.impl i query) s₂ := by
+--           have hs : f (Function.invFun f s₂) = s₂ := Function.rightInverse_invFun hf s₂
+--           simpa [hs]
+
+-- lemma correctAbstraction2_implies_correctAbstraction {I : Type} {O : OracleSpec I}
+--     (ro₁ ro₂ : RStateOracle O) [Nonempty ro₁.stateType]
+--     (f : ro₁.stateType → ro₂.stateType) (hf : Function.Injective f) :
+--     correctAbstraction2 ro₁ ro₂ f → correctAbstraction ro₁ ro₂ f := by
+--   intro h
+--   rcases h with ⟨hInit, hStep⟩
+--   refine ⟨hInit, ?_⟩
+--   intro i query
+--   funext s₁
+--   have hRun :
+--       StateT.run (RState.mapState f (ro₁.queries.impl i query)) (f s₁) =
+--         StateT.run (ro₂.queries.impl i query) (f s₁) := by
+--     exact congrArg (fun m => StateT.run m (f s₁)) (hStep i query)
+--   have hs : Function.invFun f (f s₁) = s₁ := Function.leftInverse_invFun hf s₁
+--   have hRun' :
+--       mapOutputState f (ro₁.queries.impl i query) (Function.invFun f (f s₁)) =
+--         mapInputState f (ro₂.queries.impl i query) s₁ := by
+--     simpa [RState.mapState, mapSecond, mapOutputState, mapInputState] using hRun
+--   calc
+--     mapOutputState f (ro₁.queries.impl i query) s₁ =
+--         mapOutputState f (ro₁.queries.impl i query) (Function.invFun f (f s₁)) := by
+--           simpa [hs]
+--     _ = mapInputState f (ro₂.queries.impl i query) s₁ := hRun'
+
+-- lemma correctAbstraction2_implies_correctAbstraction_of_stepCongr
+--     {I : Type} {O : OracleSpec I}
+--     (ro₁ ro₂ : RStateOracle O) [Nonempty ro₁.stateType]
+--     (f : ro₁.stateType → ro₂.stateType) (hf : Function.Surjective f)
+--     (hCongr : stepCongr ro₁ f) :
+--     correctAbstraction2 ro₁ ro₂ f → correctAbstraction ro₁ ro₂ f := by
+--   intro h
+--   rcases h with ⟨hInit, hStep⟩
+--   refine ⟨hInit, ?_⟩
+--   intro i query
+--   funext s₁
+--   have hRun :
+--       StateT.run (RState.mapState f (ro₁.queries.impl i query)) (f s₁) =
+--         StateT.run (ro₂.queries.impl i query) (f s₁) := by
+--     exact congrArg (fun m => StateT.run m (f s₁)) (hStep i query)
+--   have hRun' :
+--       mapOutputState f (ro₁.queries.impl i query) (Function.invFun f (f s₁)) =
+--         mapInputState f (ro₂.queries.impl i query) s₁ := by
+--     simpa [RState.mapState, mapSecond, mapOutputState, mapInputState] using hRun
+--   have hEq : f s₁ = f (Function.invFun f (f s₁)) := by
+--     symm
+--     exact Function.rightInverse_invFun hf (f s₁)
+--   calc
+--     mapOutputState f (ro₁.queries.impl i query) s₁ =
+--         mapOutputState f (ro₁.queries.impl i query) (Function.invFun f (f s₁)) := by
+--           exact hCongr s₁ (Function.invFun f (f s₁)) i query hEq
+--     _ = mapInputState f (ro₂.queries.impl i query) s₁ := hRun'
+
+-- lemma correctAbstraction_iff_correctAbstraction2 {I : Type} {O : OracleSpec I}
+--     (ro₁ ro₂ : RStateOracle O) [Nonempty ro₁.stateType]
+--     (f : ro₁.stateType → ro₂.stateType) (hf : Function.Bijective f) :
+--     correctAbstraction ro₁ ro₂ f ↔ correctAbstraction2 ro₁ ro₂ f := by
+--   constructor
+--   · exact correctAbstraction_implies_correctAbstraction2 ro₁ ro₂ f hf.surjective
+--   · exact correctAbstraction2_implies_correctAbstraction ro₁ ro₂ f hf.injective
 
 -- We now want to prove that existence of a correctAbstraction impliesObsEq.
 -- This is shown as correctAbstractionImpliesObsEq, but before that we need
@@ -90,7 +224,7 @@ lemma runQueriesEquiv {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queri
         simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
   simp [runQueries, runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
 
-def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
+lemma correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f) queriesList
   : forall (init : ro₁.stateType),
       (runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f y)) =
@@ -100,10 +234,17 @@ def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
     simp [runQueries2Aux, PMF.map]
     case cons head tail Hind =>
       intro init
+      have hStep :
+          mapOutputState f (ro₁.queries.impl head.index head.input) init =
+            mapInputState f (ro₂.queries.impl head.index head.input) init := by
+        exact congrArg (fun g => g init) (HCor.2 head.index head.input)
+      have hStep' :
+          StateT.run (ro₂.queries.impl head.index head.input) (f init) =
+            (StateT.run (ro₁.queries.impl head.index head.input) init).map (mapSecond f) := by
+        simpa [mapInputState, mapOutputState] using hStep.symm
       simp [runQueries2Aux]
-      simp [correctAbstraction] at HCor
-      rw [<- HCor.2]
-      simp [StateT.run, mapSecond, Functor.map, PMF.map]
+      rw [hStep']
+      simp [mapInputState, mapOutputState, StateT.run, mapSecond, Functor.map, PMF.map]
       conv =>
         rhs
         arg 2
@@ -113,7 +254,7 @@ def correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
       simp []
       congr
 
-def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
+lemma correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f)
   : ObsEq ro₁ ro₂ := by
     intro queriesList
@@ -133,3 +274,23 @@ def correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
       simp [PMF.map]
     simpa [PMF.map_comp, Function.comp] using
       congrArg (fun p => p.map Prod.fst) hRun2
+
+lemma mapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
+    (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType ≃ ro₂.stateType)
+    (hInit : ro₁.initialState.map f = ro₂.initialState)
+    (hStep : ∀ i (query : O.domain i),
+      RState.mapStateBij f (ro₁.queries.impl i query) = ro₂.queries.impl i query) :
+    ObsEq ro₁ ro₂ := by
+  exact correctAbstractionImpliesObsEq ro₁ ro₂ (f := (f : ro₁.stateType → ro₂.stateType))
+    (mapStateBijImpliesCorrectAbstraction ro₁ ro₂ f hInit hStep)
+
+lemma existsMapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
+    (ro₁ ro₂ : RStateOracle O)
+    (h :
+      ∃ f : ro₁.stateType ≃ ro₂.stateType,
+        ro₁.initialState.map f = ro₂.initialState ∧
+        (∀ i (query : O.domain i),
+          RState.mapStateBij f (ro₁.queries.impl i query) = ro₂.queries.impl i query)) :
+    ObsEq ro₁ ro₂ := by
+  rcases h with ⟨f, hInit, hStep⟩
+  exact mapStateBijImpliesObsEq ro₁ ro₂ f hInit hStep

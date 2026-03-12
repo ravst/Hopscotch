@@ -1,11 +1,14 @@
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
+import GameHoppingInLean.VCVio2.ToMathlib.Control.MonadHom
 
 -- RState: state transformer over the probabilistic Pmf monad
 abbrev RState (σ : Type _) (α : Type _) : Type _ := StateT σ PMF α
 
 namespace PMF
+
+
 
 /-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
 @[simp] lemma uniformOfFintype_prod_bind
@@ -27,6 +30,11 @@ end PMF
 namespace RState
 
 noncomputable
+def modify (f : σ → σ ) : RState σ Unit := do
+  let s ← get
+  set (f s)
+
+noncomputable
 def run {σ α} (sd : PMF σ) (m : RState σ α) : PMF (α × σ) := do
   let s <- sd
   StateT.run m s
@@ -38,6 +46,253 @@ def eval {σ α} (s : PMF σ) (m : RState σ α) : PMF α :=
 noncomputable
 def exec {σ α} (s : PMF σ) (m : RState σ α) : PMF σ :=
   (RState.run s m).map Prod.snd
+
+lemma map_eq_do {σ α β} (f : α → β) (x : RState σ α) :
+    (f <$> x : RState σ β) =
+      (do
+        let a ← x
+        pure (f a)) := by
+  simpa [Function.comp] using
+    (map_eq_bind_pure_comp (m := RState σ) (f := f) (x := x))
+
+@[simp] lemma ite_pure {σ α} (p : Prop) [Decidable p] (a b : α) :
+    (if p then (pure a : RState σ α) else pure b) =
+      (pure (if p then a else b) : RState σ α) := by
+  split_ifs <;> rfl
+
+@[simp] lemma ite_apply_fn {α β}
+    (p : Prop) [Decidable p] (f : α → β) (a b : α) :
+    (if p then f a else f b) = f (if p then a else b) := by
+  split_ifs <;> rfl
+
+@[simp] lemma ite_some {α}
+    (p : Prop) [Decidable p] (a b : α) :
+    (if p then (some a : Option α) else some b) = some (if p then a else b) := by
+  simpa using (ite_apply_fn (p := p) (f := some) (a := a) (b := b))
+
+@[simp] lemma ite_get_get {σ α}
+    (p : Prop) [Decidable p]
+    (x y : σ → RState σ α) :
+    (if p then
+      (do
+        let s ← (get : RState σ σ)
+        x s)
+    else
+      (do
+        let s ← (get : RState σ σ)
+        y s)) =
+    (do
+      let s ← (get : RState σ σ)
+      if p then x s else y s) := by
+  split_ifs <;> rfl
+
+@[simp] lemma do_get_ignore {σ α} (x : RState σ α) :
+    (do
+      let _ ← (get : RState σ σ)
+      x) = x := by
+  funext s
+  change (PMF.pure (s, s)).bind (fun p : σ × σ => x p.2) = x s
+  simpa using (PMF.pure_bind (a := (s, s)) (f := fun p : σ × σ => x p.2))
+
+@[simp] lemma ite_get_left {σ α}
+    (p : Prop) [Decidable p]
+    (x : σ → RState σ α) (y : RState σ α) :
+    (if p then
+      (do
+        let s ← (get : RState σ σ)
+        x s)
+    else y) =
+    (do
+      let s ← (get : RState σ σ)
+      if p then x s else y) := by
+  split_ifs <;> simp
+
+@[simp] lemma ite_get_right {σ α}
+    (p : Prop) [Decidable p]
+    (x : RState σ α) (y : σ → RState σ α) :
+    (if p then x
+    else
+      (do
+        let s ← (get : RState σ σ)
+        y s)) =
+    (do
+      let s ← (get : RState σ σ)
+      if p then x else y s) := by
+  split_ifs <;> simp
+
+
+noncomputable
+def mapState {α s₁ s₂} [Nonempty s₁] (f : s₁ → s₂) (s : RState s₁ α) : RState s₂ α :=
+  fun s₂ =>
+    (StateT.run s (Function.invFun f s₂)).map (fun p => (p.1, f p.2))
+
+noncomputable
+def mapStateContra {α s₁ s₂} [Nonempty s₁] (f : s₁ → s₂) (s : RState s₂ α) : RState s₁ α :=
+  fun s₂ =>
+    (StateT.run s (f s₂)).map (fun p => (p.1, Function.invFun f p.2))
+
+noncomputable
+def mapStateBij (f : s₁ ≃ s₂) (m : RState s₁ α) : RState s₂ α :=
+  fun s₂ =>
+    (StateT.run m (f.invFun s₂)).map (fun p => (p.1, f.toFun p.2))
+
+@[simp] lemma mapStateBij_pure {α s₁ s₂}
+    (f : s₁ ≃ s₂) (a : α) :
+    mapStateBij f (pure a : RState s₁ α) = (pure a : RState s₂ α) := by
+  funext s
+  change PMF.map (fun p : α × s₁ => (p.1, f p.2)) (PMF.pure (a, f.symm s)) = PMF.pure (a, s)
+  simp [PMF.pure_map]
+
+@[simp] lemma mapStateBij_bind {α β s₁ s₂}
+    (f : s₁ ≃ s₂) (x : RState s₁ α) (y : α → RState s₁ β) :
+    mapStateBij f (x >>= y) =
+      (mapStateBij f x >>= fun a => mapStateBij f (y a)) := by
+  funext s
+  change
+    PMF.map (fun p : β × s₁ => (p.1, f p.2))
+      ((StateT.run x (f.symm s)).bind (fun p => StateT.run (y p.1) p.2)) =
+    ((StateT.run x (f.symm s)).map (fun p : α × s₁ => (p.1, f p.2))).bind
+      (fun p : α × s₂ =>
+        (StateT.run (y p.1) (f.symm p.2)).map (fun q : β × s₁ => (q.1, f q.2)))
+  rw [PMF.map_bind]
+  rw [PMF.bind_map]
+  congr
+  funext p
+  rcases p with ⟨a, st⟩
+  simp
+
+@[simp] lemma mapStateBij_liftM {α s₁ s₂}
+    (f : s₁ ≃ s₂) (x : PMF α) :
+    mapStateBij f (liftM x : RState s₁ α) = (liftM x : RState s₂ α) := by
+  funext s
+  change
+    PMF.map (fun p : α × s₁ => (p.1, f p.2))
+      (StateT.run (StateT.lift x : RState s₁ α) (f.symm s)) =
+      StateT.run (StateT.lift x : RState s₂ α) s
+  rw [StateT.run_lift, StateT.run_lift]
+  change PMF.map (fun p : α × s₁ => (p.1, f p.2)) (PMF.map (fun a : α => (a, f.symm s)) x) =
+    PMF.map (fun a : α => (a, s)) x
+  rw [PMF.map_comp]
+  have hcomp :
+      (fun p : α × s₁ => (p.1, f p.2)) ∘ (fun a : α => (a, f.symm s)) =
+      (fun a : α => (a, s)) := by
+    funext a
+    simp [Function.comp, f.right_inv]
+  simpa [hcomp]
+
+@[simp] lemma mapStateBij_get {s₁ s₂}
+    (f : s₁ ≃ s₂) :
+    mapStateBij f get =
+      (do
+        let s ← get
+        pure (f.symm s)) := by
+  funext s
+  change
+    PMF.map (fun p : s₁ × s₁ => (p.1, f p.2))
+      (StateT.run (StateT.get : StateT s₁ PMF s₁) (f.symm s)) =
+    StateT.run (((StateT.get : RState s₂ s₂) >>= fun st => pure (f.symm st)) : RState s₂ s₁) s
+  rw [show StateT.run (StateT.get : StateT s₁ PMF s₁) (f.symm s) = PMF.pure (f.symm s, f.symm s) by rfl]
+  rw [StateT.run_bind]
+  rw [show StateT.run (StateT.get : StateT s₂ PMF s₂) s = PMF.pure (s, s) by rfl]
+  simp [StateT.run_pure, PMF.pure_map, PMF.pure_bind]
+  change PMF.pure (f.symm s, s) =
+    PMF.map (fun a : s₂ × s₂ => (f.symm a.1, a.2)) (PMF.pure (s, s))
+  rw [PMF.pure_map]
+
+@[simp] lemma mapStateBij_set {s₁ s₂}
+    (f : s₁ ≃ s₂) (s : s₁) :
+    mapStateBij f (set s : RState s₁ Unit) =
+      (set (f s) : RState s₂ Unit) := by
+  funext st
+  change
+    PMF.map (fun p : Unit × s₁ => (p.1, f p.2))
+      (StateT.run (StateT.set s : StateT s₁ PMF Unit) (f.symm st)) =
+    StateT.run (StateT.set (f s) : StateT s₂ PMF Unit) st
+  rw [show StateT.run (StateT.set s : StateT s₁ PMF Unit) (f.symm st) = PMF.pure ((), s) by rfl]
+  rw [show StateT.run (StateT.set (f s) : StateT s₂ PMF Unit) st = PMF.pure ((), f s) by rfl]
+  simp [PMF.pure_map]
+
+@[simp] lemma mapStateBij_ite {α s₁ s₂}
+    (f : s₁ ≃ s₂) (p : Prop) [Decidable p]
+    (e1 e2 : RState s₁ α) :
+    mapStateBij f (if p then e1 else e2) =
+      (if p then mapStateBij f e1 else mapStateBij f e2) := by
+  split_ifs <;> rfl
+
+
+-- @[simp] lemma mapState_pure {α s₁ s₂} [Nonempty s₁]
+--     (f : s₁ → s₂) (hf : Function.Surjective f) (a : α) :
+--     mapState f (pure a : RState s₁ α) = (pure a : RState s₂ α) := by
+--   funext s₂
+--   change
+--     PMF.map (fun p : α × s₁ => (p.1, f p.2)) (PMF.pure (a, Function.invFun f s₂)) =
+--       PMF.pure (a, s₂)
+--   rw [PMF.pure_map]
+--   have h : f (Function.invFun f s₂) = s₂ := Function.rightInverse_invFun hf s₂
+--   simp [h]
+
+lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
+    (f : s₁ → s₂) (hf : Function.Surjective f)
+    (x : RState s₂ α) (y : α → RState s₂ β) :
+    mapStateContra f (x >>= y) =
+      (mapStateContra f x >>= fun a => mapStateContra f (y a)) := by
+        ext1 s
+        simp [mapStateContra, bind, StateT.bind, StateT.run, PMF.map_bind]
+        congr; ext1 a
+        have x := Function.rightInverse_invFun hf
+        simp [Function.RightInverse, Function.LeftInverse] at x
+        simp [x]
+
+
+-- @[simp] lemma mapState_bind {α β s₁ s₂} [Nonempty s₁]
+--     (f : s₁ → s₂) (hf : Function.Injective f)
+--     (x : RState s₁ α) (y : α → RState s₁ β) :
+--     mapState f (x >>= y) =
+--       (mapState f x >>= fun a => mapState f (y a)) := by
+--   funext t
+--   change
+--     PMF.map (fun p => (p.1, f p.2))
+--       (StateT.run (x >>= y) (Function.invFun f t)) =
+--       (StateT.run (mapState f x) t).bind
+--         (fun p => StateT.run (mapState f (y p.1)) p.2)
+--   rw [StateT.run_bind]
+--   change
+--     PMF.map (fun p => (p.1, f p.2))
+--       ((StateT.run x (Function.invFun f t)).bind (fun p => StateT.run (y p.1) p.2)) =
+--       (StateT.run (mapState f x) t).bind
+--         (fun p => StateT.run (mapState f (y p.1)) p.2)
+--   rw [PMF.map_bind]
+--   change
+--     (StateT.run x (Function.invFun f t)).bind
+--       (fun p => PMF.map (fun q => (q.1, f q.2)) (StateT.run (y p.1) p.2)) =
+--       ((StateT.run x (Function.invFun f t)).map (fun p => (p.1, f p.2))).bind
+--         (fun p => PMF.map (fun q => (q.1, f q.2))
+--           (StateT.run (y p.1) (Function.invFun f p.2)))
+--   rw [PMF.bind_map]
+--   have hfun :
+--       (fun p : α × s₁ =>
+--         PMF.map (fun q => (q.1, f q.2)) (StateT.run (y p.1) p.2)) =
+--       ((fun p : α × s₂ =>
+--         PMF.map (fun q => (q.1, f q.2)) (StateT.run (y p.1) (Function.invFun f p.2))) ∘
+--           (fun p : α × s₁ => (p.1, f p.2))) := by
+--     funext p
+--     rcases p with ⟨a, st⟩
+--     have hst : Function.invFun f (f st) = st := Function.leftInverse_invFun hf st
+--     simp [Function.comp, hst]
+--   rw [hfun]
+
+-- noncomputable def mapStateHom {s₁ s₂} [Nonempty s₁]
+--     (f : s₁ → s₂) (hf : Function.Bijective f) : (RState s₁) →ᵐ (RState s₂) where
+--   toFun := mapState f
+--   toFun_pure' := mapState_pure (f := f) hf.surjective
+--   toFun_bind' := mapState_bind (f := f) hf.injective
+
+-- instance mapState_isMonadHom {s₁ s₂} [Nonempty s₁]
+--     (f : s₁ → s₂) (hf : Function.Bijective f) :
+--     IsMonadHom (RState s₁) (RState s₂) (mapState f) where
+--   map_pure := mapState_pure (f := f) hf.surjective
+--   map_bind := mapState_bind (f := f) hf.injective
+
 
 @[simp] lemma run_pure {σ α} (sd : PMF σ) (a : α) :
     RState.run sd (pure a : RState σ α) = sd.map (fun s => (a, s)) := by
@@ -172,6 +427,158 @@ def exec {σ α} (s : PMF σ) (m : RState σ α) : PMF σ :=
       let _ ← (liftM X : RState σ α)
       rest) = rest := by
   simpa using (bind_liftM_ignore (σ := σ) (X := X) (rest := rest))
+
+/-- Move `get` before an independent lifted sample. -/
+@[simp] lemma do_liftM_get_comm {σ α β}
+    (X : PMF α) (rest : α → σ → RState σ β) :
+    (do
+      let x ← (liftM X : RState σ α)
+      let s ← (get : RState σ σ)
+      rest x s) =
+    (do
+      let s ← (get : RState σ σ)
+      let x ← (liftM X : RState σ α)
+      rest x s) := by
+  funext s
+  change
+    StateT.run (((liftM X : RState σ α) >>= fun x =>
+      (get : RState σ σ) >>= fun st => rest x st) : RState σ β) s =
+      StateT.run (((get : RState σ σ) >>= fun st =>
+        (liftM X : RState σ α) >>= fun x => rest x st) : RState σ β) s
+  simp [StateT.run_bind, get, StateT.run_lift, StateT.get, PMF.bind_bind]
+  simpa using
+    (PMF.bind_comm (p := X) (q := StateT.get.run s)
+      (f := fun a st => StateT.run (rest a st.1) st.2))
+
+/-- Collapse two consecutive `get`s into one. -/
+@[simp] lemma do_get_get {σ α}
+    (rest : σ → σ → RState σ α) :
+    (do
+      let s₁ ← (get : RState σ σ)
+      let s₂ ← (get : RState σ σ)
+      rest s₁ s₂) =
+    (do
+      let s ← (get : RState σ σ)
+      rest s s) := by
+  funext s
+  change
+    (do
+      let p ← StateT.run (StateT.get : StateT σ PMF σ) s
+      let p' ← StateT.run (StateT.get : StateT σ PMF σ) p.2
+      StateT.run (rest p.1 p'.1) p'.2) =
+    (do
+      let p ← StateT.run (StateT.get : StateT σ PMF σ) s
+      StateT.run (rest p.1 p.1) p.2)
+  have hget : ∀ t : σ, StateT.run (StateT.get : StateT σ PMF σ) t = PMF.pure (t, t) := by
+    intro t
+    rfl
+  simp [hget]
+  change
+    (PMF.pure (s, s)).bind (fun p =>
+      (PMF.pure (p.2, p.2)).bind (fun p' => StateT.run (rest p.1 p'.1) p'.2)) =
+    (PMF.pure (s, s)).bind (fun p => StateT.run (rest p.1 p.1) p.2)
+  simp [PMF.pure_bind]
+
+/-- Reading right after `set` returns the value that was set. -/
+@[simp] lemma do_set_get {σ α}
+    (s' : σ) (rest : σ → RState σ α) :
+    (do
+      let _ ← (set s' : RState σ Unit)
+      let s ← (get : RState σ σ)
+      rest s) =
+    (do
+      let _ ← (set s' : RState σ Unit)
+      rest s') := by
+  funext s
+  change
+    (do
+      let p ← StateT.run (StateT.set s' : StateT σ PMF Unit) s
+      let p' ← StateT.run (StateT.get : StateT σ PMF σ) p.2
+      StateT.run (rest p'.1) p'.2) =
+    (do
+      let p ← StateT.run (StateT.set s' : StateT σ PMF Unit) s
+      StateT.run (rest s') p.2)
+  have hset : ∀ t : σ, StateT.run (StateT.set s' : StateT σ PMF Unit) t = PMF.pure ((), s') := by
+    intro t
+    rfl
+  have hget : ∀ t : σ, StateT.run (StateT.get : StateT σ PMF σ) t = PMF.pure (t, t) := by
+    intro t
+    rfl
+  simp [hset, hget]
+  change
+    PMF.bind (PMF.pure ((), s')) (fun p =>
+      PMF.bind (PMF.pure (p.2, p.2)) (fun p' => StateT.run (rest p'.1) p'.2)) =
+    PMF.bind (PMF.pure ((), s')) (fun p => StateT.run (rest s') p.2)
+  simp [PMF.pure_bind]
+
+/-- Two consecutive `set`s collapse to the last one. -/
+@[simp] lemma do_set_set {σ α}
+    (s₁ s₂ : σ) (rest : RState σ α) :
+    (do
+      let _ ← (set s₁ : RState σ Unit)
+      let _ ← (set s₂ : RState σ Unit)
+      rest) =
+    (do
+      let _ ← (set s₂ : RState σ Unit)
+      rest) := by
+  funext s
+  change
+    (do
+      let p ← StateT.run (StateT.set s₁ : StateT σ PMF Unit) s
+      let p' ← StateT.run (StateT.set s₂ : StateT σ PMF Unit) p.2
+      StateT.run rest p'.2) =
+    (do
+      let p ← StateT.run (StateT.set s₂ : StateT σ PMF Unit) s
+      StateT.run rest p.2)
+  have hset1 : ∀ t : σ, StateT.run (StateT.set s₁ : StateT σ PMF Unit) t = PMF.pure ((), s₁) := by
+    intro t
+    rfl
+  have hset2 : ∀ t : σ, StateT.run (StateT.set s₂ : StateT σ PMF Unit) t = PMF.pure ((), s₂) := by
+    intro t
+    rfl
+  rw [hset1 s, hset2 s]
+  change
+    PMF.bind (PMF.pure ((), s₁))
+      (fun _ : Unit × σ =>
+        PMF.bind (PMF.pure ((), s₂)) (fun p' : Unit × σ => StateT.run rest p'.2)) =
+    PMF.bind (PMF.pure ((), s₂)) (fun p' : Unit × σ => StateT.run rest p'.2)
+  rw [PMF.pure_bind]
+
+/-- Reading and immediately writing back the same state is a no-op. -/
+@[simp] lemma do_get_set {σ α}
+    (rest : σ → RState σ α) :
+    (do
+      let s ← (get : RState σ σ)
+      (set s : RState σ Unit)
+      rest s) =
+    (do
+        let s ← get
+        rest s) := by
+  funext st
+  simp [get, bind, getThe, MonadStateOf.get, StateT.get, StateT.bind, pure, set, StateT.set]
+
+
+/-- Move `set` before an independent lifted sample. -/
+@[simp] lemma do_liftM_set_comm {σ α β}
+    (X : PMF α) (s' : σ) (rest : α → RState σ β) :
+    (do
+      let x ← (liftM X : RState σ α)
+      let _ ← (set s' : RState σ Unit)
+      rest x) =
+    (do
+      let _ ← (set s' : RState σ Unit)
+      let x ← (liftM X : RState σ α)
+      rest x) := by
+  funext s
+  change
+    StateT.run (((StateT.lift X : RState σ α) >>= fun x =>
+      (set s' : RState σ Unit) >>= fun _ => rest x) : RState σ β) s =
+      StateT.run (((set s' : RState σ Unit) >>= fun _ =>
+        (StateT.lift X : RState σ α) >>= fun x => rest x) : RState σ β) s
+  simp [set, StateT.set, StateT.run_bind, StateT.run_lift, PMF.bind_bind]
+  simpa using
+    (PMF.bind_comm (p := X) (q := (StateT.set s').run s)
+      (f := fun a p => StateT.run (rest a) p.2))
 
 /-- Commuting two independent lifted `PMF` samples in `RState`.
 

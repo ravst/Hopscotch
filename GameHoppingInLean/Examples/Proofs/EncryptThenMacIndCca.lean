@@ -2,6 +2,10 @@ import GameHoppingInLean.Examples.SecurityDefintions.IndCca
 import GameHoppingInLean.Examples.SecurityDefintions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefintions.MACUnforgeability
 import GameHoppingInLean.Examples.Constructions.EncryptThenMac
+import GameHoppingInLean.FreeMonadLemmas
+
+
+attribute [-simp] bind_pure_comp
 
 abbrev EtMC (Tag : Type) (n : ℕ) := BitVec n × Tag
 abbrev EtMSpec (Tag : Type) : OracleSpec IndCcaQ :=
@@ -108,28 +112,36 @@ def IndCCAToRedEncTimesMac {KMac KEnc Tag}
     EtMFromMacState KEnc Tag × KMac :=
   ({ encKey := s.key.2, seen := s.seen }, s.key.1)
 
+def RedEncTimesMacToIndCCA {KMac KEnc Tag}
+    (s : EtMFromMacState KEnc Tag × KMac) :
+    IndCcaState (KMac × KEnc) (fun n => BitVec n × Tag) :=
+  { key := (s.2, s.1.encKey), seen := s.1.seen }
+
+def IndCCAToRedEncTimesMacEquiv {KMac KEnc Tag} :
+    IndCcaState (KMac × KEnc) (fun n => BitVec n × Tag) ≃
+      (EtMFromMacState KEnc Tag × KMac) where
+  toFun := IndCCAToRedEncTimesMac
+  invFun := RedEncTimesMacToIndCCA
+  left_inv := by
+    intro s
+    cases s with
+    | mk k seen =>
+        cases k with
+        | mk km ke =>
+            rfl
+  right_inv := by
+    intro s
+    cases s with
+    | mk st km =>
+        cases st with
+        | mk ke seen =>
+            rfl
+
 @[simp]
 lemma push_map_second {A B C D : Type} {x : PMF A} (f : A -> PMF (B × C))  (g : C → D)
   :  PMF.map (mapSecond g) (PMF.bind x f) = PMF.bind x (fun x' => (f x').map (mapSecond g)) :=
   by
     exact PMF.map_bind x f (mapSecond g)
-
-
-@[simp]
-lemma push_map_second2 {A B C D : Type} {x : PMF A} (f : A -> (B × C))  (g : C → D)
-  :  PMF.map (mapSecond g) (f <$> x) = PMF.map (fun x' => (mapSecond g) (f x')) x :=
-  by
-    simp [Functor.map]
-    simp [PMF.map]
-    rfl
-
-
--- @[simp]
--- lemma push_map_second3 {B C : Type} {x : PMF (B × C)}  (g : C → D)
---   :  PMF.map (mapSecond g) (PMF.pure x) = PMF.pure (mapSecond g sorry) :=
---   by
-
---     rfl
 
 /-- `IND-CCA-L` for EtM is observationally equivalent to composing MAC-real with
 `EtMFromMACLReduction`. -/
@@ -139,43 +151,28 @@ theorem obsEq_indCcaL_apply_macReal
     ObsEq
       (IndCcaL (encryptThenMac enc mac))
       (applySRReduction (EtMFromMACLReduction enc) (MACUFReal mac)) := by
-    refine correctAbstractionImpliesObsEq
+    refine existsMapStateBijImpliesObsEq
       (ro₁ := IndCcaL (encryptThenMac enc mac))
       (ro₂ := applySRReduction (EtMFromMACLReduction enc) (MACUFReal mac))
-      (f := IndCCAToRedEncTimesMac)
       ?_
-    constructor
-    · simp [IndCCAToRedEncTimesMac, IndCcaL, applySRReduction, EtMFromMACLReduction, MACUFReal, encryptThenMac]
-      simp only [PMF.map_bind, PMF.pure_map, IndCCAToRedEncTimesMac]
-    · intro s₁ i query
+    refine ⟨IndCCAToRedEncTimesMacEquiv (KMac := KMac) (KEnc := KEnc) (Tag := Tag), ?_, ?_⟩
+    · simp [IndCCAToRedEncTimesMacEquiv, IndCCAToRedEncTimesMac, RedEncTimesMacToIndCCA,
+        IndCcaL, applySRReduction, EtMFromMACLReduction, MACUFReal, encryptThenMac,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
       cases i with
       | eavesdrop n =>
-        simp [OracleSpec.domain, IndCcaSpec] at query
-        simp [EtMFromMACLReduction]
-        -- simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
-        dsimp [applySRReduction]
-        simp [query_impl_convert, OracleComp.simulateQ, IndCcaL, IndCCAToRedEncTimesMac, OracleSpec.range, OracleSpec.domain, IndCcaSpec,encryptThenMac]
-        simp [MACUFReal]
-        simp [StateT.run]
-        simp [PMF.pure_map]
-        simp [mapSecond]
-        simp [PMF.monad_map_eq_map]
-        simp [PMF.pure_map]
-        simp [IndCCAToRedEncTimesMac]
-      | decrypt m =>
-        simp [OracleSpec.domain, IndCcaSpec] at query
-        simp [EtMFromMACLReduction]
-        -- simp [OracleSpec.range, OracleSpec.domain, IndCcaSpec]
-        dsimp [applySRReduction]
-        dsimp only [OracleComp.simulateQ, FreeMonad.roll, FreeMonad.mapM]
-        simp [query_impl_convert, OracleComp.simulateQ, IndCcaL, IndCCAToRedEncTimesMac, OracleSpec.range, OracleSpec.domain, IndCcaSpec,encryptThenMac, EtMFromMacState]
-        simp [MACUFReal]
-        simp [StateT.run]
-        simp [apply_ite  FreeMonad.mapM, FreeMonad.mapM, ite_apply]
-        simp [apply_ite (PMF.map (mapSecond IndCCAToRedEncTimesMac)), pure, ite_apply, StateT.pure]
-        split <;> try simp[PMF.pure_map, StateT.pure, IndCCAToRedEncTimesMac, mapSecond]
-        simp [get, Functor.map, StateT.map, getThe, MonadStateOf.get, StateT.get, PMF.pure_bind, bind, StateT.bind]
-        split <;> try simp [StateT.pure]
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACLReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [IndCcaL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACLReduction, RState.modify, MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA, IndCCAToRedEncTimesMac, encryptThenMac]
+      | decrypt n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACLReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [IndCcaL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACLReduction, RState.modify, MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA, IndCCAToRedEncTimesMac, encryptThenMac, FreeMonad.roll]
 
 
 /-- `IND-CCA-R` for EtM is observationally equivalent to composing MAC-real with
@@ -185,7 +182,34 @@ theorem obsEq_apply_macReal_indCcaR
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFReal mac))
       (IndCcaR (C := fun n => EtMC Tag n) (encryptThenMac enc mac)) := by
-  sorry
+  first
+  | exact obsEqReflexive _ _ rfl
+  | refine existsMapStateBijImpliesObsEq
+      (ro₁ := applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFReal mac))
+      (ro₂ := IndCcaR (C := fun n => EtMC Tag n) (encryptThenMac enc mac))
+      ?_
+    refine ⟨(IndCCAToRedEncTimesMacEquiv (KMac := KMac) (KEnc := KEnc) (Tag := Tag)).symm, ?_, ?_⟩
+    · simp [IndCCAToRedEncTimesMacEquiv, IndCCAToRedEncTimesMac, RedEncTimesMacToIndCCA,
+        IndCcaR, applySRReduction, EtMFromMACRReduction, MACUFReal, encryptThenMac,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
+      cases i with
+      | eavesdrop n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACRReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [IndCcaR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACRReduction, RState.modify,
+            MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA,
+            IndCCAToRedEncTimesMac, encryptThenMac]
+      | decrypt n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACRReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [IndCcaR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACRReduction, RState.modify,
+            MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA,
+            IndCCAToRedEncTimesMac, encryptThenMac, FreeMonad.roll]
 
 /-- State for the explicit EtM intermediate games:
 encryption key, IND-CCA seen set, MAC key, MAC seen-pairs set. -/
@@ -195,9 +219,43 @@ structure EtMGameState (KEnc KMac Tag : Type) where
   macKey : KMac
   seenMac : Finset (EtMCiphertext Tag)
 
+def RedMacIdealToEtMGameState {KEnc KMac Tag}
+    (s : EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag) :
+    EtMGameState KEnc KMac Tag :=
+  { encKey := s.1.encKey
+    seenCca := s.1.seen
+    macKey := s.2.key
+    seenMac := s.2.seen }
+
+def EtMGameStateToRedMacIdeal {KEnc KMac Tag}
+    (s : EtMGameState KEnc KMac Tag) :
+    EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag :=
+  ({ encKey := s.encKey, seen := s.seenCca }, { key := s.macKey, seen := s.seenMac })
+
+def RedMacIdealEtMGameStateEquiv {KEnc KMac Tag} :
+    (EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag) ≃
+      EtMGameState KEnc KMac Tag where
+  toFun := RedMacIdealToEtMGameState
+  invFun := EtMGameStateToRedMacIdeal
+  left_inv := by
+    intro s
+    cases s with
+    | mk s1 s2 =>
+        cases s1 with
+        | mk encKey seen =>
+            cases s2 with
+            | mk key seen' =>
+                simp [RedMacIdealToEtMGameState, EtMGameStateToRedMacIdeal, EtMCiphertext,
+                  MACTaggedMessage]
+  right_inv := by
+    intro s
+    cases s with
+    | mk encKey seenCca macKey seenMac =>
+        rfl
+
 /-- Explicit game after replacing MAC-real by MAC-ideal (left branch), written without
 oracle composition. -/
-noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
+noncomputable def lakEtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
   stateType := EtMGameState KEnc KMac Tag
@@ -252,53 +310,55 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
             pure (some (enc.decrypt st.encKey ct.1))
   }
 
-/-- Simplified left intermediate game: decryption no longer uses `enc.decrypt`. -/
+/-- Simplified left intermediate game: decryption no longer uses `enc.decrypt`.
+State is reduced to exactly what the IND-CPA reduction keeps: MAC key, seen set, and enc key. -/
 noncomputable def EtMGameZeroL {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
-  stateType := EtMGameState KEnc KMac Tag
+  stateType := EtMFromIndCpaState KMac Tag × KEnc
   initialState := do
-    let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
+    let ke ← enc.keyGen
+    pure ({ macKey := km, seen := ∅ }, ke)
   queries := {
     impl := fun
       | (IndCcaQ.eavesdrop n), (m₀, _m₁) => do
           let st ← get
-          let c ← enc.encrypt st.encKey m₀
-          let t := mac.tag st.macKey c
+          let c ← enc.encrypt st.2 m₀
+          let t := mac.tag st.1.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
+          set ({ st.1 with seen := insert p st.1.seen }, st.2)
           pure (c, t)
       | (IndCcaQ.decrypt n), ct => do
           let st ← get
-          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
+          if (ct : EtMCiphertext Tag) ∈ st.1.seen then
             pure none
           else
             pure (some (BitVec.zero n))
   }
 
-/-- Simplified right intermediate game: decryption no longer uses `enc.decrypt`. -/
+/-- Simplified right intermediate game: decryption no longer uses `enc.decrypt`.
+State is reduced to exactly what the IND-CPA reduction keeps: MAC key, seen set, and enc key. -/
 noncomputable def EtMGameZeroR {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
-  stateType := EtMGameState KEnc KMac Tag
+  stateType := EtMFromIndCpaState KMac Tag × KEnc
   initialState := do
-    let ke ← enc.keyGen
     let km ← mac.keyGen
-    pure { encKey := ke, seenCca := ∅, macKey := km, seenMac := ∅ }
+    let ke ← enc.keyGen
+    pure ({ macKey := km, seen := ∅ }, ke)
   queries := {
     impl := fun
       | (IndCcaQ.eavesdrop n), (_m₀, m₁) => do
           let st ← get
-          let c ← enc.encrypt st.encKey m₁
-          let t := mac.tag st.macKey c
+          let c ← enc.encrypt st.2 m₁
+          let t := mac.tag st.1.macKey c
           let p : EtMCiphertext Tag := ⟨n, (c, t)⟩
-          set { st with seenCca := insert p st.seenCca, seenMac := insert p st.seenMac }
+          set ({ st.1 with seen := insert p st.1.seen }, st.2)
           pure (c, t)
       | (IndCcaQ.decrypt n), ct => do
           let st ← get
-          if (ct : EtMCiphertext Tag) ∈ st.seenCca then
+          if (ct : EtMCiphertext Tag) ∈ st.1.seen then
             pure none
           else
             pure (some (BitVec.zero n))
@@ -310,7 +370,34 @@ theorem obsEq_apply_macIdeal_gameMacIdealL
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFIdeal mac))
       (EtMGameMacIdealL enc mac) := by
-  sorry
+  first
+  | exact obsEqReflexive _ _ rfl
+  | refine existsMapStateBijImpliesObsEq
+      (ro₁ := applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFIdeal mac))
+      (ro₂ := EtMGameMacIdealL enc mac)
+      ?_
+    refine ⟨RedMacIdealEtMGameStateEquiv (KEnc := KEnc) (KMac := KMac) (Tag := Tag), ?_, ?_⟩
+    · simp [RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState, EtMGameStateToRedMacIdeal,
+        applySRReduction, EtMFromMACLReduction, MACUFIdeal, EtMGameMacIdealL,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
+      cases i with
+      | eavesdrop n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACLReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameMacIdealL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACLReduction,
+            RState.modify, MACUFIdeal, RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState,
+            EtMGameStateToRedMacIdeal]
+      | decrypt n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACLReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameMacIdealL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACLReduction,
+            RState.modify, MACUFIdeal, RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState,
+            EtMGameStateToRedMacIdeal, FreeMonad.roll]
 
 /-- Bridge: explicit left intermediate game equals the simplified decryption game. -/
 theorem obsEq_gameMacIdealL_gameZeroL
@@ -325,7 +412,32 @@ theorem obsEq_gameZeroL_apply_indCpaL
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (EtMGameZeroL enc mac)
       (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaL (C := BitVec) enc)) := by
-  sorry
+  first
+  | exact obsEqReflexive _ _ rfl
+  | refine existsMapStateBijImpliesObsEq
+      (ro₁ := EtMGameZeroL enc mac)
+      (ro₂ := applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaL (C := BitVec) enc))
+      ?_
+    refine ⟨Equiv.refl _, ?_, ?_⟩
+    · simp [EtMGameZeroL, applySRReduction, EtMFromIndCpaReduction, IndCpaL,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
+      cases i with
+      | eavesdrop n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromIndCpaReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameZeroL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromIndCpaReduction,
+            RState.modify, IndCpaL]
+          rfl
+      | decrypt n =>
+          rcases query with ⟨ct, t⟩
+          simp [EtMFromIndCpaReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameZeroL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromIndCpaReduction,
+            RState.modify, IndCpaL, FreeMonad.roll]
 
 /-- Bridge: IND-CPA-right composed with `EtMFromIndCpaReduction` equals simplified right game. -/
 theorem obsEq_apply_indCpaR_gameZeroR
@@ -333,7 +445,32 @@ theorem obsEq_apply_indCpaR_gameZeroR
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaR (C := BitVec) enc))
       (EtMGameZeroR enc mac) := by
-  sorry
+  first
+  | exact obsEqReflexive _ _ rfl
+  | refine existsMapStateBijImpliesObsEq
+      (ro₁ := applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaR (C := BitVec) enc))
+      (ro₂ := EtMGameZeroR enc mac)
+      ?_
+    refine ⟨Equiv.refl _, ?_, ?_⟩
+    · simp [EtMGameZeroR, applySRReduction, EtMFromIndCpaReduction, IndCpaR,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
+      cases i with
+      | eavesdrop n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromIndCpaReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameZeroR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromIndCpaReduction,
+            RState.modify, IndCpaR]
+          rfl
+      | decrypt n =>
+          rcases query with ⟨ct, t⟩
+          simp [EtMFromIndCpaReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameZeroR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromIndCpaReduction,
+            RState.modify, IndCpaR, FreeMonad.roll]
 
 /-- Bridge: simplified right game equals explicit right intermediate game. -/
 theorem obsEq_gameZeroR_gameMacIdealR
@@ -348,7 +485,34 @@ theorem obsEq_gameMacIdealR_apply_macIdeal
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (EtMGameMacIdealR enc mac)
       (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFIdeal mac)) := by
-  sorry
+  first
+  | exact obsEqReflexive _ _ rfl
+  | refine existsMapStateBijImpliesObsEq
+      (ro₁ := EtMGameMacIdealR enc mac)
+      (ro₂ := applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFIdeal mac))
+      ?_
+    refine ⟨(RedMacIdealEtMGameStateEquiv (KEnc := KEnc) (KMac := KMac) (Tag := Tag)).symm, ?_, ?_⟩
+    · simp [RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState, EtMGameStateToRedMacIdeal,
+        applySRReduction, EtMFromMACRReduction, MACUFIdeal, EtMGameMacIdealR,
+        PMF.map_bind, PMF.pure_map]
+    · intro i query
+      cases i with
+      | eavesdrop n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACRReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameMacIdealR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACRReduction,
+            RState.modify, MACUFIdeal, RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState,
+            EtMGameStateToRedMacIdeal]
+      | decrypt n =>
+          rcases query with ⟨m₀, m₁⟩
+          simp [EtMFromMACRReduction]
+          dsimp [applySRReduction]
+          simp [query_impl_convert]
+          simp [EtMGameMacIdealR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACRReduction,
+            RState.modify, MACUFIdeal, RedMacIdealEtMGameStateEquiv, RedMacIdealToEtMGameState,
+            EtMGameStateToRedMacIdeal, FreeMonad.roll]
 
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security of encryption and
 MAC unforgeability, via the game-hopping sequence described above. -/
