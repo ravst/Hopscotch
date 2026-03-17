@@ -142,9 +142,12 @@ lemma invariantIsAbstraction (O : RStateOracle I) (φ : O.stateType → Prop) (H
   constructor
   · simp [withInvMap, withInvariant]
     apply invertToSupportId
-  · intro s₁ i query
-    simp [withInvariant, StateT.run, withInvMap]
+  · intro i query
+    simp [withInvariant, StateT.run, withInvMap, mapOutputState, mapInputState]
+    ext1 n
+    simp [mapOutputState, StateT.run]
     apply addInvariantPairEq
+
 
 -- def fL {A B : Type} (H : A = B) (x : A) : B := H ▸ x
 -- def fR {A B : Type} (H : A = B) (x : B) : A := (Eq.symm H) ▸ x
