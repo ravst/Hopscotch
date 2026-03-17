@@ -70,7 +70,7 @@ def reduceElem {B C} {phi : C -> Prop} (elem : {e : (B × C) // phi e.2} ) : B �
     exact (e.1, ⟨e.2, He⟩)
 
 noncomputable def addInvariantPair (p : PMF (B × C)) (phi : C -> Prop) (H : forall x, p x > 0 -> phi x.2) : (PMF (B × {x // phi x})) :=
-  let x := invertToSupport p (fun (b, c) => phi c) H
+  let x := invertToSupport p (fun (_b, c) => phi c) H
   x.map (reduceElem)
 
 noncomputable def forgetInvFromPair {B C} (phi : C -> Prop) : B × { x // phi x } → B × C
@@ -108,7 +108,7 @@ by
 
 
 def correctInvariantTrans {I : OracleSpec X} (O : RStateOracle I) (φ : O.stateType → Prop) : Prop :=
-  forall {i : X} (s : O.stateType) (hs : φ s) (q : I.domain i) (z : (I.range i) × O.stateType),
+  forall {i : X} (s : O.stateType) (_hs : φ s) (q : I.domain i) (z : (I.range i) × O.stateType),
   let monadComp := (O.queries.impl i q)
   let outDistr := StateT.run monadComp s
   outDistr z > 0 -> φ z.2

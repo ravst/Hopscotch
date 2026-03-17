@@ -82,7 +82,7 @@ noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
           let c ← scheme.encrypt st.key m₁
           set { st with seen := insert (c : IndCcaCiphertext C) st.seen }
           pure c
-      |  (IndCcaQ.decrypt n), c => do
+      |  (IndCcaQ.decrypt _n), c => do
           let st ← get
           if (c : IndCcaCiphertext C) ∈ st.seen then
             pure none

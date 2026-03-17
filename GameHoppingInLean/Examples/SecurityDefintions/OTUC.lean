@@ -17,7 +17,7 @@ noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme
   stateType := Unit
   initialState := pure ()
   queries := {
-    impl := fun n m => do
+    impl := fun _n m => do
           let k ← scheme.keyGen
           let c ← scheme.encrypt k m
           pure c
