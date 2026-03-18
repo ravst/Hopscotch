@@ -502,6 +502,80 @@ lemma etmGameMacIdealL_step_eq_gameZeroL
         simp [mapOutputState, mapInputState, EtMGameMacIdealL, EtMGameZeroL,
           mapSecond, EtMGameStateToZeroState, EtMGameSeenInvariant, hs, PMF.pure_map, hMem, hMemMac]
 
+lemma correctInvariant_etmGameMacIdealR
+    {KEnc KMac Tag : Type} [DecidableEq Tag]
+    (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
+    correctInvariantQ (EtMGameMacIdealR enc mac)
+      (EtMGameSeenInvariant (KEnc := KEnc) (KMac := KMac) (Tag := Tag)) := by
+  refine ⟨?_, ?_⟩
+  · intro i s hs query z hz
+    cases i with
+    | eavesdrop n =>
+        rcases query with ⟨m₀, m₁⟩
+        intro hpos
+        rcases z with ⟨out, s'⟩
+        cases s' with
+        | mk encKey seenCca macKey seenMac =>
+            have hz_mem :
+                (out, { encKey := encKey, seenCca := seenCca, macKey := macKey, seenMac := seenMac }) ∈
+                  hz.support := (PMF.apply_pos_iff hz _).mp hpos
+            simp [hz, EtMGameMacIdealR] at hz_mem
+            rcases hz_mem with ⟨a, _ha, hout, hEncKey, hSeenCca, hMacKey, hNe, hSeenMac⟩
+            subst_vars
+            exact congrArg (insert (⟨n, (a, mac.tag s.macKey a)⟩ : EtMCiphertext Tag)) hs
+    | decrypt n =>
+        rcases query with ⟨c, t⟩
+        cases s with
+        | mk sEncKey sSeenCca sMacKey sSeenMac =>
+            intro hpos
+            rcases z with ⟨out, s'⟩
+            cases s' with
+            | mk encKey seenCca macKey seenMac =>
+                have hz_mem :
+                    (out, { encKey := encKey, seenCca := seenCca, macKey := macKey, seenMac := seenMac }) ∈
+                      hz.support := (PMF.apply_pos_iff hz _).mp hpos
+                simp [hz, EtMGameMacIdealR] at hz_mem
+                rcases hz_mem with ⟨hout, hEncKey, hSeenCca, hMacKey, hSeenMac⟩
+                rw [hSeenCca, hSeenMac]
+                simpa [EtMGameSeenInvariant] using hs
+  · intro s hs
+    cases s with
+    | mk encKey seenCca macKey seenMac =>
+        by_cases hCca : seenCca = ∅
+        · by_cases hMac : seenMac = ∅
+          · simp [EtMGameSeenInvariant, hCca, hMac]
+          · simp [EtMGameMacIdealR, PMF.bind_apply, PMF.pure_apply, hCca, hMac] at hs
+        · simp [EtMGameMacIdealR, PMF.bind_apply, PMF.pure_apply, hCca] at hs
+
+lemma etmGameMacIdealR_step_eq_gameZeroR
+    {KEnc KMac Tag : Type} [DecidableEq Tag]
+    (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag)
+    {i : IndCcaQ} (query : (EtMSpec Tag).domain i)
+    (s : EtMGameState KEnc KMac Tag)
+    (hs : EtMGameSeenInvariant s) :
+    mapOutputState
+        (EtMGameStateToZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag))
+        ((EtMGameMacIdealR enc mac).queries.impl i query) s =
+      mapInputState
+        (EtMGameStateToZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag))
+        ((EtMGameZeroR enc mac).queries.impl i query) s := by
+  cases i with
+  | eavesdrop n =>
+      rcases query with ⟨m₀, m₁⟩
+      simp [mapOutputState, mapInputState, EtMGameMacIdealR, EtMGameZeroR,
+        mapSecond, EtMGameStateToZeroState, EtMGameSeenInvariant, hs,
+        PMF.map_bind, PMF.pure_map]
+  | decrypt n =>
+      rcases query with ⟨c, t⟩
+      by_cases hMem : (⟨n, (c, t)⟩ : EtMCiphertext Tag) ∈ s.seenCca
+      · simp [mapOutputState, mapInputState, EtMGameMacIdealR, EtMGameZeroR,
+          mapSecond, EtMGameStateToZeroState, EtMGameSeenInvariant, hs, PMF.pure_map, hMem]
+      · have hMemMac : (⟨n, (c, t)⟩ : EtMCiphertext Tag) ∉ s.seenMac := by
+            have hsEq : s.seenCca = s.seenMac := hs
+            simpa [hsEq] using hMem
+        simp [mapOutputState, mapInputState, EtMGameMacIdealR, EtMGameZeroR,
+          mapSecond, EtMGameStateToZeroState, EtMGameSeenInvariant, hs, PMF.pure_map, hMem, hMemMac]
+
 /-- Bridge: composed MAC-ideal oracle equals explicit left intermediate game. -/
 theorem obsEq_apply_macIdeal_gameMacIdealL
     {KEnc KMac Tag : Type} [DecidableEq Tag]
@@ -690,7 +764,83 @@ theorem obsEq_gameZeroR_gameMacIdealR
     {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     ObsEq (EtMGameZeroR enc mac) (EtMGameMacIdealR enc mac) := by
-  sorry
+  let O := EtMGameMacIdealR enc mac
+  let φ : EtMGameState KEnc KMac Tag → Prop :=
+    EtMGameSeenInvariant (KEnc := KEnc) (KMac := KMac) (Tag := Tag)
+  have hInv : correctInvariantQ O φ := by
+    simpa [O, φ] using correctInvariant_etmGameMacIdealR enc mac
+  let w : RStateOracle (EtMSpec Tag) := withInvariantQ O φ hInv
+  let e : w.stateType ≃ (EtMFromIndCpaState KMac Tag × KEnc) := by
+    simpa [w, O, φ] using
+      (EtMGameSeenInvariantEquivZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag))
+  have hAbsInv : correctAbstraction w O (withInvMap O φ) :=
+    invariantIsAbstractionQ O φ hInv
+  have hAbsZero : correctAbstraction w (EtMGameZeroR enc mac) (e : w.stateType → _) := by
+    refine mapStateBijImpliesCorrectAbstraction w (EtMGameZeroR enc mac) e ?_ ?_
+    · have h :=
+        congrArg
+          (fun p =>
+            p.map (EtMGameStateToZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag)))
+          hAbsInv.1
+      calc
+        w.initialState.map (e : w.stateType → _) =
+            O.initialState.map
+              (EtMGameStateToZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag)) := by
+              simpa [w, O, φ, e, withInvMap, EtMGameStateToZeroState,
+                PMF.map_comp, Function.comp] using h
+        _ = (EtMGameZeroR enc mac).initialState := by
+              simp [O, EtMGameMacIdealR, EtMGameZeroR, EtMGameStateToZeroState,
+                PMF.map_bind, PMF.pure_map]
+              simpa using
+                (PMF.bind_comm
+                  (p := enc.keyGen)
+                  (q := mac.keyGen)
+                  (f := fun ke km =>
+                    PMF.pure
+                      ((({ macKey := km, seen := (∅ : Finset (EtMCiphertext Tag)) } :
+                          EtMFromIndCpaState KMac Tag), ke))))
+    · intro i query
+      funext s
+      have hInvStep :=
+        congrArg (fun g => g (e.symm s)) (hAbsInv.2 i query)
+      have hInvStep' :=
+        congrArg
+          (fun p =>
+            p.map
+              (mapSecond
+                (EtMGameStateToZeroState
+                  (KEnc := KEnc) (KMac := KMac) (Tag := Tag))))
+          hInvStep
+      have hs :
+          EtMGameSeenInvariant ((e.symm s).1) := (e.symm s).2
+      have hsMap :
+          EtMGameStateToZeroState ((e.symm s).1) = s := by
+        change (e : w.stateType → _ ) (e.symm s) = s
+        exact e.right_inv s
+      have hStep :=
+        etmGameMacIdealR_step_eq_gameZeroR enc mac query ((e.symm s).1) hs
+      calc
+        StateT.run (RState.mapStateBij e (w.queries.impl i query)) s =
+            (StateT.run (w.queries.impl i query) (e.symm s)).map
+              (mapSecond (e : w.stateType → _)) := by
+              rfl
+        _ = mapOutputState
+              (EtMGameStateToZeroState (KEnc := KEnc) (KMac := KMac) (Tag := Tag))
+              (O.queries.impl i query) ((e.symm s).1) := by
+              simpa [mapOutputState, mapInputState, w, O, φ, e, withInvMap,
+                EtMGameStateToZeroState, PMF.map_comp, Function.comp] using hInvStep'
+        _ = StateT.run ((EtMGameZeroR enc mac).queries.impl i query) s := by
+              simpa [mapInputState, hsMap] using hStep
+  have hObsInv : ObsEq w O :=
+    correctAbstractionImpliesObsEq w O (withInvMap O φ) hAbsInv
+  have hObsZero : ObsEq w (EtMGameZeroR enc mac) :=
+    correctAbstractionImpliesObsEq w (EtMGameZeroR enc mac) (e : w.stateType → _) hAbsZero
+  intro queriesList
+  calc
+    runQueries (EtMGameZeroR enc mac) queriesList = runQueries w queriesList := by
+      simpa using (hObsZero queriesList).symm
+    _ = runQueries (EtMGameMacIdealR enc mac) queriesList := by
+      simpa [O] using hObsInv queriesList
 
 /-- Bridge: explicit right intermediate game equals composed MAC-ideal oracle. -/
 theorem obsEq_gameMacIdealR_apply_macIdeal
