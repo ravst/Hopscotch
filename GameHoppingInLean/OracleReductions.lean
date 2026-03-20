@@ -212,3 +212,54 @@ noncomputable def applySRReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {
       }
       OracleComp.simulateQ (query_impl_convert aux) (reduction.queries.impl (OracleSpec.query i t))
   }
+
+/-- A reduction that may query the source oracle while computing its initial state, and whose
+subsequent query handling is a stateful randomized reduction. -/
+structure ComplexInitReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : OracleSpec I₂) where
+  stateType : Type
+  initialState : RReductionComp O₁ stateType
+  queries : QueryImpl O₂ (SRReductionComp O₁ stateType)
+
+namespace ComplexInitReduction
+
+/-- Build a `ComplexInitReduction` while inferring the reduction state type. -/
+def mk' {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {s : Type}
+    (initialState : RReductionComp O₁ s) (queries : QueryImpl O₂ (SRReductionComp O₁ s)) :
+    ComplexInitReduction O₁ O₂ where
+  stateType := s
+  initialState := initialState
+  queries := queries
+
+end ComplexInitReduction
+
+/-- Apply a reduction whose initialization may query the underlying oracle. -/
+noncomputable def applyComplexInitReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+    (reduction : ComplexInitReduction O₁ O₂) (oracle : RStateOracle O₁) : RStateOracle O₂ where
+  stateType := reduction.stateType × oracle.stateType
+  initialState := do
+    let sₒ ← oracle.initialState
+    let aux : QueryImpl (withPMFSpec O₁) (RState oracle.stateType) := {
+      impl := fun
+        | OracleSpec.query (withPMFI.oracle i) t => oracle.queries.impl i t
+        | OracleSpec.query (withPMFI.sample α) p =>
+            (liftM (m := PMF) (n := RState oracle.stateType) p)
+    }
+    let (sᵣ, sₒ') ← StateT.run (OracleComp.simulateQ aux reduction.initialState) sₒ
+    pure (sᵣ, sₒ')
+  queries := {
+    impl (i : I₂) (t : O₂.domain i) :=
+      let aux : QueryImpl3 (withCoinFlipAndStateSpec reduction.stateType O₁)
+          (RState (reduction.stateType × oracle.stateType)) := {
+        impl := fun
+          | (withCoinFlipAndStateI.oracle i2), t2 => do
+              let st <- get
+              let (u, sₒ') ← StateT.run (oracle.queries.impl i2 t2) st.2
+              RState.modify (fun x ↦ ⟨x.1, sₒ'⟩)
+              pure u
+          | (withCoinFlipAndStateI.sample _α), p =>
+              (liftM (m := PMF) (n := RState (reduction.stateType × oracle.stateType)) p)
+          | withCoinFlipAndStateI.getState, _ => (fun x => x.1) <$> get
+          | withCoinFlipAndStateI.setState, sᵣ' => RState.modify (fun x => ⟨sᵣ', x.2⟩)
+      }
+      OracleComp.simulateQ (query_impl_convert aux) (reduction.queries.impl (OracleSpec.query i t))
+  }
