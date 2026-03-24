@@ -12,6 +12,12 @@ from `O₁` to `O₂`. -/
 abbrev IndistinguishabilitySRReductions :=
   {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) → Set (SRReduction O₁ O₂)
 
+/-- For each pair of specs `(O₁, O₂)`, a set of allowed reductions whose initialization may
+query the source oracle. -/
+abbrev IndistinguishabilityComplexInitReductions :=
+  {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) →
+    Set (ComplexInitReduction O₁ O₂)
+
 /-- For each pair of specs `(O₁, O₂)`, a set of allowed randomized (stateless) reductions
 from `O₁` to `O₂`. -/
 abbrev IndistinguishabilityRandomReductions :=
@@ -25,6 +31,7 @@ abbrev IndistinguishabilitySimpleReductions :=
 /-- Reduction sets used in indistinguishability proofs. -/
 structure IndistinguishabilityReductions where
   reductions : IndistinguishabilitySRReductions
+  complexInitReductions : IndistinguishabilityComplexInitReductions
   simpleReductions : IndistinguishabilitySimpleReductions
   randomReductions : IndistinguishabilityRandomReductions
 
@@ -32,7 +39,8 @@ structure IndistinguishabilityReductions where
 
 Indexed by:
 * `Assumptions`: assumption pairs, per oracle spec.
-* `Reductions`: allowed reductions (simple, randomized-stateless, stateful-randomized),
+* `Reductions`: allowed reductions (simple, randomized-stateless, stateful-randomized,
+  complex-initialization),
   per source/target oracle specs.
 
 The relation is homogeneous in `O`, but reduction steps may move to a different spec
@@ -59,6 +67,12 @@ inductive Indistinguishable
       r ∈ Reductions.reductions O₁ O₂ →
       Indistinguishable Assumptions Reductions O₂
         (applySRReduction r ro₁) (applySRReduction r ro₂)
+  | complexInitReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+      (r : ComplexInitReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
+      Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →
+      r ∈ Reductions.complexInitReductions O₁ O₂ →
+      Indistinguishable Assumptions Reductions O₂
+        (applyComplexInitReduction r ro₁) (applyComplexInitReduction r ro₂)
   | randReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : RReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
       Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →

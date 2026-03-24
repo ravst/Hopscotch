@@ -6,6 +6,15 @@ import GameHoppingInLean.VCVio2.ToMathlib.Control.MonadHom
 -- RState: state transformer over the probabilistic Pmf monad
 abbrev RState (σ : Type _) (α : Type _) : Type _ := StateT σ PMF α
 
+namespace StateT
+
+@[simp] lemma run_ite {m : Type u → Type v} [Monad m] {σ α : Type u}
+    (p : Prop) [Decidable p] (x y : StateT σ m α) (s : σ) :
+    StateT.run (if p then x else y) s = if p then StateT.run x s else StateT.run y s := by
+  split_ifs <;> rfl
+
+end StateT
+
 namespace PMF
 
 
