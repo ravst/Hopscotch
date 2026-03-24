@@ -32,11 +32,11 @@ noncomputable def DDHToElGamalOTSRandReduction {G : Type}
     let (A, B, C) <- RReduction.query DecisionalDHQ.querry ()
     pure { pk := A, B := B, C := C, eavesdropCount := 0 }
   queries := {
-    impl := fun
-      | OracleSpec.query OneTimeSecrecyQ.getPk () => do
+    impl i t := match i, t with
+      | OneTimeSecrecyQ.getPk, () => do
           let st <- SRReduction.get
           pure st.pk
-      | OracleSpec.query OneTimeSecrecyQ.eavesdrop (m : G) => do
+      | OneTimeSecrecyQ.eavesdrop, (m : G) => do
           let st <- SRReduction.get
           SRReduction.set { st with eavesdropCount := st.eavesdropCount + 1 }
           if st.eavesdropCount = 0 then

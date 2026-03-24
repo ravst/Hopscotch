@@ -4,36 +4,36 @@ import GameHoppingInLean.Examples.SecurityDefintions.OneTimeSecrecyRand
 oracle: on input `(m₀, m₁)` query the source oracle on `m₀`. -/
 def OTSRandToOTSL {PubK M C : Type} :
     simpleReduction (OneTimeSecrecyRandSpec PubK M C) (OneTimeSecrecySpec PubK M C) where
-  impl := fun
-    | OracleSpec.query OneTimeSecrecyQ.getPk () => otsRandGetPk
-    | OracleSpec.query OneTimeSecrecyQ.eavesdrop (m₀, _m₁) => otsRandCtxt m₀
+  impl i t := match i, t with
+    | OneTimeSecrecyQ.getPk, () => otsRandGetPk
+    | OneTimeSecrecyQ.eavesdrop, (m₀, _m₁) => otsRandCtxt m₀
 
 /-- Simple reduction from the single-message OTS-rand interface to the right one-time secrecy
 oracle: on input `(m₀, m₁)` query the source oracle on `m₁`. -/
 def OTSRandToOTSR {PubK M C : Type} :
     simpleReduction (OneTimeSecrecyRandSpec PubK M C) (OneTimeSecrecySpec PubK M C) where
-  impl := fun
-    | OracleSpec.query OneTimeSecrecyQ.getPk () => otsRandGetPk
-    | OracleSpec.query OneTimeSecrecyQ.eavesdrop (_m₀, m₁) => otsRandCtxt m₁
+  impl i t := match i, t with
+    | OneTimeSecrecyQ.getPk, () => otsRandGetPk
+    | OneTimeSecrecyQ.eavesdrop, (_m₀, m₁) => otsRandCtxt m₁
 
 @[simp] lemma OTSRandToOTSL_getPk {PubK M C : Type} :
     (OTSRandToOTSL (PubK := PubK) (M := M) (C := C)).impl
-      (OracleSpec.query OneTimeSecrecyQ.getPk ()) =
+      OneTimeSecrecyQ.getPk PUnit.unit =
     otsRandGetPk (PubK := PubK) (M := M) (C := C) := rfl
 
 @[simp] lemma OTSRandToOTSL_eavesdrop {PubK M C : Type} (m₀ m₁ : M) :
     (OTSRandToOTSL (PubK := PubK) (M := M) (C := C)).impl
-      (OracleSpec.query OneTimeSecrecyQ.eavesdrop (m₀, m₁)) =
+      OneTimeSecrecyQ.eavesdrop (m₀, m₁) =
     otsRandCtxt (PubK := PubK) (M := M) (C := C) m₀ := rfl
 
 @[simp] lemma OTSRandToOTSR_getPk {PubK M C : Type} :
     (OTSRandToOTSR (PubK := PubK) (M := M) (C := C)).impl
-      (OracleSpec.query OneTimeSecrecyQ.getPk ()) =
+      OneTimeSecrecyQ.getPk PUnit.unit =
     otsRandGetPk (PubK := PubK) (M := M) (C := C) := rfl
 
 @[simp] lemma OTSRandToOTSR_eavesdrop {PubK M C : Type} (m₀ m₁ : M) :
     (OTSRandToOTSR (PubK := PubK) (M := M) (C := C)).impl
-      (OracleSpec.query OneTimeSecrecyQ.eavesdrop (m₀, m₁)) =
+      OneTimeSecrecyQ.eavesdrop (m₀, m₁) =
     otsRandCtxt (PubK := PubK) (M := M) (C := C) m₁ := rfl
 
 /-- `OTS_L` is observationally equivalent to applying the left reduction to the real

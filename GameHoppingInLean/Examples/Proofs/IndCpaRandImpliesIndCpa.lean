@@ -4,14 +4,14 @@ import GameHoppingInLean.Examples.SecurityDefintions.IndCpaRand
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
 def IndCpaRand_to_IndCpaL {C : ℕ → Type} : simpleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
-  impl := fun
-    | OracleSpec.query _n (m₀, _m₁) => ctxt (C := C) m₀
+  impl n t := match n, t with
+    | _n, (m₀, _m₁) => ctxt (C := C) m₀
 
 /-- Simple reduction from the single-message `ctxt` oracle to the right IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₁)`. -/
 def IndCpaRand_to_IndCpaR {C : ℕ → Type} : simpleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
-  impl := fun
-    | OracleSpec.query _n (_m₀, m₁) => ctxt (C := C) m₁
+  impl n t := match n, t with
+    | _n, (_m₀, m₁) => ctxt (C := C) m₁
 
 /-- `IND_CPA_L` is observationally equivalent to applying the left reduction to
 the real `ctxt` oracle. -/
@@ -28,7 +28,6 @@ theorem obsEq_indCpaL_apply_left_real {K : Type} {C : ℕ → Type} (scheme : Sy
   simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
   ext1 k
   simp [FreeMonad.lift]
-  simp [query_impl_convert]
 
 /-- Under the random ciphertext oracle, forwarding the left vs right challenge message is
 observationally equivalent (the message is ignored). -/
@@ -56,7 +55,6 @@ theorem obsEq_apply_right_real_indCpaR {K : Type} {C : ℕ → Type} (scheme : S
     ext1 k
     congr
     simp [FreeMonad.lift]
-    simp [query_impl_convert]
   -- | hEq =>
   --
 

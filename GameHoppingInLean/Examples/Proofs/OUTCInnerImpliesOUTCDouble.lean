@@ -8,8 +8,7 @@ import GameHoppingInLean.PMFLiftOrder
 On query `m`, sample an `S` key, encrypt with `S`, then delegate to the input OTUC oracle. -/
 noncomputable def OUTCInner_to_OUTCDouble_R1 {K₁ : Type} {C : ℕ → Type}
     (S : SymEncScheme K₁ BitVec) : RReduction (OTUCSpec C) (OTUCSpec C) where
-  impl := fun
-    | OracleSpec.query n m => do
+  impl n m := do
         let ks ← RReduction.sample S.keyGen
         let m' ← RReduction.sample (S.encrypt ks m)
         RReduction.query n m'

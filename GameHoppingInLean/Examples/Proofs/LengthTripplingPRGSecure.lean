@@ -8,8 +8,7 @@ attribute [-simp] bind_pure_comp
 On query, ask inner oracle for a `2k`-bit string `x || y`, then return `x || prg.draw y`. -/
 def PRGDouble_to_Tripple_R1 {k : ℕ} (prg : lengthDoublingPRG k) :
     RReduction (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)) where
-  impl := fun
-    | OracleSpec.query _ _ => do
+  impl _ _ := do
         let xy ← RReduction.query () ()
         let x : BitVec k := BitVec.extractLsb' k k xy
         let y : BitVec k := BitVec.extractLsb' 0 k xy
@@ -21,8 +20,7 @@ On query, sample random `k` bits `x`, query inner oracle for `y : BitVec (2k)`,
 and return `x || y`. -/
 noncomputable def PRGDouble_to_Tripple_R2 {k : ℕ} :
     RReduction (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)) where
-  impl := fun
-    | OracleSpec.query _ _ => do
+  impl _ _ := do
         let x ← RReduction.sample (PMF.uniformOfFintype (BitVec k))
         let y : BitVec (k + k) ← RReduction.query () ()
         let y' : BitVec (2 * k) := cast (by simp [two_mul]) y

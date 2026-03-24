@@ -34,14 +34,14 @@ noncomputable def EtMFromMACLReduction {KEnc Tag : Type} [DecidableEq Tag]
     let ke ← enc.keyGen
     pure { encKey := ke, seen := ∅ }
   queries := {
-    impl := fun
-      | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, _m₁) => do
+    impl i t := match i, t with
+      | IndCcaQ.eavesdrop n, (m₀, _m₁) => do
           let st ← SRReduction.get
           let c ← SRReduction.sample (enc.encrypt st.encKey m₀)
           let t ← SRReduction.query (MACUFQ.getTag n) c
           SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
-      | OracleSpec.query (IndCcaQ.decrypt n) ct => do
+      | IndCcaQ.decrypt n, ct => do
           let st ← SRReduction.get
           if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none
@@ -63,14 +63,14 @@ noncomputable def EtMFromMACRReduction {KEnc Tag : Type} [DecidableEq Tag]
     let ke ← enc.keyGen
     pure { encKey := ke, seen := ∅ }
   queries := {
-    impl := fun
-      | OracleSpec.query (IndCcaQ.eavesdrop n) (_m₀, m₁) => do
+    impl i t := match i, t with
+      | IndCcaQ.eavesdrop n, (_m₀, m₁) => do
           let st ← SRReduction.get
           let c ← SRReduction.sample (enc.encrypt st.encKey m₁)
           let t ← SRReduction.query (MACUFQ.getTag n) c
           SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
-      | OracleSpec.query (IndCcaQ.decrypt n) ct => do
+      | IndCcaQ.decrypt n, ct => do
           let st ← SRReduction.get
           if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none
@@ -92,14 +92,14 @@ noncomputable def EtMFromIndCpaReduction {KMac Tag : Type} [DecidableEq Tag]
     let km ← mac.keyGen
     pure { macKey := km, seen := ∅ }
   queries := {
-    impl := fun
-      | OracleSpec.query (IndCcaQ.eavesdrop n) (m₀, m₁) => do
+    impl i t := match i, t with
+      | IndCcaQ.eavesdrop n, (m₀, m₁) => do
           let st ← SRReduction.get
           let c ← SRReduction.query n (m₀, m₁)
           let t := mac.tag st.macKey c
           SRReduction.set { st with seen := insert (⟨n, (c, t)⟩ : EtMCiphertext Tag) st.seen }
           pure (c, t)
-      | OracleSpec.query (IndCcaQ.decrypt n) ct => do
+      | IndCcaQ.decrypt n, ct => do
           let st ← SRReduction.get
           if (ct : EtMCiphertext Tag) ∈ st.seen then
             pure none

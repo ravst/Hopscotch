@@ -20,6 +20,18 @@ def query_impl_convert {ι : Type w} {spec : OracleSpec ι} {m : Type u → Type
       apply x.impl i t
   }
 
+@[simp] lemma query_impl_convert_apply {ι : Type w} {spec : OracleSpec ι} {m : Type u → Type v}
+    (x : QueryImpl3 spec m) {α : Type _} (q : OracleSpec.OracleQuery spec α) :
+    (query_impl_convert x).impl q =
+      match q with
+      | OracleSpec.query i t => x.impl i t := by
+  cases q
+  rfl
+
+@[simp] lemma query_impl_convert_apply_query {ι : Type w} {spec : OracleSpec ι}
+    {m : Type u → Type v} (x : QueryImpl3 spec m) (i : ι) (t : spec.domain i) :
+    (query_impl_convert x).impl (OracleSpec.query i t) = x.impl i t := rfl
+
 structure RStateOracle {I : Type} (O : OracleSpec I) where
   stateType : Type
   initialState : PMF stateType
