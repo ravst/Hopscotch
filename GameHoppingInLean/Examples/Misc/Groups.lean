@@ -85,7 +85,7 @@ theorem sampleExponent_pow_eq_uniformOfFintype
                 (g := g) hgen (rest := PMF.pure))
     _ = PMF.uniformOfFintype G := by
           change (PMF.uniformOfFintype G).bind PMF.pure = PMF.uniformOfFintype G
-          simpa using (PMF.bind_pure (p := PMF.uniformOfFintype G))
+          simp [ (PMF.bind_pure (p := PMF.uniformOfFintype G))]
 
 /-- Left multiplication preserves the uniform distribution on a finite group. -/
 theorem bind_uniformOfFintype_mul_left_eq_bind_uniformOfFintype
