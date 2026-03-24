@@ -83,10 +83,11 @@ lemma oraclesEqualOnInvariant_implies_obsEq
                 w.initialState.map (withInvMap o₁' φ) = o₁'.initialState := by
                   simpa [w] using hAbs₁.1
                 _ = o₂'.initialState := hInitEq'
-            · intro s i query
+            · intro i query
+              funext s
               have hw : (mapSecond (withInvMap o₁' φ)) <$> StateT.run (w.queries.impl i query) s =
                   StateT.run (o₁'.queries.impl i query) ((withInvMap o₁' φ) s) := by
-                simpa [w] using hAbs₁.2 s i query
+                simpa [w] using congrArg (fun g => g s) (hAbs₁.2 i query)
               have hq : StateT.run (o₁'.queries.impl i query) ((withInvMap o₁' φ) s) =
                   StateT.run (o₂'.queries.impl i query) ((withInvMap o₁' φ) s) := by
                 simpa [withInvMap] using hQueryEqGen query s.1 s.2
