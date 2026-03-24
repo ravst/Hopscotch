@@ -52,8 +52,7 @@ lemma map_eq_do {σ α β} (f : α → β) (x : RState σ α) :
       (do
         let a ← x
         pure (f a)) := by
-  simpa [Function.comp] using
-    (map_eq_bind_pure_comp (m := RState σ) (f := f) (x := x))
+  rfl
 
 @[simp] lemma ite_pure {σ α} (p : Prop) [Decidable p] (a b : α) :
     (if p then (pure a : RState σ α) else pure b) =
@@ -68,7 +67,7 @@ lemma map_eq_do {σ α β} (f : α → β) (x : RState σ α) :
 @[simp] lemma ite_some {α}
     (p : Prop) [Decidable p] (a b : α) :
     (if p then (some a : Option α) else some b) = some (if p then a else b) := by
-  simpa using (ite_apply_fn (p := p) (f := some) (a := a) (b := b))
+  apply ite_apply_fn
 
 @[simp] lemma ite_get_get {σ α}
     (p : Prop) [Decidable p]
@@ -92,7 +91,7 @@ lemma map_eq_do {σ α β} (f : α → β) (x : RState σ α) :
       x) = x := by
   funext s
   change (PMF.pure (s, s)).bind (fun p : σ × σ => x p.2) = x s
-  simpa using (PMF.pure_bind (a := (s, s)) (f := fun p : σ × σ => x p.2))
+  apply PMF.pure_bind
 
 @[simp] lemma ite_get_left {σ α}
     (p : Prop) [Decidable p]
@@ -178,7 +177,7 @@ def mapStateBij (f : s₁ ≃ s₂) (m : RState s₁ α) : RState s₂ α :=
       (fun a : α => (a, s)) := by
     funext a
     simp [Function.comp, f.right_inv]
-  simpa [hcomp]
+  simp [hcomp]
 
 @[simp] lemma mapStateBij_get {s₁ s₂}
     (f : s₁ ≃ s₂) :
@@ -303,7 +302,7 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
     RState.eval sd (pure a : RState σ α) = PMF.pure a := by
   rw [RState.eval, run_pure]
   rw [PMF.map_comp]
-  simpa using (PMF.map_const (p := sd) (b := a))
+  simp [PMF.map_const]
 
 @[simp] lemma exec_pure {σ α} (sd : PMF σ) (a : α) :
     RState.exec sd (pure a : RState σ α) = sd := by
@@ -361,7 +360,7 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
       ((liftM x : RState σ α) >>= fun a => (liftM (f a) : RState σ β)) := by
   change (liftM (x >>= f) : RState σ β) =
       ((liftM x : RState σ α) >>= fun a => (liftM (f a) : RState σ β))
-  simpa using (liftM_bind (σ := σ) (x := x) (f := f))
+  simp [liftM_bind]
 
 @[simp] lemma liftM_pure {σ α} (a : α) :
     (liftM (PMF.pure a) : RState σ α) = (pure a : RState σ α) := by
@@ -409,7 +408,7 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
       let x' ← (liftM x : RState σ α)
       let k ← (liftM (g x') : RState σ β)
       rest k) := by
-  simpa using (bind_liftM_pmf_bind (σ := σ) (x := x) (g := g) (rest := rest))
+  simp [bind_liftM_pmf_bind (σ := σ) (x := x) (g := g) (rest := rest)]
 
 @[simp] lemma bind_liftM_ignore {σ α β}
     (X : PMF α) (rest : RState σ β) :
@@ -426,7 +425,7 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
     (do
       let _ ← (liftM X : RState σ α)
       rest) = rest := by
-  simpa using (bind_liftM_ignore (σ := σ) (X := X) (rest := rest))
+  simp [bind_liftM_ignore (σ := σ) (X := X) (rest := rest)]
 
 /-- Move `get` before an independent lifted sample. -/
 @[simp] lemma do_liftM_get_comm {σ α β}
@@ -643,7 +642,7 @@ lemma do_liftM_comm_dep {σ α β γ δ}
         ((liftM (PMF.uniformOfFintype B) : RState σ B) >>= fun b => rest (a, b))) :
           RState σ α) s
   rw [StateT.run_bind, StateT.run_bind]
-  simpa [StateT.run_lift, PMF.bind_bind]
+  simp [StateT.run_lift, PMF.bind_bind]
 
 /-- Transporting a uniform `PMF` sample across an equivalence. -/
 lemma bind_uniformOfFintype_equiv {X Y α : Type}
@@ -795,10 +794,7 @@ lemma do_liftM_uniformOfFintype_bitVec_append
     (do
       let p ← (liftM (PMF.uniformOfFintype (BitVec n × BitVec m)) : RState σ (BitVec n × BitVec m))
       g (p.1 ++ p.2)) := by
-  simpa [bitVecAppendEquiv] using
-    (do_liftM_uniformOfFintype_equiv (σ := σ)
-      (X := BitVec n × BitVec m) (Y := BitVec (n + m))
-      (e := bitVecAppendEquiv n m) (g := g))
+  simp [bitVecAppendEquiv, do_liftM_uniformOfFintype_equiv (σ := σ)]
 
 /-- Bind-form variant of `do_liftM_uniformOfFintype_bitVec_append`.
 
@@ -812,7 +808,7 @@ lemma bind_uniformOfFintype_bitVec_append
     ((liftM (PMF.uniformOfFintype (BitVec (n + m))) : RState σ (BitVec (n + m))) >>= g) =
       ((liftM (PMF.uniformOfFintype (BitVec n × BitVec m)) : RState σ (BitVec n × BitVec m)) >>=
         fun p => g (p.1 ++ p.2)) := by
-  simpa using do_liftM_uniformOfFintype_bitVec_append (σ := σ) (n := n) (m := m) (g := g)
+  simp [do_liftM_uniformOfFintype_bitVec_append (σ := σ) (n := n) (m := m) (g := g)]
 
 /-- Equivalence between `BitVec (k + k)` and `BitVec (2 * k)`. -/
 def bitVecAddEquivTwoMul (k : ℕ) : BitVec (k + k) ≃ BitVec (2 * k) where

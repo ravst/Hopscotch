@@ -1,6 +1,25 @@
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.Invariants
 
+--  tmp : move to new file
+
+def allQueries {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (x : OracleComp spec Y) : Prop :=
+  match x with
+  | FreeMonad.pure _ => true
+  | @FreeMonad.roll _ _ t a b =>
+    p t a /\ forall x, allQueries p (b x)
+
+def onlyOneQuery {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (x : OracleComp spec Y) : Prop :=
+  match x with
+  | FreeMonad.pure _ => true
+  | @FreeMonad.roll _ _ t a b =>
+    let neg_p t x := ¬ p t x
+    ((p t a) /\ forall x, allQueries neg_p (b x))
+    /\
+    ((¬ p t a) /\ forall x, onlyOneQuery p (b x))
+
+
+
 /-- `o₂` is equal to `o₁` on an invariant when `o₂`'s state can be identified with
 the subset of `o₁` states satisfying some invariant `φ`, and one-step query semantics
 agree after forgetting the invariant witness. -/
