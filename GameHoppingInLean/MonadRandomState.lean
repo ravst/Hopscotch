@@ -1,6 +1,7 @@
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
+import GameHoppingInLean.Misc.RStateSimplifierAttr
 import GameHoppingInLean.VCVio2.ToMathlib.Control.MonadHom
 
 -- RState: state transformer over the probabilistic Pmf monad
@@ -43,6 +44,11 @@ def modify (f : σ → σ ) : RState σ Unit := do
   let s ← get
   set (f s)
 
+@[simp] lemma run_modify {σ} (f : σ → σ) (s : σ) :
+    StateT.run (modify f : RState σ Unit) s = PMF.pure ((), f s) := by
+  simp [modify, StateT.run_bind]
+  rfl
+
 noncomputable
 def run {σ α} (sd : PMF σ) (m : RState σ α) : PMF (α × σ) := do
   let s <- sd
@@ -68,7 +74,7 @@ lemma map_eq_do {σ α β} (f : α → β) (x : RState σ α) :
       (pure (if p then a else b) : RState σ α) := by
   split_ifs <;> rfl
 
-@[simp] lemma ite_apply_fn {α β}
+@[RStateSimplifier] lemma ite_apply_fn {α β}
     (p : Prop) [Decidable p] (f : α → β) (a b : α) :
     (if p then f a else f b) = f (if p then a else b) := by
   split_ifs <;> rfl

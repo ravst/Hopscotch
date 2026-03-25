@@ -2,9 +2,11 @@ import GameHoppingInLean.Misc.PMFSimpAttr
 import GameHoppingInLean.VCVio2.ToMathlib.General
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
+open Lean Meta
+
 namespace PMF
 
-/-- Rewrite a raw `PMF.bind` into monadic `do` notation. -/
+ /-- Rewrite a raw `PMF.bind` into monadic `do` notation. -/
 @[GameHoppingSimplifyPMF]
 theorem bind_eq_do {α β : Type} (A : PMF α) (X : α → PMF β) :
     A.bind (fun a => X a) = (do
@@ -37,6 +39,11 @@ theorem pure_bind_do {α β : Type} (a : α) (f : α → PMF β) :
       f x) = f a := by
   exact PMF.pure_bind a f
 
+/-- Rewrite `PMF.pure` back to monadic `pure` when using the custom PMF simp set. -/
+@[GameHoppingSimplifyPMF]
+theorem pure_eq_monad_pure {α : Type} (a : α) :
+    PMF.pure a = @Pure.pure PMF (inferInstance : Pure PMF) α a := rfl
+
 /-- Eliminate an identity bind in monadic form. -/
 @[GameHoppingSimplifyPMF]
 theorem bind_pure_do {α : Type} (p : PMF α) :
@@ -45,6 +52,38 @@ theorem bind_pure_do {α : Type} (p : PMF α) :
       pure x) = p := by
   change p.bind (pure ∘ id) = p
   rw [PMF.bind_pure_comp, PMF.map_id]
+
+/-- Pull an `if` out of a monadic bind in `do` notation. -/
+@[GameHoppingSimplifyPMF]
+theorem monad_ite_bind_do {α β : Type} (p : Prop) [Decidable p]
+    (A B : PMF α) (rest : α → PMF β) :
+    ((if p then A else B) >>= rest) =
+    if p then
+      (do
+        let x ← A
+        rest x)
+    else
+      (do
+        let x ← B
+        rest x) := by
+  split_ifs <;> rfl
+
+/-- Pull an `if` out of a monadic bind in `do` notation. -/
+@[GameHoppingSimplifyPMF]
+theorem ite_bind_do {α β : Type} (p : Prop) [Decidable p]
+    (A B : PMF α) (rest : α → PMF β) :
+    (do
+      let x ← if p then A else B
+      rest x) =
+    if p then
+      (do
+        let x ← A
+        rest x)
+    else
+      (do
+        let x ← B
+        rest x) := by
+  split_ifs <;> rfl
 
 /-- Reassociate nested binds into a left-to-right `do` block. -/
 @[GameHoppingSimplifyPMF]
@@ -87,3 +126,32 @@ theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β �
   simpa using (PMF.map_bind (p := p) (q := f) (f := g))
 
 end PMF
+
+namespace PMFSimp
+
+private def mkIteBindRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  match e.getAppFnArgs with
+  | (``Bind.bind, #[m, _instBind, _α, _β, x, rest]) =>
+      let pmfConst ← mkConstWithFreshMVarLevels ``PMF
+      unless m.isConstOf ``PMF || (← isDefEq m pmfConst) do
+        return none
+      match x.getAppFnArgs with
+      | (``ite, #[_motive, p, instDec, A, B]) =>
+          let pf ← mkAppOptM ``PMF.monad_ite_bind_do
+            #[none, none, some p, some instDec, some A, some B, some rest]
+          let pfTy ← inferType pf
+          let some (_ty, lhs, rhs) := pfTy.eq? | return none
+          unless (← isDefEq lhs e) do
+            return none
+          return some (rhs, pf)
+      | _ => return none
+  | _ => return none
+
+end PMFSimp
+
+/-- Simproc: pull an `if` out of a `PMF` bind when using the game-hopping PMF simp set. -/
+simproc [GameHoppingSimplifyPMF] pmfIteBind
+  (Bind.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkIteBindRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }

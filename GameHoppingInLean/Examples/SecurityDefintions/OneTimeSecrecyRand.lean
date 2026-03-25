@@ -8,6 +8,12 @@ def OneTimeSecrecyRandSpec (PubK M C : Type) : OracleSpec OneTimeSecrecyQ
   | .getPk => (Unit, PubK)
   | .eavesdrop => (M, C)
 
+instance instInhabitedOneTimeSecrecyRandRange {PubK M C : Type}
+    [Inhabited PubK] [Inhabited C] :
+    ∀ q, Inhabited ((OneTimeSecrecyRandSpec PubK M C).range q)
+  | .getPk => by simpa [OneTimeSecrecyRandSpec] using (inferInstance : Inhabited PubK)
+  | .eavesdrop => by simpa [OneTimeSecrecyRandSpec] using (inferInstance : Inhabited C)
+
 /-- Convenience query constructor for requesting the public key. -/
 @[reducible, inline] def otsRandGetPk {PubK M C : Type} :
     OracleComp (OneTimeSecrecyRandSpec PubK M C) PubK :=

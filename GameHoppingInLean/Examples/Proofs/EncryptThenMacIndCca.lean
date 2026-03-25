@@ -173,7 +173,10 @@ theorem obsEq_indCcaL_apply_macReal
           simp [EtMFromMACLReduction]
           dsimp [applySRReduction]
           simp [query_impl_convert]
-          simp [IndCcaL, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACLReduction, RState.modify, MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA, IndCCAToRedEncTimesMac, encryptThenMac, FreeMonad.roll]
+          simp [RStateSimplifier, IndCcaL, OracleComp.simulateQ, FreeMonad.mapM,
+            EtMFromMACLReduction, RState.modify, MACUFReal,
+            IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA,
+            IndCCAToRedEncTimesMac, encryptThenMac, FreeMonad.roll]
 
 
 /-- `IND-CCA-R` for EtM is observationally equivalent to composing MAC-real with
@@ -208,8 +211,9 @@ theorem obsEq_apply_macReal_indCcaR
           simp [EtMFromMACRReduction]
           dsimp [applySRReduction]
           simp [query_impl_convert]
-          simp [IndCcaR, OracleComp.simulateQ, FreeMonad.mapM, EtMFromMACRReduction, RState.modify,
-            MACUFReal, IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA,
+          simp [RStateSimplifier, IndCcaR, OracleComp.simulateQ, FreeMonad.mapM,
+            EtMFromMACRReduction, RState.modify, MACUFReal,
+            IndCCAToRedEncTimesMacEquiv, RedEncTimesMacToIndCCA,
             IndCCAToRedEncTimesMac, encryptThenMac, FreeMonad.roll]
 
 /-- State for the explicit EtM intermediate games:

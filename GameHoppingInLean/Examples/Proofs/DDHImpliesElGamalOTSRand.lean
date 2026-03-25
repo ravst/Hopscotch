@@ -1,36 +1,64 @@
 import GameHoppingInLean.Examples.SecurityDefintions.DecisionalDH
+import GameHoppingInLean.Examples.SecurityDefintions.IndCpaRandPub
 import GameHoppingInLean.Examples.SecurityDefintions.OneTimeSecrecy
 import GameHoppingInLean.Examples.SecurityDefintions.OneTimeSecrecyRand
 import GameHoppingInLean.Examples.Constructions.ElGamal
+import GameHoppingInLean.Examples.Misc.Once
+import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.Misc.Isos
 import GameHoppingInLean.Misc.PMFLemmas
 
 open SRReduction
 open RReduction
 
-attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure
+attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure bind_pure_comp
 
 section
 
-local instance {G : Type} [One G] : Inhabited (G × G) := ⟨(1, 1)⟩
+def otsRandEavesdropIq : OneTimeSecrecyQ → Bool
+  | .getPk => false
+  | .eavesdrop => true
+
+lemma obsEq_trans {I : Type} {O : OracleSpec I}
+    {ro₁ ro₂ ro₃ : RStateOracle O} (h₁₂ : ObsEq ro₁ ro₂) (h₂₃ : ObsEq ro₂ ro₃) :
+    ObsEq ro₁ ro₃ := by
+  intro queriesList
+  rw [h₁₂ queriesList, h₂₃ queriesList]
+
+/-- The ElGamal randomness sampled on an `eavesdrop` query, factored out so it can
+be moved between local and global scope. -/
+noncomputable def elGamalLocalRandQuery {G : Type} [Group G] (g : G) (b : ℕ) :
+    (i : OneTimeSecrecyQ) →
+      (IndCpaRandPubSpec G G (G × G)).domain i →
+      RState G ((IndCpaRandPubSpec G G (G × G)).range i)
+  | .getPk, () => do
+      get
+  | .eavesdrop, (m : G) => do
+      let pk <- get
+      pure (g ^ b, m * pk ^ b)
 
 /-- State used in the DDH-to-ElGamal OTS-rand reduction and the nearby explicit games. -/
 structure DDHElGamalOTSState (G : Type) where
   pk : G
   B : G
   C : G
-  eavesdropCount : ℕ
+  eavesdropDone : Bool
+
+def elGamalG0ToG1State {G : Type} [Group G] (g : G) :
+    Bool × (ℕ × G) → DDHElGamalOTSState G × Unit
+  | (eavesdropDone, (b, pk)) =>
+      ({ pk := pk, B := g ^ b, C := pk ^ b, eavesdropDone := eavesdropDone }, ())
 
 /-- Reduction from DDH to ElGamal one-time secrecy-rand. It uses the DDH oracle during
 initialization to obtain `(A, B, C)`, then publishes `A` as the public key and answers the first
 message query with `(B, m * C)`. -/
 noncomputable def DDHToElGamalOTSRandReduction {G : Type}
-    [Group G] [Fintype G] [Nontrivial G] (_g : G) :
+    [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (_g : G) :
     ComplexInitReduction (DecisionalDHSpec G) (OneTimeSecrecyRandSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let (A, B, C) <- RReduction.query DecisionalDHQ.querry ()
-    pure { pk := A, B := B, C := C, eavesdropCount := 0 }
+    pure { pk := A, B := B, C := C, eavesdropDone := false }
   queries := {
     impl i t := match i, t with
       | OneTimeSecrecyQ.getPk, () => do
@@ -38,15 +66,29 @@ noncomputable def DDHToElGamalOTSRandReduction {G : Type}
           pure st.pk
       | OneTimeSecrecyQ.eavesdrop, (m : G) => do
           let st <- SRReduction.get
-          SRReduction.set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          SRReduction.set { st with eavesdropDone := true }
+          if !st.eavesdropDone then
             pure (st.B, m * st.C)
           else
             pure (default : G × G)
   }
 
-/-- Game `G1`: Computing B and C has been moved from eavsdrop to initialization  --/
-noncomputable def ElGamalOTSRandG1 {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+/-- Game `G0`: the single ElGamal encryption randomness is sampled globally once and
+reused through `once`, so this is definitionally the global-randomness hop. -/
+noncomputable def ElGamalOTSRandG0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
+    RStateOracle (OneTimeSecrecyRandSpec G G (G × G)) :=
+  once otsRandEavesdropIq
+    (simpleGlobalRandomness
+      (IndCpaRandPubReal (ElGamal g))
+      otsRandEavesdropIq
+      (sampleExponent G)
+      (elGamalLocalRandQuery g))
+
+/-- Game `G1`: compute `B` and `C` during initialization and answer the first
+eavesdropping query with `(B, m * C)`. -/
+noncomputable def ElGamalOTSRandG1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
     RStateOracle (OneTimeSecrecyRandSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
@@ -55,7 +97,7 @@ noncomputable def ElGamalOTSRandG1 {G : Type} [Group G] [Fintype G] [Nontrivial 
     let A := g ^ a
     let B := g ^ b
     let C := A ^ b
-    pure { pk := A, B := B, C := C, eavesdropCount := 0 }
+    pure { pk := A, B := B, C := C, eavesdropDone := false }
   queries := {
     impl := fun
       | OneTimeSecrecyQ.getPk, () => do
@@ -63,8 +105,8 @@ noncomputable def ElGamalOTSRandG1 {G : Type} [Group G] [Fintype G] [Nontrivial 
           pure st.pk
       | OneTimeSecrecyQ.eavesdrop, (m : G) => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          set { st with eavesdropDone := true }
+          if !st.eavesdropDone then
             pure (st.B, m * st.C)
           else
             pure (default : G × G)
@@ -72,14 +114,15 @@ noncomputable def ElGamalOTSRandG1 {G : Type} [Group G] [Fintype G] [Nontrivial 
 
 /-- Game `G3`: sample `a, b, c`, set `A = g^a`, `B = g^b`, `C = g^c`, then answer the first
 message query with `(B, m * C)`. -/
-noncomputable def ElGamalOTSRandG3 {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+noncomputable def ElGamalOTSRandG3 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
     RStateOracle (OneTimeSecrecyRandSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let a <- sampleExponent G
     let b <- sampleExponent G
     let c <- sampleExponent G
-    pure { pk := g ^ a, B := g ^ b, C := g ^ c, eavesdropCount := 0 }
+    pure { pk := g ^ a, B := g ^ b, C := g ^ c, eavesdropDone := false }
   queries := {
     impl := fun
       | OneTimeSecrecyQ.getPk, () => do
@@ -87,16 +130,84 @@ noncomputable def ElGamalOTSRandG3 {G : Type} [Group G] [Fintype G] [Nontrivial 
           pure st.pk
       | OneTimeSecrecyQ.eavesdrop, (m : G) => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          set { st with eavesdropDone := true }
+          if !st.eavesdropDone then
             pure (st.B, m * st.C)
           else
             pure (default : G × G)
   }
 
+/-- `OTSRandReal` for ElGamal collapses to `once` applied to the public-key
+IND-CPA-rand real oracle. The abstraction identifies all positive counter values
+with `true`. -/
+theorem correctAbstraction_otsrReal_once_indCpaRandPubReal
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
+    correctAbstraction
+      (OneTimeSecrecyRandReal (ElGamal g))
+      (once otsRandEavesdropIq (IndCpaRandPubReal (ElGamal g)))
+      (fun st => (st.eavesdropCount != 0, st.pk)) := by
+  constructor
+  · simp only [OneTimeSecrecyRandReal, once, OnceRed, IndCpaRandPubReal,
+      applySRReduction, monad_norm, GameHoppingSimplifyPMF]
+    rfl
+  · intro i q
+    ext1 st
+    simp [once, OnceRed, applySRReduction, OneTimeSecrecyRandReal, mapInputState, mapOutputState, query_impl_convert, IndCpaRandPubReal]
+    cases i
+    case getPk =>
+      cases q
+      simp [otsRandEavesdropIq]
+      simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
+      simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+    case eavesdrop =>
+      simp [otsRandEavesdropIq]
+      simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
+      simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      split_ifs with h₁ <;> try simp[h₁]
+      congr
+      simp[h₁]
+
+
+theorem obsEq_otsrReal_once_indCpaRandPubReal
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
+    ObsEq
+      (OneTimeSecrecyRandReal (ElGamal g))
+      (once otsRandEavesdropIq (IndCpaRandPubReal (ElGamal g))) := by
+  exact correctAbstractionImpliesObsEq
+    (OneTimeSecrecyRandReal (ElGamal g))
+    (once otsRandEavesdropIq (IndCpaRandPubReal (ElGamal g)))
+    (fun st => (st.eavesdropCount != 0, st.pk))
+    (correctAbstraction_otsrReal_once_indCpaRandPubReal g)
+
+theorem once_indCpaRandPubReal_eq_once_localRandomness
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
+    once otsRandEavesdropIq (IndCpaRandPubReal (ElGamal g)) =
+      once otsRandEavesdropIq
+        (simpleLocalRandomness
+          (IndCpaRandPubReal (ElGamal g))
+          otsRandEavesdropIq
+          (sampleExponent G)
+          (elGamalLocalRandQuery g)) := by
+  apply congr_arg
+  simp [IndCpaRandPubReal, simpleLocalRandomness]
+  ext q input
+  congr 2
+  split_ifs
+  · simp
+  · simp [ elGamalLocalRandQuery]
+    cases q
+    case neg.getPk =>
+      cases input
+      simp
+    case neg.eavesdrop =>
+      simp [IndCpaRandPubSpec, OneTimeSecrecyRandSpec] at input
+      symm
+      simp [ElGamal]
+
 /-- Game `G4`: sample the public key in initialization; on the first message query, sample
 independent `b, c` and return `(g^b, m * g^c)`. -/
-noncomputable def ElGamalOTSRandG4 {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+noncomputable def ElGamalOTSRandG4 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
     RStateOracle (OneTimeSecrecyRandSpec G G (G × G)) where
   stateType := OneTimeSecrecyState G
   initialState := do
@@ -118,14 +229,73 @@ noncomputable def ElGamalOTSRandG4 {G : Type} [Group G] [Fintype G] [Nontrivial 
             pure (default : G × G)
   }
 
+/-- `OTSRandReal` for ElGamal is observationally equivalent to `G0`. -/
+theorem obsEq_otsrRealElGamal_G0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
+    ObsEq (OneTimeSecrecyRandReal (ElGamal g)) (ElGamalOTSRandG0 g) := by
+  refine obsEq_trans
+    (obsEq_otsrReal_once_indCpaRandPubReal g)
+    (obsEq_trans
+      (obsEqReflexive _ _ (once_indCpaRandPubReal_eq_once_localRandomness g))
+      ?_)
+  simpa [ElGamalOTSRandG0] using
+    (OnceRedSimpleRandomnesGlobalLocalObsEq
+      otsRandEavesdropIq
+      (IndCpaRandPubReal (ElGamal g))
+      (sampleExponent G)
+      (elGamalLocalRandQuery g))
+
+/-- `G0` is observationally equivalent to the explicit initialization game `G1`. -/
+theorem obsEq_G0_G1
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
+    ObsEq (ElGamalOTSRandG0 g) (ElGamalOTSRandG1 g) := by
+  refine correctAbstractionImpliesObsEq
+    (ElGamalOTSRandG0 g)
+    (ElGamalOTSRandG1 g)
+    (fun st => (elGamalG0ToG1State g st).1)
+    ?_
+  constructor
+  · simp [ElGamalOTSRandG0, ElGamalOTSRandG1, once, OnceRed, simpleGlobalRandomness,
+      IndCpaRandPubReal, ElGamal, applySRReduction, elGamalG0ToG1State,
+      GameHoppingSimplifyPMF, monad_norm, mapSecond]
+    sorry
+  · intro i query
+    ext1 st
+    rcases st with ⟨done, b, pk⟩
+    cases i with
+    | getPk =>
+        cases query
+        simp [ElGamalOTSRandG0, ElGamalOTSRandG1, once, OnceRed, simpleGlobalRandomness,
+          IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
+          FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
+          elGamalG0ToG1State, mapInputState, mapOutputState, otsRandEavesdropIq,
+          RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+        sorry
+    | eavesdrop =>
+        cases done with
+        | false =>
+            simp [ElGamalOTSRandG0, ElGamalOTSRandG1, once, OnceRed, simpleGlobalRandomness,
+            IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
+            FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
+            elGamalG0ToG1State, mapInputState, mapOutputState, otsRandEavesdropIq,
+            RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+            sorry
+        | true =>
+            simp [ElGamalOTSRandG0, ElGamalOTSRandG1, once, OnceRed, simpleGlobalRandomness,
+            IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
+            FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
+            elGamalG0ToG1State, mapInputState, mapOutputState, otsRandEavesdropIq,
+            RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+
 /-- `OTSRandReal` for ElGamal is observationally equivalent to `G1`. -/
-theorem obsEq_otsrRealElGamal_G1 {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+theorem obsEq_otsrRealElGamal_G1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
     ObsEq (OneTimeSecrecyRandReal (ElGamal g)) (ElGamalOTSRandG1 g) := by
-  sorry
+  exact obsEq_trans (obsEq_otsrRealElGamal_G0 g) (obsEq_G0_G1 g)
 
 /-- `G1` is observationally equivalent to applying the DDH reduction to the real DDH oracle. -/
 theorem obsEq_G1_applyComplexInit_dhReal
-    {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
     ObsEq (ElGamalOTSRandG1 g)
       (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhReal g)) := by
   refine existsMapStateBijImpliesObsEq
@@ -143,8 +313,9 @@ theorem obsEq_G1_applyComplexInit_dhReal
         simp [DDHToElGamalOTSRandReduction]
         dsimp [applyComplexInitReduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
-          DDHToElGamalOTSRandReduction, dhReal, ElGamalOTSRandG1, RState.modify]
+        simp [monad_norm, GameHoppingSimplifyPMF,
+          OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTSRandReduction, dhReal,
+          ElGamalOTSRandG1, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTSRandReduction]
         dsimp [applyComplexInitReduction]
@@ -154,7 +325,7 @@ theorem obsEq_G1_applyComplexInit_dhReal
 
 /-- Applying the DDH reduction to the random DDH oracle is observationally equivalent to `G3`. -/
 theorem obsEq_applyComplexInit_dhRand_G3
-    {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
     ObsEq (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhRand g))
       (ElGamalOTSRandG3 g) := by
   refine existsMapStateBijImpliesObsEq
@@ -172,8 +343,9 @@ theorem obsEq_applyComplexInit_dhRand_G3
         simp [DDHToElGamalOTSRandReduction]
         dsimp [applyComplexInitReduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
-          DDHToElGamalOTSRandReduction, dhRand, ElGamalOTSRandG3, RState.modify]
+        simp [monad_norm, GameHoppingSimplifyPMF,
+          OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTSRandReduction, dhRand,
+          ElGamalOTSRandG3, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTSRandReduction]
         dsimp [applyComplexInitReduction]
@@ -183,13 +355,14 @@ theorem obsEq_applyComplexInit_dhRand_G3
 
 /-- `G3` is observationally equivalent to `G4`, where the computation of `B` and `C`
 is moved back into the query implementation. -/
-theorem obsEq_G3_G4 {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
+theorem obsEq_G3_G4 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+    [Inhabited G] (g : G) :
     ObsEq (ElGamalOTSRandG3 g) (ElGamalOTSRandG4 g) := by
   sorry
 
 /-- `G4` is observationally equivalent to the random OTS-rand oracle for ElGamal. -/
 theorem obsEq_G4_otsrRandElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G]
-    (g : G) (hgen : IsGenerator g) :
+    [Inhabited G] (g : G) (hgen : IsGenerator g) :
     ObsEq (ElGamalOTSRandG4 g)
       (OneTimeSecrecyRandRand (ElGamal g)) := by
   apply obsEqReflexive
@@ -203,14 +376,12 @@ theorem obsEq_G4_otsrRandElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G]
   | eavesdrop =>
       ext1 m
       simp [GameHoppingSimplifyPMF, GH_group_nom, hgen]
-      ext1 st
-      simp [GameHoppingSimplifyPMF, GH_group_nom, hgen]
 
 /-- DDH implies one-time secrecy-rand for ElGamal via the DDH reduction and the game hops above. -/
 theorem ddhImpliesElGamalOTSRand
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
-    {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G)
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G)
     (hgen : IsGenerator g)
     (hReduction : DDHToElGamalOTSRandReduction g ∈
       Reductions.complexInitReductions (DecisionalDHSpec G) (OneTimeSecrecyRandSpec G G (G × G)))
