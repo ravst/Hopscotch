@@ -3,14 +3,14 @@ import GameHoppingInLean.Invariants
 
 --  tmp : move to new file
 
-def allQueries {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (x : OracleComp spec Y) : Prop :=
-  match x with
+def allQueries {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (O : OracleComp spec Y) : Prop :=
+  match O with
   | FreeMonad.pure _ => true
   | @FreeMonad.roll _ _ t a b =>
     p t a /\ forall x, allQueries p (b x)
 
-def onlyOneQuery {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (x : OracleComp spec Y) : Prop :=
-  match x with
+def onlyOneQuery {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (O : OracleComp spec Y) : Prop :=
+  match O with
   | FreeMonad.pure _ => true
   | @FreeMonad.roll _ _ t a b =>
     let neg_p t x := ¬ p t x
@@ -18,6 +18,14 @@ def onlyOneQuery {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.Oracle
     /\
     ((¬ p t a) /\ forall x, onlyOneQuery p (b x))
 
+
+def splitAdversary {X} {spec : OracleSpec X}  (p : (x : Type) -> OracleSpec.OracleQuery spec x -> Prop) {Y} (O : OracleComp spec Y) :
+ (x : Type) × (OracleComp spec (OracleSpec.OracleQuery spec x)):=
+  match O with
+  | FreeMonad.pure a => sorry
+  | @FreeMonad.roll _ _ t a b =>
+    -- if (p t a) then
+    sorry
 
 
 /-- `o₂` is equal to `o₁` on an invariant when `o₂`'s state can be identified with

@@ -347,6 +347,10 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
   exact (PMF.bind_bind (p := sd) (f := fun s => StateT.run m s)
     (g := fun p => StateT.run (f p.1) p.2)).symm
 
+@[simp] lemma run_bind2 {σ α β} (sd : σ) (m : RState σ α) (f : α → RState σ β) :
+    (m >>= f) sd = (m sd).bind (fun p => StateT.run (f p.1) p.2) := by
+  exact rfl
+
 @[simp] lemma eval_bind {σ α β} (sd : PMF σ) (m : RState σ α) (f : α → RState σ β) :
     RState.eval sd (m >>= f) = (RState.run sd m).bind (fun p => (StateT.run (f p.1) p.2).map Prod.fst) := by
   rw [RState.eval, run_bind, PMF.map_bind]
