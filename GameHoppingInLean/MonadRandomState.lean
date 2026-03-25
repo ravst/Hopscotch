@@ -144,6 +144,21 @@ def mapStateBij (f : s₁ ≃ s₂) (m : RState s₁ α) : RState s₂ α :=
   fun s₂ =>
     (StateT.run m (f.invFun s₂)).map (fun p => (p.1, f.toFun p.2))
 
+noncomputable
+def runOnFst (m : RState s₁ α) : RState (s₁×s₂) α := do
+  let st ← get
+  let ⟨a, s₁'⟩ ← m.run (pure st.1)
+  StateT.set ⟨s₁', st.2⟩
+  pure a
+
+noncomputable
+def runOnSnd (m : RState s₂ α) : RState (s₁ × s₂) α := do
+  let st ← get
+  let ⟨a, st₂'⟩ ← m.run (pure st.2)
+  StateT.set ⟨st.1, st₂'⟩
+  pure a
+
+
 @[simp] lemma mapStateBij_pure {α s₁ s₂}
     (f : s₁ ≃ s₂) (a : α) :
     mapStateBij f (pure a : RState s₁ α) = (pure a : RState s₂ α) := by
