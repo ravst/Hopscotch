@@ -19,6 +19,14 @@ end StateT
 namespace PMF
 
 
+@[simp] lemma map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
+    PMF.map f (PMF.pure a) = PMF.pure (f a) := by
+  simpa using (PMF.pure_map (f := f) a)
+
+@[simp] lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
+    f <$> (PMF.pure a) = PMF.pure (f a) := by
+  simp [PMF.monad_map_eq_map]
+
 
 /-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
 @[simp] lemma uniformOfFintype_prod_bind
@@ -48,6 +56,11 @@ def modify (f : σ → σ ) : RState σ Unit := do
     StateT.run (modify f : RState σ Unit) s = PMF.pure ((), f s) := by
   simp [modify, StateT.run_bind]
   rfl
+
+@[simp, RStateSimplifier] lemma modify_apply {σ} (f : σ → σ) (s : σ) :
+    (modify f : RState σ Unit) s = PMF.pure ((), f s) := by
+  change StateT.run (modify f : RState σ Unit) s = PMF.pure ((), f s)
+  exact run_modify f s
 
 noncomputable
 def run {σ α} (sd : PMF σ) (m : RState σ α) : PMF (α × σ) := do
@@ -151,19 +164,140 @@ def mapStateBij (f : s₁ ≃ s₂) (m : RState s₁ α) : RState s₂ α :=
     (StateT.run m (f.invFun s₂)).map (fun p => (p.1, f.toFun p.2))
 
 noncomputable
-def runOnFst (m : RState s₁ α) : RState (s₁×s₂) α := do
-  let st ← get
-  let ⟨a, s₁'⟩ ← m.run (pure st.1)
-  StateT.set ⟨s₁', st.2⟩
-  pure a
+def runOnFst (m : RState s₁ α) : RState (s₁ × s₂) α :=
+  fun st => (StateT.run m st.1).map (fun p => (p.1, (p.2, st.2)))
 
 noncomputable
-def runOnSnd (m : RState s₂ α) : RState (s₁ × s₂) α := do
-  let st ← get
-  let ⟨a, st₂'⟩ ← m.run (pure st.2)
-  StateT.set ⟨st.1, st₂'⟩
-  pure a
+def runOnSnd (m : RState s₂ α) : RState (s₁ × s₂) α :=
+  fun st => (StateT.run m st.2).map (fun p => (p.1, (st.1, p.2)))
 
+@[simp] lemma run_runOnFst {s₁ s₂ α}
+    (m : RState s₁ α) (st : s₁ × s₂) :
+    StateT.run (runOnFst (s₂ := s₂) m) st =
+      (StateT.run m st.1).map (fun p => (p.1, (p.2, st.2))) := rfl
+
+@[simp] lemma run_runOnSnd {s₁ s₂ α}
+    (m : RState s₂ α) (st : s₁ × s₂) :
+    StateT.run (runOnSnd (s₁ := s₁) m) st =
+      (StateT.run m st.2).map (fun p => (p.1, (st.1, p.2))) := rfl
+
+@[simp, RStateSimplifier] lemma runOnFst_pure {α s₁ s₂}
+    (a : α) :
+    runOnFst (s₂ := s₂) (pure a : RState s₁ α) =
+      (pure a : RState (s₁ × s₂) α) := by
+  funext st
+  change
+    PMF.map (fun p : α × s₁ => (p.1, (p.2, st.2))) (PMF.pure (a, st.1)) =
+      PMF.pure (a, st)
+  rw [PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnFst_bind {α β s₁ s₂}
+    (x : RState s₁ α) (y : α → RState s₁ β) :
+    runOnFst (s₂ := s₂) (x >>= y) =
+      (runOnFst (s₂ := s₂) x >>= fun a => runOnFst (s₂ := s₂) (y a)) := by
+  funext st
+  change StateT.run (runOnFst (s₂ := s₂) (x >>= y)) st =
+    StateT.run (runOnFst (s₂ := s₂) x >>= fun a => runOnFst (s₂ := s₂) (y a)) st
+  change
+    PMF.map (fun p : β × s₁ => (p.1, (p.2, st.2)))
+      ((StateT.run x st.1).bind (fun p => StateT.run (y p.1) p.2)) =
+    ((StateT.run x st.1).map (fun p : α × s₁ => (p.1, (p.2, st.2)))).bind
+      (fun p : α × (s₁ × s₂) => StateT.run (runOnFst (s₂ := s₂) (y p.1)) p.2)
+  rw [PMF.map_bind, PMF.bind_map]
+  rfl
+
+@[simp, RStateSimplifier] lemma runOnFst_get {s₁ s₂} :
+    runOnFst (s₂ := s₂) (get : RState s₁ s₁) =
+      (do
+        let st ← (get : RState (s₁ × s₂) (s₁ × s₂))
+        pure st.1) := by
+  rw [← map_eq_do Prod.fst (get : RState (s₁ × s₂) (s₁ × s₂))]
+  funext st
+  change
+    PMF.map (fun p : s₁ × s₁ => (p.1, (p.2, st.2))) (PMF.pure (st.1, st.1)) =
+      PMF.map (fun p : (s₁ × s₂) × (s₁ × s₂) => (p.1.1, p.2)) (PMF.pure (st, st))
+  rw [PMF.pure_map, PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnFst_set {s₁ s₂}
+    (s : s₁) :
+    runOnFst (s₂ := s₂) (set s : RState s₁ Unit) =
+      modify (fun st : s₁ × s₂ => (s, st.2)) := by
+  funext st
+  change
+    PMF.map (fun p : PUnit × s₁ => (p.1, (p.2, st.2))) (PMF.pure ((), s)) =
+      StateT.run (modify (fun st : s₁ × s₂ => (s, st.2))) st
+  rw [run_modify, PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnFst_modify {s₁ s₂}
+    (f : s₁ → s₁) :
+    runOnFst (s₂ := s₂) (modify f) =
+      modify (fun st : s₁ × s₂ => (f st.1, st.2)) := by
+  funext st
+  change
+    PMF.map (fun p : PUnit × s₁ => (p.1, (p.2, st.2))) (StateT.run (modify f) st.1) =
+      StateT.run (modify (fun st : s₁ × s₂ => (f st.1, st.2))) st
+  rw [run_modify, run_modify, PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnSnd_pure {α s₁ s₂}
+    (a : α) :
+    runOnSnd (s₁ := s₁) (pure a : RState s₂ α) =
+      (pure a : RState (s₁ × s₂) α) := by
+  funext st
+  change
+    PMF.map (fun p : α × s₂ => (p.1, (st.1, p.2))) (PMF.pure (a, st.2)) =
+      PMF.pure (a, st)
+  rw [PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnSnd_bind {α β s₁ s₂}
+    (x : RState s₂ α) (y : α → RState s₂ β) :
+    runOnSnd (s₁ := s₁) (x >>= y) =
+      (runOnSnd (s₁ := s₁) x >>= fun a => runOnSnd (s₁ := s₁) (y a)) := by
+  funext st
+  change StateT.run (runOnSnd (s₁ := s₁) (x >>= y)) st =
+    StateT.run (runOnSnd (s₁ := s₁) x >>= fun a => runOnSnd (s₁ := s₁) (y a)) st
+  change
+    PMF.map (fun p : β × s₂ => (p.1, (st.1, p.2)))
+      ((StateT.run x st.2).bind (fun p => StateT.run (y p.1) p.2)) =
+    ((StateT.run x st.2).map (fun p : α × s₂ => (p.1, (st.1, p.2)))).bind
+      (fun p : α × (s₁ × s₂) => StateT.run (runOnSnd (s₁ := s₁) (y p.1)) p.2)
+  rw [PMF.map_bind, PMF.bind_map]
+  rfl
+
+@[simp, RStateSimplifier] lemma runOnSnd_get {s₁ s₂} :
+    runOnSnd (s₁ := s₁) (get : RState s₂ s₂) =
+      (do
+        let st ← (get : RState (s₁ × s₂) (s₁ × s₂))
+        pure st.2) := by
+  rw [← map_eq_do Prod.snd (get : RState (s₁ × s₂) (s₁ × s₂))]
+  funext st
+  change
+    PMF.map (fun p : s₂ × s₂ => (p.1, (st.1, p.2))) (PMF.pure (st.2, st.2)) =
+      PMF.map (fun p : (s₁ × s₂) × (s₁ × s₂) => (p.1.2, p.2)) (PMF.pure (st, st))
+  rw [PMF.pure_map, PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnSnd_set {s₁ s₂}
+    (s : s₂) :
+    runOnSnd (s₁ := s₁) (set s : RState s₂ Unit) =
+      modify (fun st : s₁ × s₂ => (st.1, s)) := by
+  funext st
+  change
+    PMF.map (fun p : PUnit × s₂ => (p.1, (st.1, p.2))) (PMF.pure ((), s)) =
+      StateT.run (modify (fun st : s₁ × s₂ => (st.1, s))) st
+  rw [run_modify, PMF.pure_map]
+
+@[simp, RStateSimplifier] lemma runOnSnd_modify {s₁ s₂}
+    (f : s₂ → s₂) :
+    runOnSnd (s₁ := s₁) (modify f) =
+      modify (fun st : s₁ × s₂ => (st.1, f st.2)) := by
+  funext st
+  change
+    PMF.map (fun p : PUnit × s₂ => (p.1, (st.1, p.2))) (StateT.run (modify f) st.2) =
+      StateT.run (modify (fun st : s₁ × s₂ => (st.1, f st.2))) st
+  rw [run_modify, run_modify, PMF.pure_map]
+
+@[simp] lemma stateT_run_rstate_modify {f : α → α} {st : α} :
+  StateT.run (RState.modify f) st = pure ((), f st) := by
+    simp [pure]
 
 @[simp] lemma mapStateBij_pure {α s₁ s₂}
     (f : s₁ ≃ s₂) (a : α) :
