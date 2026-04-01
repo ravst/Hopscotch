@@ -14,10 +14,8 @@ structure QueryImpl3 {ι : Type w} (spec : OracleSpec ι) (m : Type u → Type v
 def query_impl_convert {ι : Type w} {spec : OracleSpec ι} {m : Type u → Type v}
   (x : QueryImpl3 spec m) : QueryImpl spec m :=
   { impl {α} q :=
-    by
-      cases q
-      case query i t =>
-      apply x.impl i t
+    let (OracleSpec.OracleQuery.query i t) := q
+    x.impl i t
   }
 
 @[simp] lemma query_impl_convert_apply {ι : Type w} {spec : OracleSpec ι} {m : Type u → Type v}
@@ -37,6 +35,7 @@ structure RStateOracle {I : Type} (O : OracleSpec I) where
   initialState : PMF stateType
   queries : QueryImpl3 O (RState stateType)
 
+-- def RStateOracleFam {I : Type} (O : OracleSpec I) := (κ : ℕ) -> RStateOracle O
 
 -- lemma RStateOracle_idiotReduction {I : Type} {O : OracleSpec I}
 --   (stateType : Type) (initialState : PMF stateType) (queries : QueryImpl O (RState stateType))  :

@@ -5,7 +5,7 @@ import GameHoppingInLean.ObservationalEquvialence
 /-- For each oracle spec `O`, a set of oracle pairs on `O` that may be assumed
 indistinguishable. -/
 abbrev IndistinguishabilityAssumptions :=
-  {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
+  {I : Type} → (O : OracleSpec I) → Set (RStateOracleFam O × RStateOracleFam O)
 
 /-- For each pair of specs `(O₁, O₂)`, a set of allowed stateful randomized reductions
 from `O₁` to `O₂`. -/
@@ -45,70 +45,90 @@ Indexed by:
 
 The relation is homogeneous in `O`, but reduction steps may move to a different spec
 by changing the index parameter of the conclusion. -/
+
+def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
+    (ro : Finset.range (1+l) -> RStateOracle O) (i : ℕ) (H : i <= l) : RStateOracle O :=
+    ro ⟨i, by simp [Finset.range, H]; exact Nat.lt_one_add_iff.mpr H⟩
+
 inductive Indistinguishable
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions) :
+    (Reductions : IndistinguishabilityReductions) (κ : ℕ) (q_b : ℕ) :
     {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Prop
   | assumption {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
-      (ro₁, ro₂) ∈ Assumptions O →
-      Indistinguishable Assumptions Reductions O ro₁ ro₂
+      (as : (RStateOracleFam O × RStateOracleFam O)) -> (as ∈ Assumptions O) ->
+      (ro₁ = as.1 κ /\ ro₂ = as.2 κ) ->
+      Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₂
   | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
       ObsEq ro₁ ro₂ →
-      Indistinguishable Assumptions Reductions O ro₁ ro₂
+      Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₂
   | simpleReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : simpleReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
-      Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O₁ ro₁ ro₂ →
       r ∈ Reductions.simpleReductions O₁ O₂ →
-      Indistinguishable Assumptions Reductions O₂
+      Indistinguishable Assumptions Reductions κ q_b O₂
         (applySimpleReduction r ro₁) (applySimpleReduction r ro₂)
   | reduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : SRReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
-      Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O₁ ro₁ ro₂ →
       r ∈ Reductions.reductions O₁ O₂ →
-      Indistinguishable Assumptions Reductions O₂
+      Indistinguishable Assumptions Reductions κ q_b O₂
         (applySRReduction r ro₁) (applySRReduction r ro₂)
   | complexInitReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : ComplexInitReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
-      Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O₁ ro₁ ro₂ →
       r ∈ Reductions.complexInitReductions O₁ O₂ →
-      Indistinguishable Assumptions Reductions O₂
+      Indistinguishable Assumptions Reductions κ q_b O₂
         (applyComplexInitReduction r ro₁) (applyComplexInitReduction r ro₂)
   | randReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : RReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} :
-      Indistinguishable Assumptions Reductions O₁ ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O₁ ro₁ ro₂ →
       r ∈ Reductions.randomReductions O₁ O₂ →
-      Indistinguishable Assumptions Reductions O₂
+      Indistinguishable Assumptions Reductions κ q_b O₂
         (applyRReduction r ro₁) (applyRReduction r ro₂)
   | symm {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
-      Indistinguishable Assumptions Reductions O ro₁ ro₂ →
-      Indistinguishable Assumptions Reductions O ro₂ ro₁
+      Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O ro₂ ro₁
   | trans {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O} :
-      Indistinguishable Assumptions Reductions O ro₁ ro₂ →
-      Indistinguishable Assumptions Reductions O ro₂ ro₃ →
-      Indistinguishable Assumptions Reductions O ro₁ ro₃
+      Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₂ →
+      Indistinguishable Assumptions Reductions κ q_b O ro₂ ro₃ →
+      Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₃
+  | longSequence {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (1+l) -> RStateOracle O)
+    (ro_start : RStateOracle O) (ro_end :  RStateOracle O ) :
+    (Hstart : Indistinguishable Assumptions Reductions κ q_b O ro_start (ro ⟨0, by simp [Finset.range]⟩)) ->
+    (Hend : Indistinguishable Assumptions Reductions κ q_b O ro_end (ro ⟨l, by simp [Finset.range]⟩)) ->
+    (forall i, (Hi: i < l) ->
+      Indistinguishable Assumptions Reductions κ q_b O
+        (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
+        (ro_seq_fixed l ro (i+1) Hi)
+    ) ->
+    Indistinguishable Assumptions Reductions κ q_b O ro_start ro_end
+
 
 namespace Indistinguishable
 
 theorem of_ObsEq
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
+    {κ q_b :  ℕ}
     {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
     ObsEq ro₁ ro₂ →
-    Indistinguishable Assumptions Reductions O ro₁ ro₂ :=
+    Indistinguishable Assumptions Reductions κ q_b O ro₁ ro₂ :=
   Indistinguishable.obsEq
 
 theorem transitive
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
+    {κ q_b :  ℕ}
     {I : Type} {O : OracleSpec I} :
-    Transitive (Indistinguishable Assumptions Reductions O) :=
+    Transitive (Indistinguishable Assumptions Reductions κ q_b O) :=
   fun _ _ _ => Indistinguishable.trans
 
 theorem symmetric
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
+    {κ q_b :  ℕ}
     {I : Type} {O : OracleSpec I} :
-    Symmetric (Indistinguishable Assumptions Reductions O) :=
+    Symmetric (Indistinguishable Assumptions Reductions κ q_b O) :=
   fun _ _ => Indistinguishable.symm
 
 end Indistinguishable
