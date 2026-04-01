@@ -54,9 +54,6 @@ def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
 universe u v w
 
 
-inductive Tescik : {I : Type 0} → (O : OracleSpec.{0, 0} I) → @RStateOracle I O → Type
- | cos {I : Type 0} (O : OracleSpec I) (x : RStateOracle O) : Tescik O x
-
 inductive Indistinguishable
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
