@@ -99,6 +99,6 @@ noncomputable def IndCcaAssumption {K : Type} {C : ℕ → Type} [∀ n, Decidab
 def IndCcaDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)] (scheme : SymEncScheme K C) : Prop :=
+    {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (IndCcaSpec C) (IndCcaL scheme) (IndCcaR scheme)

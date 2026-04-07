@@ -87,7 +87,7 @@ def OneTimeSecrecyRandDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
-    (scheme : PubEncScheme PubK SecK M C) : Prop :=
+    (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (OneTimeSecrecyRandSpec PubK M C)
     (OneTimeSecrecyRandReal scheme)

@@ -47,6 +47,6 @@ def OTUCDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
     {K : Type} {C : ℕ → Type}
-    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Prop :=
+    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (OTUCSpec C) (OTUC_Real scheme) (OTUC_Rand scheme)

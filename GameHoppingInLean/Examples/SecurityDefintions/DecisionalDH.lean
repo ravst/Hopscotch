@@ -49,6 +49,6 @@ noncomputable def DecisionalDHAssumption {G : Type}
 def DecisionalDHDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) : Prop :=
+    {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (DecisionalDHSpec G) (dhReal g) (dhRand g)

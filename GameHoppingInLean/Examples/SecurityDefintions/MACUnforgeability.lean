@@ -79,6 +79,6 @@ noncomputable def MACUFAssumption {K Tag : Type} [DecidableEq Tag] (scheme : MAC
 def MACUFDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) : Prop :=
+    {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (MACUFSpec Tag) (MACUFReal scheme) (MACUFIdeal scheme)

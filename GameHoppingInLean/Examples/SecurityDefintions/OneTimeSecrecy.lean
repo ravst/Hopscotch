@@ -90,7 +90,7 @@ noncomputable def OneTimeSecrecyAssumption {PubK SecK M C : Type}
 def OneTimeSecrecyDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) : Prop :=
+    {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (OneTimeSecrecySpec PubK M C)
     (OneTimeSecrecyL scheme)

@@ -43,6 +43,6 @@ noncomputable def SecurePRGAssumption {k l : ℕ} (prg : PRG k l) :
 def SecurePRGDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {k l : ℕ} (prg : PRG k l) : Prop :=
+    {k l : ℕ} (prg : PRG k l) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (SecurePRGSpec k l) (PRG_real prg) (PRG_rand k l)

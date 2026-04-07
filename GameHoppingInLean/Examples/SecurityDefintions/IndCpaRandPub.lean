@@ -68,7 +68,7 @@ def IndCpaRandPubDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
-    (scheme : PubEncScheme PubK SecK M C) : Prop :=
+    (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (IndCpaRandPubSpec PubK M C)
     (IndCpaRandPubReal scheme)

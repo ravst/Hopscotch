@@ -65,7 +65,7 @@ theorem obsEq_G1_outcRandDouble
   simp [OUTCInner_to_OUTCDouble_R1, OUTC_G1, applyRReduction, OTUC_Rand]
 
 /-- OUTC/OTUC of inner scheme `T` implies OUTC/OTUC of `Double(S,T)`, via reduction `R1`. -/
-theorem outcInnerImpliesOutcDouble
+noncomputable def outcInnerImpliesOutcDouble
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {K₁ K₂ : Type} {C : ℕ → Type} [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
@@ -74,41 +74,42 @@ theorem outcInnerImpliesOutcDouble
       Reductions.randomReductions (OTUCSpec C) (OTUCSpec C))
     (hOutcT : OTUCDef Assumptions Reductions T) :
     OTUCDef Assumptions Reductions (doubleSymEnc S T) := by
+  intro κ
   have hRealRandT :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C) (OTUC_Real T) (OTUC_Rand T) := by
-    simpa [OTUCDef] using hOutcT
+    simpa [OTUCDef] using hOutcT κ
 
   have h1 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C) (OTUC_Real (doubleSymEnc S T))
           (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Real T)) :=
     Indistinguishable.of_ObsEq (obsEq_outcRealDouble_applyR1_realT S T)
 
   have h2 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C)
           (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Real T))
           (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Rand T)) :=
-    Indistinguishable.randReduction (r := OUTCInner_to_OUTCDouble_R1 S) hRealRandT hR1
+    IndistinguishableI.randReduction (r := OUTCInner_to_OUTCDouble_R1 S) none hRealRandT hR1
 
   have h3 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C)
           (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Rand T))
           (OUTC_G1 S T) :=
     Indistinguishable.of_ObsEq (obsEq_applyR1_randT_G1 S T)
 
   have h4 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C) (OUTC_G1 S T) (OTUC_Rand (doubleSymEnc S T)) :=
     Indistinguishable.of_ObsEq (obsEq_G1_outcRandDouble S T)
 
   have h :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OTUCSpec C) (OTUC_Real (doubleSymEnc S T)) (OTUC_Rand (doubleSymEnc S T)) :=
-    Indistinguishable.trans h1 <|
-      Indistinguishable.trans h2 <|
-        Indistinguishable.trans h3 h4
+    Indistinguishable.transitive h1 <|
+      Indistinguishable.transitive h2 <|
+        Indistinguishable.transitive h3 h4
 
   simpa [OTUCDef] using h

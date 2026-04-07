@@ -93,7 +93,7 @@ theorem obsEq_apply_right_otsrReal_otsR
     simp [FreeMonad.lift, query_impl_convert]
 
 /-- One-time secrecy follows from one-time secrecy-rand via the two simple reductions. -/
-theorem otsRandImpliesOTS
+noncomputable def otsRandImpliesOTS
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
@@ -104,22 +104,23 @@ theorem otsRandImpliesOTS
       Reductions.simpleReductions (OneTimeSecrecyRandSpec PubK M C) (OneTimeSecrecySpec PubK M C))
     (hOTSRand : OneTimeSecrecyRandDef Assumptions Reductions scheme) :
     OneTimeSecrecyDef Assumptions Reductions scheme := by
+  intro κ
   have hRealRand :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecyRandSpec PubK M C)
         (OneTimeSecrecyRandReal scheme)
         (OneTimeSecrecyRandRand scheme) := by
-    simpa [OneTimeSecrecyRandDef] using hOTSRand
+    simpa [OneTimeSecrecyRandDef] using hOTSRand κ
 
   have hRandReal :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecyRandSpec PubK M C)
         (OneTimeSecrecyRandRand scheme)
         (OneTimeSecrecyRandReal scheme) :=
-    Indistinguishable.symm hRealRand
+    IndistinguishableI.symm none hRealRand
 
   have h1 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (OneTimeSecrecyL scheme)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
@@ -127,17 +128,17 @@ theorem otsRandImpliesOTS
     Indistinguishable.of_ObsEq (obsEq_otsL_apply_left_otsrReal scheme)
 
   have h2 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandReal scheme))
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandRand scheme)) :=
-    Indistinguishable.simpleReduction
-      (r := OTSRandToOTSL (PubK := PubK) (M := M) (C := C)) hRealRand hLeftRed
+    IndistinguishableI.simpleReduction
+      (r := OTSRandToOTSL (PubK := PubK) (M := M) (C := C)) none hRealRand hLeftRed
 
   have h3 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandRand scheme))
@@ -147,17 +148,17 @@ theorem otsRandImpliesOTS
       (obsEq_apply_left_otsrRand_apply_right_otsrRand scheme)
 
   have h4 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSR (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandRand scheme))
         (applySimpleReduction (OTSRandToOTSR (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandReal scheme)) :=
-    Indistinguishable.simpleReduction
-      (r := OTSRandToOTSR (PubK := PubK) (M := M) (C := C)) hRandReal hRightRed
+    IndistinguishableI.simpleReduction
+      (r := OTSRandToOTSR (PubK := PubK) (M := M) (C := C)) none hRandReal hRightRed
 
   have h5 :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSR (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandReal scheme))
@@ -165,12 +166,12 @@ theorem otsRandImpliesOTS
     Indistinguishable.of_ObsEq (obsEq_apply_right_otsrReal_otsR scheme)
 
   have h :
-      Indistinguishable Assumptions Reductions
+      IndistinguishableI Assumptions Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (OneTimeSecrecyL scheme) (OneTimeSecrecyR scheme) :=
-    Indistinguishable.trans h1 <|
-      Indistinguishable.trans h2 <|
-        Indistinguishable.trans h3 <|
-          Indistinguishable.trans h4 h5
+    Indistinguishable.transitive h1 <|
+      Indistinguishable.transitive h2 <|
+        Indistinguishable.transitive h3 <|
+          Indistinguishable.transitive h4 h5
 
   simpa [OneTimeSecrecyDef] using h

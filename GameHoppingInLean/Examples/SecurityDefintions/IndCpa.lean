@@ -43,6 +43,6 @@ noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEn
 def IndCpaDef
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions)
-    {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Prop :=
+    {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
     (IndCpaSpec C) (IndCpaL scheme) (IndCpaR scheme)
