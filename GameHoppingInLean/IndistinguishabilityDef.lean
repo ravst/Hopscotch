@@ -4,8 +4,16 @@ import GameHoppingInLean.ObservationalEquvialence
 
 /-- For each oracle spec `O`, a set of oracle pairs on `O` that may be assumed
 IndistinguishableI. -/
+-- abbrev IndistinguishabilityAssumptions :=
+--   {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
+
 abbrev IndistinguishabilityAssumptions :=
-  {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
+  List ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O))
+
+
+def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
+  : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
+  := ⟨I, O, p⟩
 
 /-- For each pair of specs `(O₁, O₂)`, a set of allowed stateful randomized reductions
 from `O₁` to `O₂`. -/
@@ -58,8 +66,9 @@ inductive IndistinguishableI
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
     (q_b : Option ℕ) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
-  | assumption {I : Type 0} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
-      ((ro₁, ro₂) ∈ Assumptions O) ->
+  | assumption {I : Type 0} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ) (as_i : ℕ):
+      -- (H : ⟨I, O, (ro₁, ro₂)⟩ ∈ Assumptions) ->
+      (some ⟨I, O, (ro₁, ro₂)⟩ = Assumptions[as_i]?) ->
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
   | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
       ObsEq ro₁ ro₂ →
@@ -144,6 +153,65 @@ def symmetric
 
 end Indistinguishable
 
+
+def singleton (a : X) : X -> ℕ :=
+   fun i =>
+    if i = a then 1 else 0
+
+def AssumptionCounting := ℕ -> ℕ
+
+def funAdd (f g : AssumptionCounting) : AssumptionCounting := fun x => f x + g x
+
+
+mutual
+  -- def funAddLongSeq {Assumptions : IndistinguishabilityAssumptions}
+  --     {Reductions : IndistinguishabilityReductions}
+  --     {κ :  ℕ} {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (1+l) -> RStateOracle O)
+  --     (q_b : Option ℕ)
+  --     (Hs : forall i, (Hi: i < l) ->
+  --       IndistinguishableI Assumptions Reductions κ q_b O
+  --         (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
+  --         (ro_seq_fixed l ro (i+1) Hi)
+  --     ) : AssumptionCounting :=
+  --       (fun i =>
+  --       Finset.sum (α := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (Hs j.1 (by
+  --         cases j
+  --         case mk val prop =>
+  --         simp []
+  --         simp [Finset.range] at prop
+  --         assumption
+  --       )) i))
+  def assumptionsUse
+      {Assumptions : IndistinguishabilityAssumptions}
+      {Reductions : IndistinguishabilityReductions}
+      {κ :  ℕ} {q_b : Option ℕ}
+      {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+      (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) : AssumptionCounting :=
+      match ind with
+      | IndistinguishableI.assumption q_b index H =>
+        fun j =>
+          if j = index then 1 else 0
+      | IndistinguishableI.obsEq q_b H => fun _ => 0
+      | IndistinguishableI.simpleReduction r q_b Hind Hr => assumptionsUse Hind
+      | IndistinguishableI.reduction r q_b Hind Hr => assumptionsUse Hind
+      | IndistinguishableI.complexInitReduction r q_b Hind Hr => assumptionsUse Hind
+      | IndistinguishableI.randReduction r q_b Hind Hr => assumptionsUse Hind
+
+      | IndistinguishableI.symm q_b H => assumptionsUse H
+      | IndistinguishableI.trans q_b H1 H2 => funAdd (assumptionsUse H1) (assumptionsUse H2)
+      | IndistinguishableI.longSequence l ro ro_start ro_end q_b Hstart Hend H =>
+          funAdd (assumptionsUse Hstart)
+          (funAdd (assumptionsUse Hend)
+           (fun i =>
+            Finset.sum (α := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (H j.1 (by
+              cases j
+              case mk val prop =>
+              simp []
+              simp [Finset.range] at prop
+              assumption
+            )) i))
+          )
+end
 
 -- namespace Indistinguishable
 
