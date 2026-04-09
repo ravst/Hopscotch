@@ -7,8 +7,17 @@ IndistinguishableI. -/
 -- abbrev IndistinguishabilityAssumptions :=
 --   {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
 
-abbrev IndistinguishabilityAssumptions :=
-  List ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O))
+structure IndistinguishabilityAssumptions where
+  Idx : Type
+  [decEq : DecidableEq Idx]
+  Spec : Idx -> OracleSpec Idx
+  oraclesL : (i : Idx) -> RStateOracle (Spec i)
+  oraclesR : (i : Idx) -> RStateOracle (Spec i)
+
+instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
+
+-- abbrev IndistinguishabilityAssumptions :=
+--   List ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O))
 
 
 def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
@@ -66,10 +75,9 @@ inductive IndistinguishableI
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
     (q_b : Option ℕ) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
-  | assumption {I : Type 0} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ) (as_i : ℕ):
-      -- (H : ⟨I, O, (ro₁, ro₂)⟩ ∈ Assumptions) ->
-      (some ⟨I, O, (ro₁, ro₂)⟩ = Assumptions[as_i]?) ->
-      IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
+  | assumption {q_b : Option ℕ} (i : Assumptions.Idx) :
+      IndistinguishableI Assumptions Reductions κ q_b (Assumptions.Spec i)
+        (Assumptions.oraclesL i) (Assumptions.oraclesR i)
   | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
       ObsEq ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
@@ -158,9 +166,9 @@ def singleton (a : X) : X -> ℕ :=
    fun i =>
     if i = a then 1 else 0
 
-def AssumptionCounting := ℕ -> ℕ
+def AssumptionCounting (A : IndistinguishabilityAssumptions):= A.Idx -> ℕ
 
-def funAdd (f g : AssumptionCounting) : AssumptionCounting := fun x => f x + g x
+def funAdd (f g : AssumptionCounting A ) : AssumptionCounting A := fun x => f x + g x
 
 
 mutual
@@ -186,9 +194,9 @@ mutual
       {Reductions : IndistinguishabilityReductions}
       {κ :  ℕ} {q_b : Option ℕ}
       {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
-      (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) : AssumptionCounting :=
+      (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) : AssumptionCounting Assumptions :=
       match ind with
-      | IndistinguishableI.assumption q_b index H =>
+      | IndistinguishableI.assumption index =>
         fun j =>
           if j = index then 1 else 0
       | IndistinguishableI.obsEq q_b H => fun _ => 0
