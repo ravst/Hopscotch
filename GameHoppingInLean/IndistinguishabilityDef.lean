@@ -18,6 +18,7 @@ instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
 --   List ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O))
 
 
+
 def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
   : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
   := ⟨I, O, p⟩
