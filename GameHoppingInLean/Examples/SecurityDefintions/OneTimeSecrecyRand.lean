@@ -82,6 +82,17 @@ noncomputable def OneTimeSecrecyRandAssumption {PubK SecK M C : Type}
       RStateOracle (OneTimeSecrecyRandSpec PubK M C) :=
   (OneTimeSecrecyRandReal scheme, OneTimeSecrecyRandRand scheme)
 
+noncomputable def OneTimeSecrecyRandAssumptionFull {PubK SecK M C : Type}
+    [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨OneTimeSecrecyQ, OneTimeSecrecyRandSpec PubK M C, OneTimeSecrecyRandAssumption scheme⟩
+
+noncomputable def OneTimeSecrecyRandAssumption' {PubK SecK M C : Type}
+    [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => OneTimeSecrecyRandAssumptionFull scheme
+
 /-- One-time secrecy-rand security definition as an instance of `Indistinguishable`. -/
 def OneTimeSecrecyRandDef
     (Assumptions : IndistinguishabilityAssumptions)

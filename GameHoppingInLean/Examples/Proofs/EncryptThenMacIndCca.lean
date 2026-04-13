@@ -884,7 +884,6 @@ theorem obsEq_gameMacIdealR_apply_macIdeal
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security of encryption and
 MAC unforgeability, via the game-hopping sequence described above. -/
 noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMac
-    {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag)
@@ -897,102 +896,110 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMac
     (hIndCpaRed :
       (EtMFromIndCpaReduction (Tag := Tag) mac) ∈
         Reductions.reductions (IndCpaSpec BitVec) (EtMSpec Tag))
-    (hIndCpa : IndCpaDef Assumptions Reductions (C := BitVec) enc)
-    (hMacUf : MACUFDef Assumptions Reductions mac) :
-    IndCcaDef Assumptions Reductions (C := fun n => EtMC Tag n) (encryptThenMac enc mac) := by
+    : IndCcaDef
+        (IndCpaAssumption' enc ⊕ MACUFAssumption' mac)
+        Reductions (C := fun n => EtMC Tag n) (encryptThenMac enc mac) := by
   intro κ
+  let A := IndCpaAssumption' enc ⊕ MACUFAssumption' mac
+
   have hMacRealIdeal :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (MACUFSpec Tag) (MACUFReal mac) (MACUFIdeal mac) := by
-    simpa [MACUFDef] using hMacUf κ
+    simpa [A, oplus, MACUFAssumption', MACUFAssumptionFull, MACUFAssumption] using
+      (IndistinguishableI.assumption
+        (Assumptions := A)
+        (Reductions := Reductions) (κ := κ) (q_b := none) (Sum.inr ()))
 
   have hMacIdealReal :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (MACUFSpec Tag) (MACUFIdeal mac) (MACUFReal mac) :=
     IndistinguishableI.symm none hMacRealIdeal
 
   have hIndCpaLR :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (IndCpaSpec BitVec) (IndCpaL (C := BitVec) enc) (IndCpaR (C := BitVec) enc) := by
-    simpa [IndCpaDef] using hIndCpa κ
+    simpa [A, oplus, IndCpaAssumption', IndCpaAssumptionFull, IndCpaAssumption] using
+      (IndistinguishableI.assumption
+        (Assumptions := A)
+        (Reductions := Reductions) (κ := κ) (q_b := none) (Sum.inl ()))
 
   have h1 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (IndCcaL (C := fun n => EtMC Tag n) (encryptThenMac enc mac))
         (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFReal mac)) :=
     Indistinguishable.of_ObsEq (obsEq_indCcaL_apply_macReal enc mac)
 
   have h2 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFReal mac))
         (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFIdeal mac)) :=
     IndistinguishableI.reduction (r := EtMFromMACLReduction (Tag := Tag) enc) none hMacRealIdeal hMacRedL
 
   have h3 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromMACLReduction (Tag := Tag) enc) (MACUFIdeal mac))
         (EtMGameMacIdealL enc mac) :=
     Indistinguishable.of_ObsEq (obsEq_apply_macIdeal_gameMacIdealL enc mac)
 
   have h4 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (EtMGameMacIdealL enc mac) (EtMGameZeroL enc mac) :=
     Indistinguishable.of_ObsEq (obsEq_gameMacIdealL_gameZeroL enc mac)
 
   have h5 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (EtMGameZeroL enc mac)
         (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaL (C := BitVec) enc)) :=
     Indistinguishable.of_ObsEq (obsEq_gameZeroL_apply_indCpaL enc mac)
 
   have h6 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaL (C := BitVec) enc))
         (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaR (C := BitVec) enc)) :=
     IndistinguishableI.reduction (r := EtMFromIndCpaReduction (Tag := Tag) mac) none hIndCpaLR hIndCpaRed
 
   have h7 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromIndCpaReduction (Tag := Tag) mac) (IndCpaR (C := BitVec) enc))
         (EtMGameZeroR enc mac) :=
     Indistinguishable.of_ObsEq (obsEq_apply_indCpaR_gameZeroR enc mac)
 
   have h8 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (EtMGameZeroR enc mac) (EtMGameMacIdealR enc mac) :=
     Indistinguishable.of_ObsEq (obsEq_gameZeroR_gameMacIdealR enc mac)
 
   have h9 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (EtMGameMacIdealR enc mac)
         (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFIdeal mac)) :=
     Indistinguishable.of_ObsEq (obsEq_gameMacIdealR_apply_macIdeal enc mac)
 
   have h10 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFIdeal mac))
         (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFReal mac)) :=
     IndistinguishableI.reduction (r := EtMFromMACRReduction (Tag := Tag) enc) none hMacIdealReal hMacRedR
 
   have h11 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (applySRReduction (EtMFromMACRReduction (Tag := Tag) enc) (MACUFReal mac))
         (IndCcaR (C := fun n => EtMC Tag n) (encryptThenMac enc mac)) :=
     Indistinguishable.of_ObsEq (obsEq_apply_macReal_indCcaR enc mac)
 
   have h :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI A Reductions κ none
         (EtMSpec Tag)
         (IndCcaL (C := fun n => EtMC Tag n) (encryptThenMac enc mac))
         (IndCcaR (C := fun n => EtMC Tag n) (encryptThenMac enc mac)) :=

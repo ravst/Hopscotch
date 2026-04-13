@@ -41,6 +41,16 @@ noncomputable def IndCpaRandAssumption {K : Type} {C : ℕ → Type}
     RStateOracle (IndCpaRandSpec C) × RStateOracle (IndCpaRandSpec C) :=
   (IndCpaRandReal scheme, IndCpaRandRand scheme)
 
+noncomputable def IndCpaRandAssumptionFull {K : Type} {C : ℕ → Type}
+    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨ℕ, IndCpaRandSpec C, IndCpaRandAssumption scheme⟩
+
+noncomputable def IndCpaRandAssumption' {K : Type} {C : ℕ → Type}
+    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : IndistinguishabilityAssumptions where
+    Idx := Unit
+    assumptions := fun _ => IndCpaRandAssumptionFull scheme
+
 /-- IND-CPA-rand security definition as an instance of `Indistinguishable`. -/
 def IndCpaRandDef
     (Assumptions : IndistinguishabilityAssumptions)

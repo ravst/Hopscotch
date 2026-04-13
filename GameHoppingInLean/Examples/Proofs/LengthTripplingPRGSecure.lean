@@ -130,23 +130,24 @@ theorem obsEq_G3_prgRandTripple {k : ℕ} :
 /-- Security of the length-tripling construction from security of the length-doubling PRG,
 via reductions `R1` and `R2`. -/
 noncomputable def secureLengthTrippling_of_secureLengthDoubling
-    {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {k : ℕ} (prg : lengthDoublingPRG k)
     (hR1 : PRGDouble_to_Tripple_R1 prg ∈
       Reductions.randomReductions (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)))
     (hR2 : PRGDouble_to_Tripple_R2 (k := k) ∈
       Reductions.randomReductions (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)))
-    (hSecureDouble : SecurePRGDef Assumptions Reductions prg) :
-    SecurePRGDef Assumptions Reductions (LengthTrippingPRG prg) := by
+    : SecurePRGDef (SecurePRGAssumption' prg) Reductions (LengthTrippingPRG prg) := by
   intro κ
   have hRealRandDouble :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k k) (PRG_real prg) (PRG_rand k k) := by
-    simpa [SecurePRGDef] using hSecureDouble κ
+    simpa [SecurePRGAssumption', SecurePRGAssumptionFull, SecurePRGAssumption] using
+      (IndistinguishableI.assumption
+        (Assumptions := SecurePRGAssumption' prg)
+        (Reductions := Reductions) (κ := κ) (q_b := none) ())
 
   have h1 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (PRG_real (LengthTrippingPRG prg))
         (applyRReduction (PRGDouble_to_Tripple_R1 prg) (PRG_real prg)) :=
@@ -154,7 +155,7 @@ noncomputable def secureLengthTrippling_of_secureLengthDoubling
       apply Indistinguishable.of_ObsEq (obsEq_prgRealTripple_applyR1_realDouble prg)
 
   have h2 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (applyRReduction (PRGDouble_to_Tripple_R1 prg) (PRG_real prg))
         (applyRReduction (PRGDouble_to_Tripple_R1 prg) (PRG_rand k k)) :=
@@ -162,47 +163,47 @@ noncomputable def secureLengthTrippling_of_secureLengthDoubling
     apply IndistinguishableI.randReduction (r := PRGDouble_to_Tripple_R1 prg) none hRealRandDouble hR1
 
   have h3 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (applyRReduction (PRGDouble_to_Tripple_R1 prg) (PRG_rand k k))
         (PRG_G1 prg) :=
     Indistinguishable.of_ObsEq (obsEq_applyR1_randDouble_G1 prg)
 
   have h4 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (PRG_G1 prg) (PRG_G2 prg) :=
     Indistinguishable.of_ObsEq (obsEq_G1_G2 prg)
 
   have h5 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (PRG_G2 prg)
         (applyRReduction (PRGDouble_to_Tripple_R2 (k := k)) (PRG_real prg)) :=
     Indistinguishable.of_ObsEq (obsEq_G2_applyR2_realDouble prg)
 
   have h6 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (applyRReduction (PRGDouble_to_Tripple_R2 (k := k)) (PRG_real prg))
         (applyRReduction (PRGDouble_to_Tripple_R2 (k := k)) (PRG_rand k k)) :=
     IndistinguishableI.randReduction (r := PRGDouble_to_Tripple_R2 (k := k)) none hRealRandDouble hR2
 
   have h7 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (applyRReduction (PRGDouble_to_Tripple_R2 (k := k)) (PRG_rand k k))
         (PRG_G3 (k := k)) :=
     Indistinguishable.of_ObsEq (obsEq_applyR2_randDouble_G3 (k := k))
 
   have h8 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (PRG_G3 (k := k)) (PRG_rand k (2 * k)) :=
     Indistinguishable.of_ObsEq (obsEq_G3_prgRandTripple (k := k))
 
   have h :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
         (SecurePRGSpec k (2 * k))
         (PRG_real (LengthTrippingPRG prg)) (PRG_rand k (2 * k)) :=
     Indistinguishable.transitive h1 <|

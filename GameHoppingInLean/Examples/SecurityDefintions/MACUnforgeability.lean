@@ -75,6 +75,15 @@ noncomputable def MACUFAssumption {K Tag : Type} [DecidableEq Tag] (scheme : MAC
     RStateOracle (MACUFSpec Tag) × RStateOracle (MACUFSpec Tag) :=
   (MACUFReal scheme, MACUFIdeal scheme)
 
+noncomputable def MACUFAssumptionFull {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨MACUFQ, MACUFSpec Tag, MACUFAssumption scheme⟩
+
+noncomputable def MACUFAssumption' {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => MACUFAssumptionFull scheme
+
 /-- MAC unforgeability security definition as an instance of `Indistinguishable`. -/
 def MACUFDef
     (Assumptions : IndistinguishabilityAssumptions)
