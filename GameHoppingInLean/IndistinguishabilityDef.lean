@@ -137,6 +137,10 @@ def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
     forall κ, IndistinguishableI Assumptions Reductions κ none O r1 r2
 
+def IndistinguishableQ (Assumptions : IndistinguishabilityAssumptions)
+    (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
+    forall κ, forall q_b, IndistinguishableI Assumptions Reductions κ q_b O r1 r2
+
 namespace Indistinguishable
 
 def of_ObsEq
