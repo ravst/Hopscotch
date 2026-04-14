@@ -149,14 +149,20 @@ by
 
 def AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
   {I : Type} (O : OracleSpec I) :=
- (J : Assumptions.Idx) -> (ComplexInitReduction (Assumptions.Spec J) O)
+ (J : Assumptions.Idx) -> (
+    let ⟨_a, b, _, _⟩ := Assumptions.assumptions J
+    ComplexInitReduction b O)
 
 def advBound (Assumptions : IndistinguishabilityAssumptions)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
     (asc : AssumptionsUseT Assumptions O)
     [Fintype (Assumptions.Idx)]
     : Prop :=
-    forall distinguisher, (advantage distinguisher ro1 ro2) <= ∑ I, advantage (applyComplexInitReduction2 (asc I) distinguisher ) (Assumptions.oraclesL I) (Assumptions.oraclesR I)
+    forall distinguisher,
+      (advantage distinguisher ro1 ro2) <= ∑ j,
+        advantage
+          (applyComplexInitReduction2 (asc j) distinguisher)
+          (Assumptions.assumptions j).2.2.fst (Assumptions.assumptions j).2.2.snd
 
 def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
