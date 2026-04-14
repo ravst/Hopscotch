@@ -4,8 +4,14 @@ import Mathlib.Probability.Distributions.Uniform
 import GameHoppingInLean.Misc.RStateSimplifierAttr
 import GameHoppingInLean.VCVio2.ToMathlib.Control.MonadHom
 
+def MyBetterStateT (σ : Type z) (m : Type (max z u) → Type v) (α : Type u) : Type (max v z) :=
+  σ → m (α × σ)
 -- RState: state transformer over the probabilistic Pmf monad
-abbrev RState (σ : Type _) (α : Type _) : Type _ := StateT σ PMF α
+abbrev MyBetterRState (σ : Type u) (α : Type v) : Type (max u v) := MyBetterStateT σ PMF α
+
+
+-- RState: state transformer over the probabilistic Pmf monad
+abbrev RState (σ : Type u) (α : Type u) : Type u := StateT σ PMF α
 
 namespace StateT
 

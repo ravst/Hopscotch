@@ -4,6 +4,8 @@ import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleComp
 import GameHoppingInLean.VCVio2.VCVio.OracleComp.SimSemantics.SimulateQ
 import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleSpec
+import GameHoppingInLean.IndistinguishabilityDef
+
 
 -- generic intro. move.
 
@@ -21,38 +23,46 @@ lemma pmf_non_inf (r : PMF X) (x : X) : getPMF r x = r x :=
 def distance (x y : NNReal) : NNReal := ⟨dist x y, dist_nonneg⟩
 
 noncomputable
-def distanceFam (x y : ℕ → PMF (Bool)) : ℕ → NNReal :=
-  fun κ =>
-    distance (getPMF (x κ) (True)) (getPMF (y κ) (True))
+def distancePMF (x y : PMF (Bool)) : NNReal :=
+    distance (getPMF x (True)) (getPMF y (True))
+
+-- noncomputable
+-- def distanceFam (x y : ℕ → PMF (Bool)) : ℕ → NNReal :=
+--   fun κ => distancePMF (x κ) (y κ)
 
 
 -- proper code
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)
-def adversaryT {I : Type} (O : OracleSpec I) := OracleComp O Bool
+def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
 
-noncomputable def runDinstinguisherOld {I : Type} {O : OracleSpec I}
+noncomputable def runDinstinguisher {I : Type} {O : OracleSpec I}
   (d : adversaryT O) (impl : RStateOracle O) : PMF Bool :=
-  let comp := OracleComp.simulateQ (query_impl_convert impl.queries) d
+  let comp := OracleComp.simulateQ (query_impl_convert (addPMFtoImpl impl.queries)) d
   do
     let init <- impl.initialState
     (comp init).map (fun x => x.1)
 
 
-def compFamT {I : Type} (Spec : ℕ -> OracleSpec I) (Output : ℕ -> Type) := (κ : ℕ) -> OracleComp (Spec κ) (Output κ)
+def compFamT {I : Type} (Spec : ℕ -> OracleSpec I) (Output : ℕ -> Type) := (κ : ℕ) -> OracleComp (withPMFSpec (Spec κ)) (Output κ)
 
 
-noncomputable def runDinstinguisher {I : Type} {Spec : ℕ -> OracleSpec I}
+noncomputable def runDinstinguisherFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (d : compFamT Spec (fun _κ => Bool)) (impl : famOracle Spec) (κ : ℕ) : PMF Bool :=
-  runDinstinguisherOld (d κ) (impl κ)
+  runDinstinguisher (d κ) (impl κ)
 
 def PolyFamOracleCompPred : Type 1 :=
   {I : Type} -> {Spec : ℕ -> OracleSpec I} -> {Output : ℕ -> Type} -> (compFamT Spec Output) -> Prop
 
 noncomputable
-def advantage {I : Type} {Spec : ℕ -> OracleSpec I}
-  (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 : famOracle Spec) : (κ : ℕ) -> NNReal :=
-  distanceFam (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
+def advantage {I : Type} {O : OracleSpec I}
+  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) : NNReal :=
+  distancePMF (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
+
+noncomputable
+def advantageFam {I : Type} {Spec : ℕ -> OracleSpec I}
+  (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 : famOracle Spec) (κ : ℕ) : NNReal :=
+  advantage (distinguisher κ) (o1 κ) (o2 κ)
 
 noncomputable
 def CompIndistinguishabilitySeededOracle
@@ -65,7 +75,7 @@ def CompIndistinguishabilitySeededOracle
     -- ... that run in polynomial time ...
     (IsPolyTime distinguisher) ->
     -- ... only achieve negligible advantage.
-    negl (advantage distinguisher o1 o2)
+    negl (advantageFam distinguisher o1 o2)
 
 
 -- lemmas
@@ -75,6 +85,10 @@ def CompIndistinguishabilitySeededOracle
 lemma distSymm (x y : NNReal) : distance x y = distance y x := by
   simp [distance]
   simp [dist_comm]
+
+
+lemma disPMFSymm (x y ) : distancePMF x y = distancePMF y x := by
+  simp [distancePMF, distSymm]
 
 lemma distTriangle (x y z : NNReal) : distance x z ≤ distance x y + distance y z := by
   simp [distance]
@@ -126,7 +140,62 @@ lemma neglTriangle2 (f1 f2 f3: ℕ -> NNReal)
 
 lemma advatangeTriangle {I : Type} {Spec : ℕ -> OracleSpec I}
   (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 o3 : famOracle Spec) :
-  forall κ, advantage distinguisher o1 o3 κ <= advantage distinguisher o1 o2 κ + advantage distinguisher o2 o3 κ :=
+  forall κ, advantageFam distinguisher o1 o3 κ <= advantageFam distinguisher o1 o2 κ + advantageFam distinguisher o2 o3 κ :=
 by
   intro κ
   apply distTriangle
+
+-- def advantageO {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O) :=
+
+def AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
+  {I : Type} (O : OracleSpec I) :=
+ (J : Assumptions.Idx) -> (ComplexInitReduction (Assumptions.Spec J) O)
+
+def advBound (Assumptions : IndistinguishabilityAssumptions)
+    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+    (asc : AssumptionsUseT Assumptions O)
+    [Fintype (Assumptions.Idx)]
+    : Prop :=
+    forall distinguisher, (advantage distinguisher ro1 ro2) <= ∑ I, advantage (applyComplexInitReduction2 (asc I) distinguisher ) (Assumptions.oraclesL I) (Assumptions.oraclesR I)
+
+def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
+      [Fintype (Assumptions.Idx)]
+      {Reductions : IndistinguishabilityReductions}
+      (κ :  ℕ) (q_b : Option ℕ)
+      {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+      (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂)
+      :
+      {asc : AssumptionsUseT Assumptions O // advBound Assumptions O ro₁ ro₂ asc} :=
+by
+  induction ind
+  case assumption q_b' it =>
+    clear q_b ro₁ ro₂
+    -- let f : AssumptionsUseT Assumptions O := fun x =>
+    --   if x = it then 1 else 0
+
+    sorry
+  case obsEq =>
+    sorry
+  case simpleReduction =>
+    sorry
+  case reduction =>
+    sorry
+  case complexInitReduction =>
+    sorry
+  case randReduction =>
+    sorry
+  case symm I' O' ro1' ro2' q_b' ind' asc' =>
+    clear ro₁ ro₂ O I
+    exact ⟨asc'.1, by
+      simp [advBound]
+      intro dist
+      simp [advantage]
+      rw [disPMFSymm]
+      apply asc'.2
+    ⟩
+  case trans I' O' ro1' ro2' ro3' q_b' ind' ind'' asc' asc'' =>
+    clear ro₁ ro₂ O I
+
+    sorry
+  case longSequence =>
+    sorry
