@@ -10,9 +10,7 @@ IndistinguishableI. -/
 structure IndistinguishabilityAssumptions where
   Idx : Type
   [decEq : DecidableEq Idx]
-  Spec : Idx -> OracleSpec Idx
-  oraclesL : (i : Idx) -> RStateOracle (Spec i)
-  oraclesR : (i : Idx) -> RStateOracle (Spec i)
+  assumptions : Idx → (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
 
 instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
 
@@ -24,6 +22,16 @@ instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
 def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
   : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
   := ⟨I, O, p⟩
+
+/-- Disjoint union of two assumption families. The resulting index type is the sum of the
+original index types, and each side is selected by `Sum.inl` or `Sum.inr`. -/
+def oplus (A B : IndistinguishabilityAssumptions) : IndistinguishabilityAssumptions where
+  Idx := Sum A.Idx B.Idx
+  assumptions := fun
+    | Sum.inl i => A.assumptions i
+    | Sum.inr i => B.assumptions i
+
+infixl:65 " ⊕ " => oplus
 
 /-- For each pair of specs `(O₁, O₂)`, a set of allowed stateful randomized reductions
 from `O₁` to `O₂`. -/
@@ -77,8 +85,8 @@ inductive IndistinguishableI
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
     (q_b : Option ℕ) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
   | assumption {q_b : Option ℕ} (i : Assumptions.Idx) :
-      IndistinguishableI Assumptions Reductions κ q_b (Assumptions.Spec i)
-        (Assumptions.oraclesL i) (Assumptions.oraclesR i)
+      IndistinguishableI Assumptions Reductions κ q_b ((Assumptions.assumptions i).2.1)
+        (Assumptions.assumptions i).2.2.1 (Assumptions.assumptions i).2.2.2
   | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
       ObsEq ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
@@ -128,6 +136,10 @@ inductive IndistinguishableI
 def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
     forall κ, IndistinguishableI Assumptions Reductions κ none O r1 r2
+
+def IndistinguishableQ (Assumptions : IndistinguishabilityAssumptions)
+    (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
+    forall κ, forall q_b, IndistinguishableI Assumptions Reductions κ q_b O r1 r2
 
 namespace Indistinguishable
 

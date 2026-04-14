@@ -39,6 +39,15 @@ noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEn
     RStateOracle (IndCpaSpec C) × RStateOracle (IndCpaSpec C) :=
   (IndCpaL scheme, IndCpaR scheme)
 
+noncomputable def IndCpaAssumptionFull {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨ℕ, IndCpaSpec C, IndCpaAssumption scheme⟩
+
+noncomputable def IndCpaAssumption' {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => IndCpaAssumptionFull scheme
+
 
 /-- IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaDef

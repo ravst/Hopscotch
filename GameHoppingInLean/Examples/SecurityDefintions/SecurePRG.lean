@@ -39,6 +39,15 @@ noncomputable def SecurePRGAssumption {k l : ℕ} (prg : PRG k l) :
     RStateOracle (SecurePRGSpec k l) × RStateOracle (SecurePRGSpec k l) :=
   (PRG_real prg, PRG_rand k l)
 
+noncomputable def SecurePRGAssumptionFull {k l : ℕ} (prg : PRG k l) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨Unit, SecurePRGSpec k l, SecurePRGAssumption prg⟩
+
+noncomputable def SecurePRGAssumption' {k l : ℕ} (prg : PRG k l) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => SecurePRGAssumptionFull prg
+
 /-- PRG security definition as an instance of `Indistinguishable`. -/
 def SecurePRGDef
     (Assumptions : IndistinguishabilityAssumptions)

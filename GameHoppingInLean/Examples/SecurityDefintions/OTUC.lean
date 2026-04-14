@@ -42,6 +42,17 @@ noncomputable def OTUCAssumption {K : Type} {C : ℕ → Type}
     RStateOracle (OTUCSpec C) × RStateOracle (OTUCSpec C) :=
   (OTUC_Real scheme, OTUC_Rand scheme)
 
+noncomputable def OTUCAssumptionFull {K : Type} {C : ℕ → Type}
+    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨ℕ, OTUCSpec C, OTUCAssumption scheme⟩
+
+noncomputable def OTUCAssumption' {K : Type} {C : ℕ → Type}
+    [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => OTUCAssumptionFull scheme
+
 /-- OTUC indistinguishability definition as an instance of `Indistinguishable`. -/
 def OTUCDef
     (Assumptions : IndistinguishabilityAssumptions)

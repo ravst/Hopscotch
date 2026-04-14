@@ -484,36 +484,37 @@ theorem obsEq_G4_otsrRandElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G]
 
 /-- DDH implies one-time secrecy-rand for ElGamal via the DDH reduction and the game hops above. -/
 noncomputable def ddhImpliesElGamalOTSRand
-    {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G)
     (hgen : IsGenerator g)
     (hReduction : DDHToElGamalOTSRandReduction g ∈
       Reductions.complexInitReductions (DecisionalDHSpec G) (OneTimeSecrecyRandSpec G G (G × G)))
-    (hDDH : DecisionalDHDef Assumptions Reductions g) :
-    OneTimeSecrecyRandDef Assumptions Reductions (ElGamal g) := by
+    : OneTimeSecrecyRandDef (DecisionalDHAssumption' g) Reductions (ElGamal g) := by
   intro κ
   have hRealRand :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (DecisionalDHSpec G) (dhReal g) (dhRand g) := by
-    simpa [DecisionalDHDef] using hDDH κ
+    simpa [DecisionalDHAssumption', DecisionalDHAssumptionFull, DecisionalDHAssumption] using
+      (IndistinguishableI.assumption
+        (Assumptions := DecisionalDHAssumption' g)
+        (Reductions := Reductions) (κ := κ) (q_b := none) ())
 
   have h1 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (OneTimeSecrecyRandReal (ElGamal g))
         (ElGamalOTSRandG1 g) :=
     Indistinguishable.of_ObsEq (obsEq_otsrRealElGamal_G1 g)
 
   have h2 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (ElGamalOTSRandG1 g)
         (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhReal g)) :=
     Indistinguishable.of_ObsEq (obsEq_G1_applyComplexInit_dhReal g)
 
   have h3 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhReal g))
         (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhRand g)) :=
@@ -521,27 +522,27 @@ noncomputable def ddhImpliesElGamalOTSRand
       (r := DDHToElGamalOTSRandReduction g) none hRealRand hReduction
 
   have h4 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (applyComplexInitReduction (DDHToElGamalOTSRandReduction g) (dhRand g))
         (ElGamalOTSRandG3 g) :=
     Indistinguishable.of_ObsEq (obsEq_applyComplexInit_dhRand_G3 g)
 
   have h5 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (ElGamalOTSRandG3 g) (ElGamalOTSRandG4 g) :=
     Indistinguishable.of_ObsEq (obsEq_G3_G4 g)
 
   have h6 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (ElGamalOTSRandG4 g)
         (OneTimeSecrecyRandRand (ElGamal g)) :=
     Indistinguishable.of_ObsEq (obsEq_G4_otsrRandElGamal g hgen)
 
   have h :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeSecrecyRandSpec G G (G × G))
         (OneTimeSecrecyRandReal (ElGamal g))
         (OneTimeSecrecyRandRand (ElGamal g)) :=

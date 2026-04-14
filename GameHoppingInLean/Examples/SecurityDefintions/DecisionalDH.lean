@@ -45,6 +45,17 @@ noncomputable def DecisionalDHAssumption {G : Type}
     RStateOracle (DecisionalDHSpec G) × RStateOracle (DecisionalDHSpec G) :=
   (dhReal g, dhRand g)
 
+noncomputable def DecisionalDHAssumptionFull {G : Type}
+    [Group G] [Fintype G] [Nontrivial G] (g : G) :
+    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+  ⟨DecisionalDHQ, DecisionalDHSpec G, DecisionalDHAssumption g⟩
+
+noncomputable def DecisionalDHAssumption' {G : Type}
+    [Group G] [Fintype G] [Nontrivial G] (g : G) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => DecisionalDHAssumptionFull g
+
 /-- DDH security definition as an instance of `Indistinguishable`. -/
 def DecisionalDHDef
     (Assumptions : IndistinguishabilityAssumptions)

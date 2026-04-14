@@ -94,7 +94,6 @@ theorem obsEq_apply_right_otsrReal_otsR
 
 /-- One-time secrecy follows from one-time secrecy-rand via the two simple reductions. -/
 noncomputable def otsRandImpliesOTS
-    {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C)
@@ -102,25 +101,28 @@ noncomputable def otsRandImpliesOTS
       Reductions.simpleReductions (OneTimeSecrecyRandSpec PubK M C) (OneTimeSecrecySpec PubK M C))
     (hRightRed : OTSRandToOTSR (PubK := PubK) (M := M) (C := C) ∈
       Reductions.simpleReductions (OneTimeSecrecyRandSpec PubK M C) (OneTimeSecrecySpec PubK M C))
-    (hOTSRand : OneTimeSecrecyRandDef Assumptions Reductions scheme) :
-    OneTimeSecrecyDef Assumptions Reductions scheme := by
+    : OneTimeSecrecyDef (OneTimeSecrecyRandAssumption' scheme) Reductions scheme := by
   intro κ
   have hRealRand :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecyRandSpec PubK M C)
         (OneTimeSecrecyRandReal scheme)
         (OneTimeSecrecyRandRand scheme) := by
-    simpa [OneTimeSecrecyRandDef] using hOTSRand κ
+    simpa [OneTimeSecrecyRandAssumption', OneTimeSecrecyRandAssumptionFull,
+      OneTimeSecrecyRandAssumption] using
+      (IndistinguishableI.assumption
+        (Assumptions := OneTimeSecrecyRandAssumption' scheme)
+        (Reductions := Reductions) (κ := κ) (q_b := none) ())
 
   have hRandReal :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecyRandSpec PubK M C)
         (OneTimeSecrecyRandRand scheme)
         (OneTimeSecrecyRandReal scheme) :=
     IndistinguishableI.symm none hRealRand
 
   have h1 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (OneTimeSecrecyL scheme)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
@@ -128,7 +130,7 @@ noncomputable def otsRandImpliesOTS
     Indistinguishable.of_ObsEq (obsEq_otsL_apply_left_otsrReal scheme)
 
   have h2 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandReal scheme))
@@ -138,7 +140,7 @@ noncomputable def otsRandImpliesOTS
       (r := OTSRandToOTSL (PubK := PubK) (M := M) (C := C)) none hRealRand hLeftRed
 
   have h3 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSL (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandRand scheme))
@@ -148,7 +150,7 @@ noncomputable def otsRandImpliesOTS
       (obsEq_apply_left_otsrRand_apply_right_otsrRand scheme)
 
   have h4 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSR (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandRand scheme))
@@ -158,7 +160,7 @@ noncomputable def otsRandImpliesOTS
       (r := OTSRandToOTSR (PubK := PubK) (M := M) (C := C)) none hRandReal hRightRed
 
   have h5 :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (applySimpleReduction (OTSRandToOTSR (PubK := PubK) (M := M) (C := C))
           (OneTimeSecrecyRandReal scheme))
@@ -166,7 +168,7 @@ noncomputable def otsRandImpliesOTS
     Indistinguishable.of_ObsEq (obsEq_apply_right_otsrReal_otsR scheme)
 
   have h :
-      IndistinguishableI Assumptions Reductions κ none
+      IndistinguishableI (OneTimeSecrecyRandAssumption' scheme) Reductions κ none
         (OneTimeSecrecySpec PubK M C)
         (OneTimeSecrecyL scheme) (OneTimeSecrecyR scheme) :=
     Indistinguishable.transitive h1 <|
