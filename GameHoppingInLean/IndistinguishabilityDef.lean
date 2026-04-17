@@ -7,10 +7,16 @@ IndistinguishableI. -/
 -- abbrev IndistinguishabilityAssumptions :=
 --   {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
 
+structure SingleAssumption where
+  I : Type
+  O : OracleSpec I
+  i1 : RStateOracle O
+  i2 : RStateOracle O
+
 structure IndistinguishabilityAssumptions where
   Idx : Type
   [decEq : DecidableEq Idx]
-  assumptions : Idx → (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
+  assumptions : Idx → SingleAssumption
 
 instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
 
@@ -85,8 +91,8 @@ inductive IndistinguishableI
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
     (q_b : Option ℕ) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
   | assumption {q_b : Option ℕ} (i : Assumptions.Idx) :
-      IndistinguishableI Assumptions Reductions κ q_b ((Assumptions.assumptions i).2.1)
-        (Assumptions.assumptions i).2.2.1 (Assumptions.assumptions i).2.2.2
+      IndistinguishableI Assumptions Reductions κ q_b ((Assumptions.assumptions i).O)
+        (Assumptions.assumptions i).i1 (Assumptions.assumptions i).i2
   | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
       ObsEq ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
@@ -227,7 +233,6 @@ mutual
             Finset.sum (α := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (H j.1 (by
               cases j
               case mk val prop =>
-              simp []
               simp [Finset.range] at prop
               assumption
             )) i))

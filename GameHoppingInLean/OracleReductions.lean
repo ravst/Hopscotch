@@ -235,6 +235,19 @@ def mk' {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {s 
   initialState := initialState
   queries := queries
 
+def identity {I : Type} (O : OracleSpec I) : ComplexInitReduction O O :=
+  {
+    stateType := Unit
+    initialState := pure ()
+    queries := {
+      impl := fun a x =>
+        let x : OracleSpec.OracleQuery (withCoinFlipAndStateSpec Unit O) _ :=  OracleSpec.query (withCoinFlipAndStateI.oracle a) x
+        have H : (withCoinFlipAndStateSpec Unit O).range (withCoinFlipAndStateI.oracle a) = (O a).2 := rfl
+        let y : OracleSpec.OracleQuery (withCoinFlipAndStateSpec Unit O) (O.range a) := H ▸ x
+        y
+    }
+  }
+
 end ComplexInitReduction
 
 @[simp]
@@ -329,3 +342,7 @@ noncomputable def applyComplexInitReduction2 {Output I₁ I₂ : Type} {O₁ : O
     do
       let sample : reduction.stateType <- reduction.initialState
       y sample
+
+lemma applyComplexInitReduction2_identity  {Output I : Type} {O : OracleSpec I}
+  (dist : OracleComp (withPMFSpec O) Output)
+  : applyComplexInitReduction2 (ComplexInitReduction.identity O) dist = dist := by sorry
