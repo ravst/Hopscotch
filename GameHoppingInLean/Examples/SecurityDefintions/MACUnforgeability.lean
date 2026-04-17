@@ -76,7 +76,7 @@ noncomputable def MACUFAssumption {K Tag : Type} [DecidableEq Tag] (scheme : MAC
   (MACUFReal scheme, MACUFIdeal scheme)
 
 noncomputable def MACUFAssumptionFull {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨MACUFQ, MACUFSpec Tag, MACUFAssumption scheme⟩
 
 noncomputable def MACUFAssumption' {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :

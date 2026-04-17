@@ -316,7 +316,7 @@ def lower {I : Type _} {O : OracleSpec I} {state : Type} {Output : Type}
     let y : OracleComp (withPMFSpec O) (Output × state) := x init
     y <&> (fun x => x.1)
 
-noncomputable def addPMFtoImpl2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {stateType : Type} (impl : QueryImpl3 O1 (SRReductionComp O2 stateType)):
+def addPMFtoImpl2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {stateType : Type} (impl : QueryImpl3 O1 (SRReductionComp O2 stateType)):
   QueryImpl3 (withPMFSpec O1) (SRReductionComp O2 stateType) :=
   {
   impl := fun
@@ -333,7 +333,7 @@ noncomputable def addPMFtoImpl2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Oracle
 
 
 /-- Apply a reduction whose initialization may query the underlying oracle. -/
-noncomputable def applyComplexInitReduction2 {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+def applyComplexInitReduction2 {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
     (reduction : ComplexInitReduction O₁ O₂) (dist : OracleComp (withPMFSpec O₂) Output)
     : OracleComp (withPMFSpec O₁) Output :=
     let x : OracleComp (withCoinFlipAndStateSpec reduction.stateType O₁) Output :=
@@ -346,3 +346,16 @@ noncomputable def applyComplexInitReduction2 {Output I₁ I₂ : Type} {O₁ : O
 lemma applyComplexInitReduction2_identity  {Output I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Output)
   : applyComplexInitReduction2 (ComplexInitReduction.identity O) dist = dist := by sorry
+
+
+/-- Apply a reduction whose initialization may query the underlying oracle. -/
+def ComplexInitReduction2_compose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+    (r1 : ComplexInitReduction O₁ O₂) (r2 : ComplexInitReduction O₂ O₃) : ComplexInitReduction O₁ O₃ := by sorry
+
+/-- Apply a reduction whose initialization may query the underlying oracle. -/
+lemma ComplexInitReduction2_compose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+    (r1 : ComplexInitReduction O₁ O₂) (r2 : ComplexInitReduction O₂ O₃)
+    (dist : OracleComp (withPMFSpec O₃) Output) :
+    applyComplexInitReduction2 (ComplexInitReduction2_compose r1 r2) dist =
+    applyComplexInitReduction2 r1 (applyComplexInitReduction2 r2 dist)
+       := by sorry

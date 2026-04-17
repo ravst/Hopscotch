@@ -1,4 +1,6 @@
 import GameHoppingInLean.Basic
+import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.ComputationalIndistinguishability
 import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 import GameHoppingInLean.Examples.Proofs.OneTimeSecrecyRandImpliesOneTimeSecrecy
 import GameHoppingInLean.Examples.Proofs.OUTCInnerImpliesOUTCDouble

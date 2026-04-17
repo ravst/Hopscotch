@@ -44,7 +44,7 @@ noncomputable def OTUCAssumption {K : Type} {C : ℕ → Type}
 
 noncomputable def OTUCAssumptionFull {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨ℕ, OTUCSpec C, OTUCAssumption scheme⟩
 
 noncomputable def OTUCAssumption' {K : Type} {C : ℕ → Type}

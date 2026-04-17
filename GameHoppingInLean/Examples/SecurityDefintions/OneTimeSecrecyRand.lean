@@ -84,7 +84,7 @@ noncomputable def OneTimeSecrecyRandAssumption {PubK SecK M C : Type}
 
 noncomputable def OneTimeSecrecyRandAssumptionFull {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨OneTimeSecrecyQ, OneTimeSecrecyRandSpec PubK M C, OneTimeSecrecyRandAssumption scheme⟩
 
 noncomputable def OneTimeSecrecyRandAssumption' {PubK SecK M C : Type}

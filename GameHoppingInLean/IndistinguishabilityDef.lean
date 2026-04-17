@@ -10,8 +10,7 @@ IndistinguishableI. -/
 structure SingleAssumption where
   I : Type
   O : OracleSpec I
-  i1 : RStateOracle O
-  i2 : RStateOracle O
+  i : RStateOracle O × RStateOracle O
 
 structure IndistinguishabilityAssumptions where
   Idx : Type
@@ -19,9 +18,6 @@ structure IndistinguishabilityAssumptions where
   assumptions : Idx → SingleAssumption
 
 instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
-
--- abbrev IndistinguishabilityAssumptions :=
---   List ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O))
 
 
 
@@ -89,46 +85,46 @@ universe u v w
 inductive IndistinguishableI
     (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) (κ : ℕ) :
-    (q_b : Option ℕ) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
-  | assumption {q_b : Option ℕ} (i : Assumptions.Idx) :
+    (q_b : ENat) -> {I : Type} → (O : OracleSpec I) → RStateOracle O → RStateOracle O → Type 1
+  | assumption {q_b : ENat} (i : Assumptions.Idx) :
       IndistinguishableI Assumptions Reductions κ q_b ((Assumptions.assumptions i).O)
-        (Assumptions.assumptions i).i1 (Assumptions.assumptions i).i2
-  | obsEq {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
-      ObsEq ro₁ ro₂ →
+        (Assumptions.assumptions i).i.1 (Assumptions.assumptions i).i.2
+  | obsEqB {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : ENat):
+      ObsEqBounded ro₁ ro₂ q_b →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂
   | simpleReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
-      (r : simpleReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : Option ℕ):
+      (r : simpleReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ none O₁ ro₁ ro₂ →
       r ∈ Reductions.simpleReductions O₁ O₂ →
       IndistinguishableI Assumptions Reductions κ q_b O₂
         (applySimpleReduction r ro₁) (applySimpleReduction r ro₂)
   | reduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
-      (r : SRReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : Option ℕ):
+      (r : SRReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ none O₁ ro₁ ro₂ →
       r ∈ Reductions.reductions O₁ O₂ →
       IndistinguishableI Assumptions Reductions κ q_b O₂
         (applySRReduction r ro₁) (applySRReduction r ro₂)
   | complexInitReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
-      (r : ComplexInitReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : Option ℕ):
+      (r : ComplexInitReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ none O₁ ro₁ ro₂ →
       r ∈ Reductions.complexInitReductions O₁ O₂ →
       IndistinguishableI Assumptions Reductions κ q_b O₂
         (applyComplexInitReduction r ro₁) (applyComplexInitReduction r ro₂)
   | randReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
-      (r : RReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : Option ℕ):
+      (r : RReduction O₁ O₂) {ro₁ ro₂ : RStateOracle O₁} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ none O₁ ro₁ ro₂ →
       r ∈ Reductions.randomReductions O₁ O₂ →
       IndistinguishableI Assumptions Reductions κ q_b O₂
         (applyRReduction r ro₁) (applyRReduction r ro₂)
-  | symm {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : Option ℕ):
+  | symm {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₁
-  | trans {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O} (q_b : Option ℕ):
+  | trans {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃
   | longSequence {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (1+l) -> RStateOracle O)
-    (ro_start : RStateOracle O) (ro_end :  RStateOracle O ) (q_b : Option ℕ):
+    (ro_start : RStateOracle O) (ro_end :  RStateOracle O ) (q_b : ENat):
     (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0, by simp [Finset.range]⟩)) ->
     (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, by simp [Finset.range]⟩)) ->
     (forall i, (Hi: i < l) ->
@@ -152,16 +148,21 @@ namespace Indistinguishable
 def of_ObsEq
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
-    {κ :  ℕ} {q_b : Option ℕ}
-    {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
-    ObsEq ro₁ ro₂ →
+    {κ :  ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    (H : ObsEq ro₁ ro₂) :
     IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ :=
-  IndistinguishableI.obsEq q_b
+  IndistinguishableI.obsEqB q_b (by
+    rw [ObsEq_from_none] at H
+    apply ObsEqBounded_monotone
+    apply H
+    exact sup_eq_left.mp rfl
+    )
 
 def transitive
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
-    {κ :  ℕ} {q_b : Option ℕ}
+    {κ :  ℕ} {q_b : ENat}
     {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O}:
     (IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) ->
     (IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃) ->
@@ -171,7 +172,7 @@ def transitive
 def symmetric
     {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
-    {κ :  ℕ} {q_b : Option ℕ}
+    {κ :  ℕ} {q_b : ENat}
     {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}:
     (IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) ->
     (IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₁) :=
@@ -194,7 +195,7 @@ mutual
   -- def funAddLongSeq {Assumptions : IndistinguishabilityAssumptions}
   --     {Reductions : IndistinguishabilityReductions}
   --     {κ :  ℕ} {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (1+l) -> RStateOracle O)
-  --     (q_b : Option ℕ)
+  --     (q_b : ENat)
   --     (Hs : forall i, (Hi: i < l) ->
   --       IndistinguishableI Assumptions Reductions κ q_b O
   --         (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
@@ -211,14 +212,14 @@ mutual
   def assumptionsUse
       {Assumptions : IndistinguishabilityAssumptions}
       {Reductions : IndistinguishabilityReductions}
-      {κ :  ℕ} {q_b : Option ℕ}
+      {κ :  ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
       (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) : AssumptionCounting Assumptions :=
       match ind with
       | IndistinguishableI.assumption index =>
         fun j =>
           if j = index then 1 else 0
-      | IndistinguishableI.obsEq q_b H => fun _ => 0
+      | IndistinguishableI.obsEqB q_b H => fun _ => 0
       | IndistinguishableI.simpleReduction r q_b Hind Hr => assumptionsUse Hind
       | IndistinguishableI.reduction r q_b Hind Hr => assumptionsUse Hind
       | IndistinguishableI.complexInitReduction r q_b Hind Hr => assumptionsUse Hind
@@ -255,7 +256,7 @@ end
 -- def transitive
 --     {Assumptions : IndistinguishabilityAssumptions}
 --     {Reductions : IndistinguishabilityReductions}
---     {κ :  ℕ} {q_b : Option ℕ}
+--     {κ :  ℕ} {q_b : ENat}
 --     {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O}:
 --     (Indistinguishable Assumptions Reductions O ro₁ ro₂) ->
 --     (Indistinguishable Assumptions Reductions O ro₂ ro₃) ->
