@@ -54,7 +54,7 @@ theorem obsEq_applyR1_randT_G1
   ext1 α; ext1 q
   cases q
   -- case query i msg =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift, doubleSymEnc]
+  simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift, doubleSymEnc, addPMFtoImpl]
 
 /-- `G1` is observationally equivalent to `OTUC_Rand(Double(S,T))`. -/
 theorem obsEq_G1_outcRandDouble

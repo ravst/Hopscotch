@@ -77,7 +77,7 @@ theorem obsEq_prgRealTripple_applyR1_realDouble {k : ℕ} (prg : lengthDoublingP
   funext α x
   cases x
   -- case query =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
+  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1, addPMFtoImpl]
 
 
 
@@ -89,7 +89,7 @@ theorem obsEq_applyR1_randDouble_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
   funext α x
   cases x
   -- case query =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
+  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1, addPMFtoImpl]
 
 
 
@@ -109,7 +109,7 @@ theorem obsEq_G2_applyR2_realDouble {k : ℕ} (prg : lengthDoublingPRG k) :
   funext α x
   cases x
   -- case query =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
+  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1, addPMFtoImpl]
 
 /-- `PRG_rand(2k)` composed with `R2` is observationally equivalent to `G3`. -/
 theorem obsEq_applyR2_randDouble_G3 {k : ℕ} :
@@ -119,7 +119,8 @@ theorem obsEq_applyR2_randDouble_G3 {k : ℕ} :
   funext α x
   cases x
   -- case query =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1]
+  simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, LengthTrippingPRG, PRGDouble_to_Tripple_R1, addPMFtoImpl]
+
 
 /-- `G3` is observationally equivalent to `PRG_rand(3k)`. -/
 theorem obsEq_G3_prgRandTripple {k : ℕ} :
