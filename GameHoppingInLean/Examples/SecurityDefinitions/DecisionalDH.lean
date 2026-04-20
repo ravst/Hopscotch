@@ -47,7 +47,7 @@ noncomputable def DecisionalDHAssumption {G : Type}
 
 noncomputable def DecisionalDHAssumptionFull {G : Type}
     [Group G] [Fintype G] [Nontrivial G] (g : G) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨DecisionalDHQ, DecisionalDHSpec G, DecisionalDHAssumption g⟩
 
 noncomputable def DecisionalDHAssumption' {G : Type}

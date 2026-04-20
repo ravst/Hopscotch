@@ -40,7 +40,7 @@ noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEn
   (IndCpaL scheme, IndCpaR scheme)
 
 noncomputable def IndCpaAssumptionFull {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨ℕ, IndCpaSpec C, IndCpaAssumption scheme⟩
 
 noncomputable def IndCpaAssumption' {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :

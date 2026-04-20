@@ -40,7 +40,7 @@ noncomputable def SecurePRGAssumption {k l : ℕ} (prg : PRG k l) :
   (PRG_real prg, PRG_rand k l)
 
 noncomputable def SecurePRGAssumptionFull {k l : ℕ} (prg : PRG k l) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
+    SingleAssumption :=
   ⟨Unit, SecurePRGSpec k l, SecurePRGAssumption prg⟩
 
 noncomputable def SecurePRGAssumption' {k l : ℕ} (prg : PRG k l) :

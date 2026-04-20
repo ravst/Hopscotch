@@ -30,6 +30,26 @@ context of prior queries, they induce the same output distribution on every next
 def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
   ∀ queriesList, runQueries ro₁ queriesList = runQueries ro₂ queriesList
 
+def ObsEqBounded (ro₁ ro₂ : RStateOracle O) (q_b : ENat): Prop :=
+  ∀ queriesList, queriesList.length <= q_b  -> runQueries ro₁ queriesList = runQueries ro₂ queriesList
+
+lemma ObsEq_from_none (ro₁ ro₂ : RStateOracle O):
+  ObsEq ro₁ ro₂ <-> ObsEqBounded ro₁ ro₂ none := by
+    constructor
+    · intro H
+      intro ql _trash
+      apply H
+    · intro H
+      intro ql
+      apply H
+      exact right_eq_inf.mp rfl
+
+lemma ObsEqBounded_monotone (ro₁ ro₂ : RStateOracle O) (qb1 qb2 : ENat)
+  (H : ObsEqBounded ro₁ ro₂ qb2) (Hle : qb1 ≤ qb2) : ObsEqBounded ro₁ ro₂ qb1 := by
+    intro ql Hq
+    apply H
+    exact Preorder.le_trans (↑ql.length) qb1 qb2 Hq Hle
+
 -- The simples suffictient condition of ObsEq is simple equality:
 
 def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :

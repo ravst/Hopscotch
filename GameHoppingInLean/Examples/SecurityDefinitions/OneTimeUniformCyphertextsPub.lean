@@ -84,8 +84,10 @@ noncomputable def OneTimeUniformCyphertextsPubAssumption {PubK SecK M C : Type}
 
 noncomputable def OneTimeUniformCyphertextsPubAssumptionFull {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
-  ⟨IndCpaPubQ, OneTimeUniformCyphertextsPubSpec PubK M C, OneTimeUniformCyphertextsPubAssumption scheme⟩
+    SingleAssumption where
+  I := IndCpaPubQ
+  O := OneTimeUniformCyphertextsPubSpec PubK M C
+  i := OneTimeUniformCyphertextsPubAssumption scheme
 
 noncomputable def OneTimeUniformCyphertextsPubAssumption' {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :

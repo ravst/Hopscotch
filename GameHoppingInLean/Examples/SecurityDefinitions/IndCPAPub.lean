@@ -69,8 +69,10 @@ noncomputable def IndCpaPubAssumption {PubK SecK M C : Type}
 
 noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    ((I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)) :=
-  ⟨IndCpaPubQ, IndCpaPubSpec PubK M C, IndCpaPubAssumption scheme⟩
+    SingleAssumption where
+  I := IndCpaPubQ
+  O := IndCpaPubSpec PubK M C
+  i := IndCpaPubAssumption scheme
 
 noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
