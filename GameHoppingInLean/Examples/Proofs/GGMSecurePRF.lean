@@ -1,5 +1,5 @@
-import GameHoppingInLean.Examples.SecurityDefintions.SecurePRG
-import GameHoppingInLean.Examples.SecurityDefintions.SecurePRF
+import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRG
+import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRF
 import GameHoppingInLean.Examples.Constructions.GGM
 
 section

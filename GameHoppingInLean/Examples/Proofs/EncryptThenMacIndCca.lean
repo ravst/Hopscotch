@@ -1,6 +1,6 @@
-import GameHoppingInLean.Examples.SecurityDefintions.IndCca
-import GameHoppingInLean.Examples.SecurityDefintions.IndCpa
-import GameHoppingInLean.Examples.SecurityDefintions.MACUnforgeability
+import GameHoppingInLean.Examples.SecurityDefinitions.IndCca
+import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
+import GameHoppingInLean.Examples.SecurityDefinitions.MACUnforgeability
 import GameHoppingInLean.Examples.Constructions.EncryptThenMac
 import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.Invariants

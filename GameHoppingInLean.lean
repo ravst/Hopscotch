@@ -1,8 +1,10 @@
 import GameHoppingInLean.Basic
+import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
-import GameHoppingInLean.Examples.Proofs.OneTimeSecrecyRandImpliesOneTimeSecrecy
+import GameHoppingInLean.Examples.Proofs.OneTimeUniformCyphertextsPubImpliesOneTimeSecrecy
+import GameHoppingInLean.Examples.Proofs.OneTimeSecrecyImpliesIndCPAPub
 import GameHoppingInLean.Examples.Proofs.OUTCInnerImpliesOUTCDouble
 import GameHoppingInLean.Examples.Proofs.LengthTripplingPRGSecure
 import GameHoppingInLean.Examples.Proofs.GGMSecurePRF
 import GameHoppingInLean.Examples.Proofs.EncryptThenMacIndCca
-import GameHoppingInLean.Examples.Proofs.DDHImpliesElGamalOTSRand
+import GameHoppingInLean.Examples.Proofs.DDHImpliesElGamalOTUCPub

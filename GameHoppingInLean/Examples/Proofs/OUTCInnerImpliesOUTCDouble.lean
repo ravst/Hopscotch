@@ -1,4 +1,4 @@
-import GameHoppingInLean.Examples.SecurityDefintions.OTUC
+import GameHoppingInLean.Examples.SecurityDefinitions.OTUC
 import GameHoppingInLean.Examples.Constructions.DoubleSymEnc
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.PMFLiftOrder

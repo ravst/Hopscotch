@@ -1,5 +1,5 @@
-import GameHoppingInLean.Examples.SecurityDefintions.IndCpa
-import GameHoppingInLean.Examples.SecurityDefintions.IndCpaRand
+import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
+import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
