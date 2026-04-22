@@ -53,6 +53,34 @@ theorem bind_pure_do {α : Type} (p : PMF α) :
   change p.bind (pure ∘ id) = p
   rw [PMF.bind_pure_comp, PMF.map_id]
 
+/-- Eliminate a bind whose sampled value is unused. -/
+@[GameHoppingSimplifyPMF]
+theorem bind_const_do {α β : Type} (m : PMF α) (rest : PMF β) :
+    (do
+      let _x ← m
+      rest) = rest := by
+  exact PMF.bind_const m rest
+
+/-- Every `PMF Unit` is concentrated on `()`. -/
+theorem unit_eq_pure (m : PMF Unit) :
+    m = PMF.pure () := by
+  ext x
+  cases x
+  have hsum : (∑' x : Unit, m x) = 1 := m.tsum_coe
+  have hsingle : (∑' x : Unit, m x) = m () := by
+    simp only [tsum_fintype, Finset.univ_unique, Finset.sum_singleton]
+  rw [PMF.pure_apply_self]
+  exact hsingle.symm.trans hsum
+
+/-- Eliminate a bind over a `PMF Unit`. -/
+@[GameHoppingSimplifyPMF]
+theorem unit_bind_do {α : Type} (m : PMF Unit) (f : Unit → PMF α) :
+    (do
+      let x ← m
+      f x) = f () := by
+  rw [PMF.unit_eq_pure m]
+  exact PMF.pure_bind () f
+
 /-- Pull an `if` out of a monadic bind in `do` notation. -/
 @[GameHoppingSimplifyPMF]
 theorem monad_ite_bind_do {α β : Type} (p : Prop) [Decidable p]
@@ -129,6 +157,25 @@ end PMF
 
 namespace PMFSimp
 
+private def mkBindConstRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  match e.getAppFnArgs with
+  | (``Bind.bind, #[m, _instBind, _α, _β, x, rest]) =>
+      let pmfConst ← mkConstWithFreshMVarLevels ``PMF
+      unless m.isConstOf ``PMF || (← isDefEq m pmfConst) do
+        return none
+      let .lam _xName _xTy body _xBi := rest | return none
+      if body.hasLooseBVar 0 then
+        return none
+      let restConst := body.lowerLooseBVars 0 1
+      let pf ← mkAppOptM ``PMF.bind_const_do
+        #[none, none, some x, some restConst]
+      let pfTy ← inferType pf
+      let some (_ty, lhs, rhs) := pfTy.eq? | return none
+      unless (← isDefEq lhs e) do
+        return none
+      return some (rhs, pf)
+  | _ => return none
+
 private def mkIteBindRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   match e.getAppFnArgs with
   | (``Bind.bind, #[m, _instBind, _α, _β, x, rest]) =>
@@ -148,6 +195,13 @@ private def mkIteBindRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) :=
   | _ => return none
 
 end PMFSimp
+
+/-- Simproc: remove a `PMF` bind when the continuation ignores the sampled value. -/
+simproc [GameHoppingSimplifyPMF] pmfBindConst
+  (Bind.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkBindConstRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: pull an `if` out of a `PMF` bind when using the game-hopping PMF simp set. -/
 simproc [GameHoppingSimplifyPMF] pmfIteBind

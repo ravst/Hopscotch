@@ -53,6 +53,38 @@ end PMF
 
 namespace RState
 
+@[simp] lemma run_get {σ} (s : σ) :
+    StateT.run (get : RState σ σ) s = PMF.pure (s, s) := rfl
+
+@[simp, RStateSimplifier] lemma get_apply {σ} (s : σ) :
+    (get : RState σ σ) s = PMF.pure (s, s) := rfl
+
+@[simp] lemma run_map_get {σ α} (f : σ → α) (s : σ) :
+    StateT.run (f <$> (get : RState σ σ)) s = PMF.pure (f s, s) := by
+  change StateT.run (StateT.map f (get : RState σ σ)) s = PMF.pure (f s, s)
+  unfold StateT.map
+  change PMF.map (fun a : σ × σ => (f a.1, a.2)) (PMF.pure ((s, s) : σ × σ)) =
+    PMF.pure (f s, s)
+  exact PMF.pure_map (fun a : σ × σ => (f a.1, a.2)) ((s, s) : σ × σ)
+
+@[simp, RStateSimplifier] lemma map_get_apply {σ α} (f : σ → α) (s : σ) :
+    (f <$> (get : RState σ σ)) s = PMF.pure (f s, s) := by
+  exact run_map_get f s
+
+@[simp] lemma run_liftM {σ α} (x : PMF α) (s : σ) :
+    StateT.run (liftM x : RState σ α) s = x.map (fun a => (a, s)) := by
+  simp [liftM, MonadLift.monadLift, monadLift, StateT.lift, PMF.monad_map_eq_map]
+
+@[simp, RStateSimplifier] lemma liftM_apply {σ α} (x : PMF α) (s : σ) :
+    (liftM x : RState σ α) s = x.map (fun a => (a, s)) := by
+  exact run_liftM x s
+
+@[simp] lemma run_pure_apply {σ α} (x : α) (s : σ) :
+    StateT.run (pure x : RState σ α) s = PMF.pure (x, s) := rfl
+
+@[simp, RStateSimplifier] lemma pure_apply {σ α} (x : α) (s : σ) :
+    (pure x : RState σ α) s = PMF.pure (x, s) := rfl
+
 noncomputable
 def modify (f : σ → σ ) : RState σ Unit := do
   let s ← get
@@ -67,6 +99,17 @@ def modify (f : σ → σ ) : RState σ Unit := do
     (modify f : RState σ Unit) s = PMF.pure ((), f s) := by
   change StateT.run (modify f : RState σ Unit) s = PMF.pure ((), f s)
   exact run_modify f s
+
+@[simp] lemma run_monadState_modify {σ} (f : σ → σ) (s : σ) :
+    StateT.run (_root_.modify f : RState σ Unit) s = PMF.pure ((), f s) := rfl
+
+@[simp, RStateSimplifier] lemma monadState_modify_apply {σ} (f : σ → σ) (s : σ) :
+    (_root_.modify f : RState σ Unit) s = PMF.pure ((), f s) := rfl
+
+@[simp, RStateSimplifier] lemma modify_snd_apply {α β} (f : β → β) (x : α) (y : β) :
+    (modify (fun p : α × β => (p.1, f p.2)) : RState (α × β) Unit) (x, y) =
+      PMF.pure ((), (x, f y)) := by
+  exact modify_apply (fun p : α × β => (p.1, f p.2)) (x, y)
 
 noncomputable
 def run {σ α} (sd : PMF σ) (m : RState σ α) : PMF (α × σ) := do

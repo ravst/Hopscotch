@@ -57,6 +57,11 @@ def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
     rw [hEq]
     simp [ObsEq]
 
+lemma ObsEq.symm {ro₁ ro₂ : RStateOracle O} (h : ObsEq ro₁ ro₂) :
+    ObsEq ro₂ ro₁ := by
+  intro queriesList
+  exact (h queriesList).symm
+
 -- In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
 -- for observational equivalece. We start with the "correct abstraction", explained below.
 
@@ -69,6 +74,9 @@ def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
 
 def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
   (p.1, f p.2)
+
+@[simp] lemma mapSecond_mk {α β γ} (f : β → γ) (x : α) (y : β) :
+    mapSecond f (x, y) = (x, f y) := rfl
 
 def mapInputState (f : S₁ → S₂) (m : RState S₂ α) (s : S₁) : PMF (α × S₂) :=
   StateT.run m (f s)
