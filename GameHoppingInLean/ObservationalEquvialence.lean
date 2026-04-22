@@ -62,6 +62,12 @@ lemma ObsEq.symm {ro₁ ro₂ : RStateOracle O} (h : ObsEq ro₁ ro₂) :
   intro queriesList
   exact (h queriesList).symm
 
+lemma ObsEqBounded.symm {ro₁ ro₂ : RStateOracle O} {q_b : ENat}
+    (h : ObsEqBounded ro₁ ro₂ q_b) :
+    ObsEqBounded ro₂ ro₁ q_b := by
+  intro queriesList hBound
+  exact (h queriesList hBound).symm
+
 -- In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
 -- for observational equivalece. We start with the "correct abstraction", explained below.
 
@@ -322,3 +328,24 @@ lemma existsMapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
     ObsEq ro₁ ro₂ := by
   rcases h with ⟨f, hInit, hStep⟩
   exact mapStateBijImpliesObsEq ro₁ ro₂ f hInit hStep
+
+
+  --- Now, we need a version of the correct abstraction for the bounded obs eq,
+  --- this time the abstraction is also parametrized by a natural number, which
+  --- decreases by at most one in each step.
+
+def correctAbstractionB {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+  (f : ℕ → ro₁.stateType → ro₂.stateType) (b : ℕ) : Prop :=
+ro₁.initialState.map (f b) = ro₂.initialState ∧
+∀ i (query : O.domain i) (k : Fin b),
+    mapOutputState (f k) (ro₁.queries.impl i query) =
+    mapInputState (f (k + 1)) (ro₂.queries.impl i query) ∨
+    mapOutputState (f (k+1)) (ro₁.queries.impl i query) =
+    mapInputState (f (k+1)) (ro₂.queries.impl i query)
+
+
+lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → ro₂.stateType) (b : ℕ)
+  (HCor : correctAbstractionB ro₁ ro₂ f b) :
+  ObsEqBounded ro₁ ro₂ b := by
+  sorry

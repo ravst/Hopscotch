@@ -134,6 +134,25 @@ inductive IndistinguishableI
     ) ->
     IndistinguishableI Assumptions Reductions κ q_b O ro_start ro_end
 
+namespace IndistinguishableI
+
+/-- Let `calc` compose fixed-parameter `IndistinguishableI` proofs transitively. -/
+instance instTrans
+    {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ : ℕ} {q_b : ENat} {I : Type} {O : OracleSpec I} :
+    Trans
+      (IndistinguishableI Assumptions Reductions κ q_b O)
+      (IndistinguishableI Assumptions Reductions κ q_b O)
+      (IndistinguishableI Assumptions Reductions κ q_b O) where
+  trans h₁ h₂ := IndistinguishableI.trans q_b h₁ h₂
+
+/-- Scoped notation for fixed-parameter `IndistinguishableI` `calc` chains. -/
+scoped notation:50 x " ≈ᵢ[" Assumptions ", " Reductions ", " κ ", " q_b ", " O "] " y =>
+  IndistinguishableI Assumptions Reductions κ q_b O x y
+
+end IndistinguishableI
+
 
 def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
@@ -141,7 +160,7 @@ def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
 
 def IndistinguishableQ (Assumptions : IndistinguishabilityAssumptions)
     (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
-    forall κ, forall q_b, IndistinguishableI Assumptions Reductions κ q_b O r1 r2
+    forall κ, forall q_b : ℕ , IndistinguishableI Assumptions Reductions κ q_b O r1 r2
 
 namespace Indistinguishable
 
@@ -178,8 +197,84 @@ def symmetric
     (IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₁) :=
   fun Ha => IndistinguishableI.symm q_b Ha
 
+@[refl]
+def reflexive
+    {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ :  ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {ro : RStateOracle O}:
+    (IndistinguishableI Assumptions Reductions κ q_b O ro ro) :=
+  by
+    apply of_ObsEq
+    exact congrFun rfl
+
+noncomputable def indistinguishabilityI_mono {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ :  ℕ} {q₁ q₂ : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    (hle : q₁ ≤ q₂) :
+    IndistinguishableI Assumptions Reductions κ q₂ O ro₁ ro₂ →
+    IndistinguishableI Assumptions Reductions κ q₁ O ro₁ ro₂ := by
+  intro h
+  induction h with
+  | assumption i =>
+      exact IndistinguishableI.assumption i
+  | obsEqB q H =>
+      exact IndistinguishableI.obsEqB q₁
+        (ObsEqBounded_monotone _ _ q₁ q H hle)
+  | simpleReduction r q h hRed =>
+      exact IndistinguishableI.simpleReduction r q₁ h hRed
+  | reduction r q h hRed =>
+      exact IndistinguishableI.reduction r q₁ h hRed
+  | complexInitReduction r q h hRed =>
+      exact IndistinguishableI.complexInitReduction r q₁ h hRed
+  | randReduction r q h hRed =>
+      exact IndistinguishableI.randReduction r q₁ h hRed
+  | symm q h ih =>
+      exact IndistinguishableI.symm q₁ (ih hle)
+  | trans q h₁ h₂ ih₁ ih₂ =>
+      exact IndistinguishableI.trans q₁ (ih₁ hle) (ih₂ hle)
+  | longSequence l ro ro_start ro_end q Hstart Hend Hstep ihStart ihEnd ihStep =>
+      exact IndistinguishableI.longSequence l ro ro_start ro_end q₁
+        (ihStart hle) (ihEnd hle) (fun i Hi => ihStep i Hi hle)
+
+noncomputable def indistinguishabilityIUnboundedToBounded {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ :  ℕ} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    (q_b : ℕ):
+    (IndistinguishableI Assumptions Reductions κ none O ro₁ ro₂) ->
+    (IndistinguishableI Assumptions Reductions κ (some q_b) O ro₁ ro₂) :=
+  indistinguishabilityI_mono (sup_eq_left.mp rfl)
 
 end Indistinguishable
+
+namespace IndistinguishableI
+
+noncomputable instance instTransLeftUnbounded
+    {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ : ℕ} {q_b : ENat} {I : Type} {O : OracleSpec I} :
+    Trans
+      (IndistinguishableI Assumptions Reductions κ none O)
+      (IndistinguishableI Assumptions Reductions κ q_b O)
+      (IndistinguishableI Assumptions Reductions κ q_b O) where
+  trans h₁ h₂ :=
+    IndistinguishableI.trans q_b
+      (Indistinguishable.indistinguishabilityI_mono (sup_eq_left.mp rfl) h₁)
+      h₂
+
+noncomputable instance instTransRightUnbounded
+    {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ : ℕ} {q_b : ENat} {I : Type} {O : OracleSpec I} :
+    Trans
+      (IndistinguishableI Assumptions Reductions κ q_b O)
+      (IndistinguishableI Assumptions Reductions κ none O)
+      (IndistinguishableI Assumptions Reductions κ q_b O) where
+  trans h₁ h₂ :=
+    IndistinguishableI.trans q_b h₁
+      (Indistinguishable.indistinguishabilityI_mono (sup_eq_left.mp rfl) h₂)
+
+end IndistinguishableI
 
 
 def singleton (a : X) : X -> ℕ :=
