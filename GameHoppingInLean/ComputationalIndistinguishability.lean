@@ -148,28 +148,42 @@ lemma neglTriangle2 (f1 f2 f3: ℕ -> NNReal)
     exact fun i ↦ distTriangle (f1 i) (f2 i) (f3 i)
 
 
-lemma advatangeTriangle {I : Type} {Spec : ℕ -> OracleSpec I}
+
+lemma advatangeTriangle {I : Type} {O : OracleSpec I}
+  {distinguisher : adversaryT O} (o1 o2 o3 : RStateOracle O) :
+  advantage distinguisher o1 o3 <= advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
+by
+  apply distTriangle
+
+lemma advatangeTriangleFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 o3 : famOracle Spec) :
   forall κ, advantageFam distinguisher o1 o3 κ <= advantageFam distinguisher o1 o2 κ + advantageFam distinguisher o2 o3 κ :=
 by
   intro κ
   apply distTriangle
 
--- def advantageO {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O) :=
+abbrev asUseType (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) (J : Assumptions.Idx) :=
+  ℕ × (ComplexInitReduction (Assumptions.assumptions J).O O)
+structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
+  {I : Type} (O : OracleSpec I) where
+  subset : Finset Assumptions.Idx
+  values : (J : subset) -> (
+    ℕ × (ComplexInitReduction (Assumptions.assumptions J).O O)
+  )
 
 -- SUM JOINIG
 def finsetSum {X : Type} [DecidableEq X] (s1 s2 : Finset X) : Finset X :=
   s1 ∪ s2
 
-def sumJoining {Univ : Type} {XJ : Univ -> Type} [DecidableEq Univ] (D1 D2 : Finset Univ)
+def sumJoining {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] (D1 D2 : Finset Univ)
   (val1 : (J : D1) -> XJ J)
   (val2 : (J : D2) -> XJ J)
-  (f : {J : Univ} -> XJ J -> ℝ)
+  (f : {J : Univ} -> XJ J -> NNReal)
   (val3 : (J : finsetSum D1 D2) -> XJ J) : Prop :=
     (∑ j1, f (val1 j1)) + (∑ j2, f (val2 j2)) =
     (∑ j3, f (val3 j3))
 
-def sumJoiner {Univ : Type} {XJ : Univ -> Type} [DecidableEq Univ] {D1 D2 : Finset Univ}
+def sumJoiner {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1 D2 : Finset Univ}
   (val1 : (J : D1) -> XJ J)
   (val2 : (J : D2) -> XJ J)
   (joiner : {J : Univ} -> XJ J -> XJ J -> XJ J) : (J : finsetSum D1 D2) -> XJ J  :=
@@ -192,27 +206,73 @@ def sumJoiner {Univ : Type} {XJ : Univ -> Type} [DecidableEq Univ] {D1 D2 : Fins
         apply H2
         ⟩)
 
-def sumJoinerCorrect {Univ : Type} {XJ : Univ -> Type} [DecidableEq Univ] {D1 D2 : Finset Univ}
+def sumJoinerCorrect {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1 D2 : Finset Univ}
   (val1 : (J : D1) -> XJ J)
   (val2 : (J : D2) -> XJ J)
   (joiner : {J : Univ} -> XJ J -> XJ J -> XJ J)
-  (f : {J : Univ} -> XJ J -> ℝ)
+  (f : {J : Univ} -> XJ J -> NNReal)
   (Hjoiner : forall J (x1 : XJ J) (x2 : XJ J), f x1 + f x2 = f (joiner x1 x2))
-  : sumJoining D1 D2 val1 val2 f (sumJoiner val1 val2 joiner) := sorry
+  : sumJoining XJ D1 D2 val1 val2 f (sumJoiner XJ val1 val2 joiner) := sorry
+
+
+def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (val1 val2 : AssumptionsUseT Assumptions O)
+  (joiner :  {J : Assumptions.Idx} ->
+    asUseType Assumptions O J ->
+    asUseType Assumptions O J ->
+    asUseType Assumptions O J
+  )
+  : AssumptionsUseT Assumptions O :=
+  {
+    subset := finsetSum val1.subset val2.subset
+    values := sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner
+  }
+
+
+-- def assumptionJoinerCorrect (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I)
+--   [DecidableEq Assumptions.Idx]
+--   (val1 val2 : AssumptionsUseT Assumptions O)
+--   (joiner :  {J : Assumptions.Idx} ->
+--     asUseType Assumptions O J ->
+--     asUseType Assumptions O J ->
+--     asUseType Assumptions O J
+--   )
+--   (f : {J : Assumptions.Idx} -> asUseType Assumptions O J -> ℝ)
+--   (Hjoiner : forall J (x1 x2: asUseType Assumptions O J), f x1 + f x2 = f (joiner x1 x2))
+--   : sumJoining (fun J => asUseType Assumptions O J) D1 D2 val1.values val2.values f
+--     (sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner)
+--     :=
+--     by apply sumJoinerCorrect
+
+
 
  --
+
+
+-- -- both of this lemmas are probably false :-(
+-- def psudo_prhl (f1 : A1 -> PMF B) (f2 : A2 -> PMF B) (x1 : PMF A1) (x2 : PMF A2)
+--   (H : x1.bind f1 = x2.bind f2)
+--   : { z : PMF (A1 × A2) //
+--     z.map (fun x => x.1) = x1 /\
+--     z.map (fun x => x.2) = x2 /\
+--     z.support ⊆ {(a1, a2) | f1 a1 = f2 a2}
+--   } := by sorry
+-- def obseEqBoundedDecomp {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+--   (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) (q: QueryS O)
+--   (Hq : q_b >= 1) :
+--   { z : PMF ((O.range q.index) × ro₁.stateType × ro₂.stateType ) //
+--     z.map (fun x => (x.1, x.2.1)) = ((ro₁.queries.impl q.index q.input).run ro₁.initialState) /\
+--     z.map (fun x => (x.1, x.2.2)) = ((ro₂.queries.impl q.index q.input).run ro₂.initialState) /\
+--     z.support ⊆ { x | ObsEqBounded {ro₁ with initialState := pure x.2.1} {ro₂ with initialState := pure x.2.2} (q_b-1) } /\
+--     true
+--   } := by sorry
 
 lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) : FreeMonad.depth dist <= q_b ->
     advantage dist ro₁ ro₂ = 0 := by sorry
 
-
-structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
-  {I : Type} (O : OracleSpec I) where
-  subset : Finset Assumptions.Idx
-  values : (J : subset) -> (
-    ℕ × (ComplexInitReduction (Assumptions.assumptions J).O O)
-  )
+def reductionCombiner {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : ℕ × (ComplexInitReduction O1 O2)) : ℕ × (ComplexInitReduction O1 O2) := by sorry
 
 def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
@@ -228,6 +288,35 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
           (applyComplexInitReduction2 (asc.values j).2 distinguisher)
           (Assumptions.assumptions j).i.1 (Assumptions.assumptions j).i.2
 
+
+noncomputable def ascToReal {I : Type} {O : OracleSpec I} (Assumptions : IndistinguishabilityAssumptions)
+  (distinguisher : FreeMonad (withPMFSpec O).OracleQuery Bool)
+  {J : Assumptions.Idx} (x : asUseType Assumptions O J) : NNReal :=
+  (x).1 *
+        advantage
+          (applyComplexInitReduction2 (x).2 distinguisher)
+          (Assumptions.assumptions J).i.1 (Assumptions.assumptions J).i.2
+
+def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+    (asc : AssumptionsUseT Assumptions O)
+
+    [Fintype (Assumptions.Idx)]
+    : Prop :=
+    forall distinguisher,
+      FreeMonad.depth distinguisher ≤ q_b ->
+      (advantage distinguisher ro1 ro2) <= ∑ j,
+        ascToReal Assumptions distinguisher (asc.values j)
+
+lemma advBoundEq (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+    (asc : AssumptionsUseT Assumptions O)
+    [Fintype (Assumptions.Idx)] :
+    advBound Assumptions q_b O ro1 ro2 asc = advBound2 Assumptions q_b O ro1 ro2 asc :=
+by
+  simp [advBound2 , advBound, ascToReal]
+
+
 def advantage_reduction {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (dist : adversaryT O2) (o1 o2 : RStateOracle O1)
   (r : ComplexInitReduction O1 O2) :
@@ -241,9 +330,9 @@ def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
       {Reductions : IndistinguishabilityReductions}
       {κ :  ℕ} {q_b : ENat}
-      {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) ->
-      {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O ro₁ ro₂ asc}
+      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
+      (ind : IndistinguishableI Assumptions Reductions κ q_b O o₁ o₂) ->
+      {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc}
 | IndistinguishableI.assumption idx =>
   ⟨{ subset := {idx}, values := fun xp => by
       cases xp
@@ -276,8 +365,7 @@ def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
     sorry
 | IndistinguishableI.randReduction a b c d =>
     sorry
-| @IndistinguishableI.complexInitReduction Assumptions Reductions κ I1 I2 O1 O2 r ro1 ro2 b ind Hr => by
-    clear ro₁ ro₂ O I
+| @IndistinguishableI.complexInitReduction Assumptions Reductions κ I1 I2 O1 O2 r ro1 o₁ b ind Hr => by
     let ⟨asc, Hasc⟩ := symbolicSoundness ind
     exact
       ⟨{
@@ -305,7 +393,35 @@ def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       rw [disPMFSymm]
       apply re.2
       ⟩
-| IndistinguishableI.trans a b c =>
+| IndistinguishableI.trans rm q_b ind1 ind2 =>
+    let ⟨asc1, Hasc1⟩ := symbolicSoundness ind1
+    let ⟨asc2, Hasc2⟩ := symbolicSoundness ind2
+    let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
+    ⟨joint,
+      (by
+        rw [advBoundEq]
+        simp [advBound2]
+        intro dist Hdepth
+        simp [joint, assumptionJoiner]
+        have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
+          asc1.values asc2.values (fun a b => reductionCombiner a b)
+          (fun x => ascToReal Assumptions dist x) (by
+            intro j x1 x2
+            simp [ascToReal]
+            -- this should follow from construction of reduction combiner
+            sorry
+          )
+        simp [sumJoining] at HHx
+        rw [<-HHx]
+        clear HHx
+        apply le_trans (advatangeTriangle _ rm _)
+        -- apply advatangeTriangle _ rm _
+        rw [advBoundEq] at Hasc1 Hasc2
+        simp [advBound2] at Hasc1 Hasc2
+        have L1 := add_le_add (Hasc1 dist Hdepth) (Hasc2 dist Hdepth)
+        apply L1
+      )
+    ⟩
+| IndistinguishableI.longSequence a b c d e ind1 ind2 h =>
     sorry
-| IndistinguishableI.longSequence a b c d e f g h =>
-    sorry
+    -- sorry

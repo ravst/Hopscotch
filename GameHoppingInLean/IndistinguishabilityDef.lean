@@ -119,7 +119,7 @@ inductive IndistinguishableI
   | symm {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₁
-  | trans {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O} (q_b : ENat):
+  | trans {I : Type} {O : OracleSpec I}  {ro₁ : RStateOracle O} (ro₂: RStateOracle O) {ro₃ : RStateOracle O} (q_b : ENat):
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃
@@ -145,7 +145,7 @@ instance instTrans
       (IndistinguishableI Assumptions Reductions κ q_b O)
       (IndistinguishableI Assumptions Reductions κ q_b O)
       (IndistinguishableI Assumptions Reductions κ q_b O) where
-  trans h₁ h₂ := IndistinguishableI.trans q_b h₁ h₂
+  trans h₁ h₂ := IndistinguishableI.trans _ q_b h₁ h₂
 
 /-- Scoped notation for fixed-parameter `IndistinguishableI` `calc` chains. -/
 scoped notation:50 x " ≈ᵢ[" Assumptions ", " Reductions ", " κ ", " q_b ", " O "] " y =>
@@ -186,7 +186,7 @@ def transitive
     (IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂) ->
     (IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃) ->
     (IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃) :=
-  fun Ha Hb => IndistinguishableI.trans q_b Ha Hb
+  fun Ha Hb => IndistinguishableI.trans _ q_b Ha Hb
 
 def symmetric
     {Assumptions : IndistinguishabilityAssumptions}
@@ -231,8 +231,8 @@ noncomputable def indistinguishabilityI_mono {Assumptions : Indistinguishability
       exact IndistinguishableI.randReduction r q₁ h hRed
   | symm q h ih =>
       exact IndistinguishableI.symm q₁ (ih hle)
-  | trans q h₁ h₂ ih₁ ih₂ =>
-      exact IndistinguishableI.trans q₁ (ih₁ hle) (ih₂ hle)
+  | trans a q h₁ h₂ ih₁ ih₂ =>
+      exact IndistinguishableI.trans a q₁ (ih₁ hle) (ih₂ hle)
   | longSequence l ro ro_start ro_end q Hstart Hend Hstep ihStart ihEnd ihStep =>
       exact IndistinguishableI.longSequence l ro ro_start ro_end q₁
         (ihStart hle) (ihEnd hle) (fun i Hi => ihStep i Hi hle)
@@ -258,7 +258,7 @@ noncomputable instance instTransLeftUnbounded
       (IndistinguishableI Assumptions Reductions κ q_b O)
       (IndistinguishableI Assumptions Reductions κ q_b O) where
   trans h₁ h₂ :=
-    IndistinguishableI.trans q_b
+    IndistinguishableI.trans _ q_b
       (Indistinguishable.indistinguishabilityI_mono (sup_eq_left.mp rfl) h₁)
       h₂
 
@@ -271,7 +271,7 @@ noncomputable instance instTransRightUnbounded
       (IndistinguishableI Assumptions Reductions κ none O)
       (IndistinguishableI Assumptions Reductions κ q_b O) where
   trans h₁ h₂ :=
-    IndistinguishableI.trans q_b h₁
+    IndistinguishableI.trans _ q_b h₁
       (Indistinguishable.indistinguishabilityI_mono (sup_eq_left.mp rfl) h₂)
 
 end IndistinguishableI
@@ -321,7 +321,7 @@ mutual
       | IndistinguishableI.randReduction r q_b Hind Hr => assumptionsUse Hind
 
       | IndistinguishableI.symm q_b H => assumptionsUse H
-      | IndistinguishableI.trans q_b H1 H2 => funAdd (assumptionsUse H1) (assumptionsUse H2)
+      | IndistinguishableI.trans a q_b H1 H2 => funAdd (assumptionsUse H1) (assumptionsUse H2)
       | IndistinguishableI.longSequence l ro ro_start ro_end q_b Hstart Hend H =>
           funAdd (assumptionsUse Hstart)
           (funAdd (assumptionsUse Hend)
