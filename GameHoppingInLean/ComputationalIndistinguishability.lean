@@ -271,13 +271,10 @@ lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq :
   (dist : adversaryT O) : FreeMonad.depth dist <= q_b ->
     advantage dist ro₁ ro₂ = 0 := by sorry
 
-def reductionCombiner {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (x1 x2 : ℕ × (ComplexInitReduction O1 O2)) : ℕ × (ComplexInitReduction O1 O2) := by sorry
 
 def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
     (asc : AssumptionsUseT Assumptions O)
-
     [Fintype (Assumptions.Idx)]
     : Prop :=
     forall distinguisher,
@@ -289,24 +286,23 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
           (Assumptions.assumptions j).i.1 (Assumptions.assumptions j).i.2
 
 
-noncomputable def ascToReal {I : Type} {O : OracleSpec I} (Assumptions : IndistinguishabilityAssumptions)
+noncomputable def ascToReal {I : Type} {O : OracleSpec I}
   (distinguisher : FreeMonad (withPMFSpec O).OracleQuery Bool)
-  {J : Assumptions.Idx} (x : asUseType Assumptions O J) : NNReal :=
+  (assumption : SingleAssumption) (x :ℕ × (ComplexInitReduction assumption.O O)) : NNReal :=
   (x).1 *
-        advantage
-          (applyComplexInitReduction2 (x).2 distinguisher)
-          (Assumptions.assumptions J).i.1 (Assumptions.assumptions J).i.2
+    advantage
+      (applyComplexInitReduction2 (x).2 distinguisher)
+      assumption.i.1 assumption.i.2
 
 def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
     (asc : AssumptionsUseT Assumptions O)
-
     [Fintype (Assumptions.Idx)]
     : Prop :=
     forall distinguisher,
       FreeMonad.depth distinguisher ≤ q_b ->
-      (advantage distinguisher ro1 ro2) <= ∑ j,
-        ascToReal Assumptions distinguisher (asc.values j)
+      (advantage distinguisher ro1 ro2) <= ∑ j : { x // x ∈ asc.subset },
+        ascToReal distinguisher (Assumptions.assumptions j) (asc.values j)
 
 lemma advBoundEq (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
@@ -326,7 +322,49 @@ def advantage_reduction {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
     rw [goodDoubleAction]
     rw [goodDoubleAction]
 
-def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
+noncomputable def reductionCombiner {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : ℕ × (ComplexInitReduction O1 O2)) : ℕ × (ComplexInitReduction O1 O2) :=
+  (x1.1+x2.1, {
+    stateType := (x1.2.stateType ⊕ x2.2.stateType)
+    initialState := (do
+      let x : Bool <- RReduction.sample (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
+        by
+          have H : x1.1 <= x1.1 + x2.1 :=  by
+            exact Nat.le_add_right x1.1 x2.1
+          refine ENNReal.div_le_of_le_mul ?_
+          simp
+          )
+        )
+      if x then
+        let init <- x1.2.initialState
+        return Sum.inl init
+      else
+        let init <- x2.2.initialState
+        return Sum.inr init
+    )
+    queries := {
+      impl i q := (do
+        let x <- srGet!
+        match x with
+        | Sum.inl s =>
+          let x := (x1.2.queries.impl i q)
+          SRReduction.addToStateL x _
+        | Sum.inr s =>
+          SRReduction.addToStateR (x2.2.queries.impl i q) _
+      )
+    }
+  })
+
+lemma reductionCombinerCorrect {I: Type} {O : OracleSpec I}
+  (dist : FreeMonad (withPMFSpec O).OracleQuery Bool)
+  (assumption : SingleAssumption)
+  (x1 x2 : ℕ × (ComplexInitReduction assumption.O O))
+  : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
+  ascToReal dist assumption (reductionCombiner x1 x2) :=
+  by sorry
+
+
+noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
       {Reductions : IndistinguishabilityReductions}
       {κ :  ℕ} {q_b : ENat}
@@ -405,11 +443,10 @@ def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
         simp [joint, assumptionJoiner]
         have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
           asc1.values asc2.values (fun a b => reductionCombiner a b)
-          (fun x => ascToReal Assumptions dist x) (by
+          (fun x => ascToReal dist _ x) (by
             intro j x1 x2
-            simp [ascToReal]
-            -- this should follow from construction of reduction combiner
-            sorry
+            simp []
+            apply reductionCombinerCorrect
           )
         simp [sumJoining] at HHx
         rw [<-HHx]

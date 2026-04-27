@@ -152,6 +152,14 @@ def modify {I : Type u} {O : OracleSpec I} {s : Type} (f : s → s) :
   let st ← get (O := O) (s := s)
   set (O := O) (s := s) (f st)
 
+def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type} (x : SRReductionComp O s1 t) (s2 : Type)
+  : SRReductionComp O (s1 ⊕ s2) t :=
+  sorry
+def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type} (x : SRReductionComp O s1 t) (s2 : Type)
+  : SRReductionComp O (s2 ⊕ s1) t :=
+  sorry
+
+
 end SRReduction
 
 /-- A reduction that can query the source oracles, flip coins, and use local `get`/`set` state. -/
@@ -251,9 +259,10 @@ def identity {I : Type} (O : OracleSpec I) : ComplexInitReduction O O :=
 end ComplexInitReduction
 
 @[simp]
-noncomputable def liftToWithCoinFlipAndStateSpec {I : Type} {O : OracleSpec I} {stateType : Type} (impl : QueryImpl3 O (RState stateType)) (addState : Type):
-  QueryImpl3 (withCoinFlipAndStateSpec addState O) (RState (addState × stateType)) :=
-  {
+noncomputable def liftToWithCoinFlipAndStateSpec {I : Type} {O : OracleSpec I} {stateType : Type}
+  (impl : QueryImpl3 O (RState stateType)) (addState : Type)
+  : QueryImpl3 (withCoinFlipAndStateSpec addState O) (RState (addState × stateType))
+  := {
     impl := fun
       | (withCoinFlipAndStateI.oracle i2), t2 => do
           let st <- get
