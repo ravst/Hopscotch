@@ -58,4 +58,4 @@ def IndCpaRandDef
     {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (IndCpaRandSpec C) (IndCpaRandReal scheme) (IndCpaRandRand scheme)
+    (IndCpaRandReal scheme) (IndCpaRandRand scheme)

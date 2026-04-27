@@ -90,4 +90,4 @@ def MACUFDef
     (Reductions : IndistinguishabilityReductions)
     {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (MACUFSpec Tag) (MACUFReal scheme) (MACUFIdeal scheme)
+   (MACUFReal scheme) (MACUFIdeal scheme)

@@ -64,4 +64,4 @@ def SecurePRFDef
     (Reductions : IndistinguishabilityReductions)
     {K X Y : Type} [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (SecurePRFSpec X Y) (PRF_real prf) (PRF_ideal X Y)
+    (PRF_real prf) (PRF_ideal X Y)

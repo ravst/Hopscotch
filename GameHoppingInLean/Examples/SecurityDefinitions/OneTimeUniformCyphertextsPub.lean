@@ -102,6 +102,5 @@ def OneTimeUniformCyphertextsPubDef
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (OneTimeUniformCyphertextsPubSpec PubK M C)
     (OneTimeUniformCyphertextsPubReal scheme)
     (OneTimeUniformCyphertextsPubRand scheme)

@@ -101,4 +101,4 @@ def IndCcaDef
     (Reductions : IndistinguishabilityReductions)
     {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (IndCcaSpec C) (IndCcaL scheme) (IndCcaR scheme)
+    (IndCcaL scheme) (IndCcaR scheme)

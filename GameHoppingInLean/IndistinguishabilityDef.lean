@@ -17,6 +17,14 @@ structure IndistinguishabilityAssumptions where
   [decEq : DecidableEq Idx]
   assumptions : Idx → SingleAssumption
 
+namespace IndistinguishabilityAssumptions
+
+def empty : IndistinguishabilityAssumptions := {
+  Idx := Empty,
+  assumptions := fun x => Empty.elim x
+  }
+end IndistinguishabilityAssumptions
+
 instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
 
 
@@ -75,8 +83,11 @@ The relation is homogeneous in `O`, but reduction steps may move to a different 
 by changing the index parameter of the conclusion. -/
 
 def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
-    (ro : Finset.range (1+l) -> RStateOracle O) (i : ℕ) (H : i <= l) : RStateOracle O :=
-    ro ⟨i, by simp [Finset.range, H]; exact Nat.lt_one_add_iff.mpr H⟩
+    (ro : Finset.range (l+1) -> RStateOracle O) (i : ℕ) (H : i <= l) : RStateOracle O :=
+    ro ⟨i, by
+      simp [Finset.range];
+      exact Nat.eq_or_lt_of_le H
+      ⟩
 
 
 universe u v w
@@ -123,9 +134,13 @@ inductive IndistinguishableI
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃
-  | longSequence {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (1+l) -> RStateOracle O)
+  | longSequence {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (l+1) -> RStateOracle O)
     (ro_start : RStateOracle O) (ro_end :  RStateOracle O ) (q_b : ENat):
-    (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0, by simp [Finset.range]⟩)) ->
+    (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0,
+      by
+        apply Finset.mem_range_succ_iff.mpr
+        exact Nat.zero_le l
+      ⟩)) ->
     (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, by simp [Finset.range]⟩)) ->
     (forall i, (Hi: i < l) ->
       IndistinguishableI Assumptions Reductions κ q_b O
@@ -155,7 +170,7 @@ end IndistinguishableI
 
 
 def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions) {I : Type} (O : OracleSpec I) (r1 r2 : RStateOracle O) :=
+    (Reductions : IndistinguishabilityReductions) {I : Type} {O : OracleSpec I} (r1 r2 : RStateOracle O) :=
     forall κ, IndistinguishableI Assumptions Reductions κ none O r1 r2
 
 def IndistinguishableQ (Assumptions : IndistinguishabilityAssumptions)

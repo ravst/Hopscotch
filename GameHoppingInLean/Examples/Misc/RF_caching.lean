@@ -12,7 +12,7 @@ It samples a uniformly random function `X → Y` once during initialization and 
 each query by applying that sampled function. -/
 noncomputable def PRF_ideal2 (X Y : Type) [DecidableEq X] [Fintype Y] [Nonempty Y] :
     RStateOracle (SecurePRFSpec X Y) where
-  stateType := Finmap (fun x : X => Y)
+  stateType := Finmap (fun _x : X => Y)
   initialState := pure ∅
   queries := {
     impl := fun _ x => do

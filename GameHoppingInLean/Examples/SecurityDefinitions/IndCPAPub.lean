@@ -86,7 +86,6 @@ def IndCpaPubDef
     (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (IndCpaPubSpec PubK M C)
     (IndCpaPubL scheme)
     (IndCpaPubR scheme)
 

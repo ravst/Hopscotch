@@ -54,4 +54,4 @@ def SecurePRGDef
     (Reductions : IndistinguishabilityReductions)
     {k l : ℕ} (prg : PRG k l) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (SecurePRGSpec k l) (PRG_real prg) (PRG_rand k l)
+    (PRG_real prg) (PRG_rand k l)

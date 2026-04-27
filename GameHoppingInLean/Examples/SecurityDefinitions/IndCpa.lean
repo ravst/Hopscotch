@@ -55,4 +55,4 @@ def IndCpaDef
     (Reductions : IndistinguishabilityReductions)
     {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions Reductions
-    (IndCpaSpec C) (IndCpaL scheme) (IndCpaR scheme)
+    (IndCpaL scheme) (IndCpaR scheme)
