@@ -187,11 +187,10 @@ noncomputable def GGMHybrids_indistinguishable_of_securePRG
       (GGMHybrid prg 0)
       (GGMHybrid prg (Fin.last n)) := by
   intro κ
-  refine IndistinguishableI.longSequence n
+  refine Indistinguishable.long_step n
     (fun j => GGMHybrid prg ⟨j.1, ?_⟩)
     (GGMHybrid prg 0)
     (GGMHybrid prg (Fin.last n))
-    none
     (by rfl)
     (by rfl)
     ?_

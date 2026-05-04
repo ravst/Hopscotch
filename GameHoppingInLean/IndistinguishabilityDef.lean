@@ -92,6 +92,13 @@ def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
 
 universe u v w
 
+lemma zero_in_range (n : ℕ) : 0 ∈ Finset.range (n+1) :=
+by
+  apply Finset.mem_range.mpr
+  exact Nat.zero_lt_succ n
+
+lemma n_in_range (n : ℕ) : n ∈ Finset.range (n+1) :=
+  by simp [Finset.range]
 
 inductive IndistinguishableI
     (Assumptions : IndistinguishabilityAssumptions)
@@ -134,20 +141,18 @@ inductive IndistinguishableI
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₂ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃
-  | longSequence {I : Type} {O : OracleSpec I} (l : ℕ) (ro : Finset.range (l+1) -> RStateOracle O)
-    (ro_start : RStateOracle O) (ro_end :  RStateOracle O ) (q_b : ENat):
-    (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0,
-      by
-        apply Finset.mem_range_succ_iff.mpr
-        exact Nat.zero_le l
-      ⟩)) ->
-    (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, by simp [Finset.range]⟩)) ->
+  | longSequence {I : Type} {O : OracleSpec I} (l : ℕ)
+    -- (ro_start : RStateOracle O) (ro_end :  RStateOracle O )
+    (q_b : ENat)
+    (ro : Finset.range (l+1) -> RStateOracle O):
+    -- (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0, zero_in_range _⟩)) ->
+    -- (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, n_in_range _⟩)) ->
     (forall i, (Hi: i < l) ->
       IndistinguishableI Assumptions Reductions κ q_b O
         (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
         (ro_seq_fixed l ro (i+1) Hi)
     ) ->
-    IndistinguishableI Assumptions Reductions κ q_b O ro_start ro_end
+    IndistinguishableI Assumptions Reductions κ q_b O (ro ⟨0, zero_in_range _⟩) (ro ⟨l, n_in_range _⟩)
 
 namespace IndistinguishableI
 
@@ -223,6 +228,27 @@ def reflexive
     apply of_ObsEq
     exact congrFun rfl
 
+def long_step
+  {Assumptions : IndistinguishabilityAssumptions}
+    {Reductions : IndistinguishabilityReductions}
+    {κ :  ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I}
+    (l : ℕ) (ro : Finset.range (l+1) -> RStateOracle O)
+    (ro_start : RStateOracle O) (ro_end :  RStateOracle O )
+    (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0, zero_in_range _⟩))
+    (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, n_in_range _⟩))
+    (H_seq : forall i, (Hi: i < l) ->
+      IndistinguishableI Assumptions Reductions κ q_b O
+        (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
+        (ro_seq_fixed l ro (i+1) Hi)
+    ) :
+    IndistinguishableI Assumptions Reductions κ q_b O ro_start ro_end :=
+    IndistinguishableI.trans _ q_b (Hstart) (
+      IndistinguishableI.trans _ q_b (
+        IndistinguishableI.longSequence _ q_b ro H_seq
+      ) (symmetric Hend)
+    )
+
 noncomputable def indistinguishabilityI_mono {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
     {κ :  ℕ} {q₁ q₂ : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
@@ -248,9 +274,9 @@ noncomputable def indistinguishabilityI_mono {Assumptions : Indistinguishability
       exact IndistinguishableI.symm q₁ (ih hle)
   | trans a q h₁ h₂ ih₁ ih₂ =>
       exact IndistinguishableI.trans a q₁ (ih₁ hle) (ih₂ hle)
-  | longSequence l ro ro_start ro_end q Hstart Hend Hstep ihStart ihEnd ihStep =>
-      exact IndistinguishableI.longSequence l ro ro_start ro_end q₁
-        (ihStart hle) (ihEnd hle) (fun i Hi => ihStep i Hi hle)
+  | longSequence l q ro Hstep ihStep =>
+      exact IndistinguishableI.longSequence l q₁ ro
+        (fun i Hi => ihStep i Hi hle)
 
 noncomputable def indistinguishabilityIUnboundedToBounded {Assumptions : IndistinguishabilityAssumptions}
     {Reductions : IndistinguishabilityReductions}
@@ -337,17 +363,14 @@ mutual
 
       | IndistinguishableI.symm q_b H => assumptionsUse H
       | IndistinguishableI.trans a q_b H1 H2 => funAdd (assumptionsUse H1) (assumptionsUse H2)
-      | IndistinguishableI.longSequence l ro ro_start ro_end q_b Hstart Hend H =>
-          funAdd (assumptionsUse Hstart)
-          (funAdd (assumptionsUse Hend)
-           (fun i =>
+      | IndistinguishableI.longSequence l q_b ro H =>
+          fun i =>
             Finset.sum (α := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (H j.1 (by
               cases j
               case mk val prop =>
               simp [Finset.range] at prop
               assumption
-            )) i))
-          )
+            )) i)
 end
 
 -- namespace Indistinguishable

@@ -177,7 +177,7 @@ def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
     Indistinguishable (OneTimeSecrecyAssumption' scheme) Reductions
     (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) := by
     intro κ
-    refine (IndistinguishableI.longSequence i (fun j => OTSToIndCpaHybrid scheme j) (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) none (by rfl) (by rfl) ?_)
+    refine (Indistinguishable.long_step i (fun j => OTSToIndCpaHybrid scheme j) (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) (by rfl) (by rfl) ?_)
     intro i hi
     simp [ro_seq_fixed]
     apply OTSToIndCpaHybridStep

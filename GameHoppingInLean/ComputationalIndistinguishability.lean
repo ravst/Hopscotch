@@ -459,6 +459,6 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
         apply L1
       )
     ⟩
-| IndistinguishableI.longSequence a b c d e ind1 ind2 h =>
+| IndistinguishableI.longSequence a b c d =>
     sorry
     -- sorry
