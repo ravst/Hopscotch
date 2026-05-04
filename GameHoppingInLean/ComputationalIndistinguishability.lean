@@ -9,6 +9,8 @@ import Mathlib.Data.Finset.Defs
 import Mathlib.Data.Set.Defs
 import Mathlib.Data.Multiset.UnionInter
 import GameHoppingInLean.VCVio2.ToMathlib.Control.FreeMonad
+import Mathlib.Data.Finset.Empty
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 -- generic intro. move.
 
@@ -170,6 +172,19 @@ structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
   values : (J : subset) -> (
     ℕ × (ComplexInitReduction (Assumptions.assumptions J).O O)
   )
+
+namespace AssumptionsUseT
+
+def empty (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) :
+  AssumptionsUseT Assumptions O :=
+  {
+    subset := ∅,
+    values := fun ⟨x, x2⟩ => by
+      exfalso
+      exact (List.mem_nil_iff x).mp x2
+  }
+
+end AssumptionsUseT
 
 -- SUM JOINIG
 def finsetSum {X : Type} [DecidableEq X] (s1 s2 : Finset X) : Finset X :=
@@ -364,6 +379,107 @@ lemma reductionCombinerCorrect {I: Type} {O : OracleSpec I}
   by sorry
 
 
+noncomputable def obse_eq_step
+  {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
+  {a : ℕ∞} {I : Type} {O : OracleSpec I}
+  (o₁ o₂ : RStateOracle O)
+  (Hb : ObsEqBounded o₁ o₂ a)
+  : { asc // advBound Assumptions a O o₁ o₂ asc } :=
+  ⟨AssumptionsUseT.empty _ _, by
+      simp [advBound, AssumptionsUseT.empty]
+      intro dist
+      apply obsEq_distinquishing
+      apply Hb
+  ⟩
+
+noncomputable def transitive_step
+  {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
+  {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
+  {o₁ o₂ : RStateOracle O} (rm : RStateOracle O)
+  (as1 : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ rm asc})
+  (as2 : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O rm o₂ asc})
+  : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc} :=
+    let ⟨asc1, Hasc1⟩ := as1
+    let ⟨asc2, Hasc2⟩ := as2
+
+    let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
+    ⟨joint,
+      (by
+        rw [advBoundEq]
+        simp [advBound2]
+        intro dist Hdepth
+        simp [joint, assumptionJoiner]
+        have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
+          asc1.values asc2.values (fun a b => reductionCombiner a b)
+          (fun x => ascToReal dist _ x) (by
+            intro j x1 x2
+            simp []
+            apply reductionCombinerCorrect
+          )
+        simp [sumJoining] at HHx
+        rw [<-HHx]
+        clear HHx
+        apply le_trans (advatangeTriangle _ rm _)
+        -- apply advatangeTriangle _ rm _
+        rw [advBoundEq] at Hasc1 Hasc2
+        simp [advBound2] at Hasc1 Hasc2
+        have L1 := add_le_add (Hasc1 dist Hdepth) (Hasc2 dist Hdepth)
+        apply L1
+      )
+    ⟩
+
+lemma nextInRange {n : ℕ} {x : ℕ} ( H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
+by
+  refine Finset.mem_range_succ_iff.mpr ?_
+  simp [Finset.range] at H
+  exact Nat.le_of_succ_le H
+
+
+def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
+      [Fintype (Assumptions.Idx)]
+      {Reductions : IndistinguishabilityReductions}
+      {κ :  ℕ} {q_b : ENat}
+      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
+      (ind : IndistinguishableI Assumptions Reductions κ q_b O o₁ o₂) -> ℕ
+| IndistinguishableI.assumption idx =>
+  0
+| IndistinguishableI.obsEqB a b =>
+  0
+| IndistinguishableI.simpleReduction a b c d =>
+  1 + lengthOfIndI c
+| IndistinguishableI.reduction a b c d =>
+  1 + lengthOfIndI c
+| IndistinguishableI.randReduction a b c d =>
+  1 + lengthOfIndI c
+| @IndistinguishableI.complexInitReduction Assumptions Reductions κ I1 I2 O1 O2 r ro1 o₁ b ind Hr =>
+  1 + lengthOfIndI ind
+| IndistinguishableI.symm q_b ind  =>
+  1 + lengthOfIndI ind
+| IndistinguishableI.trans rm q_b ind1 ind2 =>
+  1 + lengthOfIndI ind1 + lengthOfIndI ind2
+| IndistinguishableI.longSequence a q_b ro Hseq =>
+  1 + ∑ ⟨i, Hi⟩ : Finset.range a, lengthOfIndI (Hseq i (by
+    simp [Finset.range] at Hi
+    apply Hi
+  ))
+
+
+theorem sum_ge_entry {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ):
+    f a ≤ ∑ x ∈ s, f x :=
+by
+  apply Finset.single_le_sum
+  · intro i Hi
+    exact Nat.zero_le (f i)
+  assumption
+
+theorem sum_ge_entry2 {y : ℕ} {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ) (Hle : y <= f a):
+    y ≤ ∑ x ∈ s, f x :=
+by
+  apply Nat.le_trans
+  apply Hle
+  apply sum_ge_entry
+  assumption
+
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
       {Reductions : IndistinguishabilityReductions}
@@ -385,18 +501,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       rw [applyComplexInitReduction2_identity]
   ⟩
 | IndistinguishableI.obsEqB a b =>
-  ⟨{
-    subset := {}
-    values := fun Hneg => by
-      exfalso
-      simp at Hneg
-      apply Hneg.2
-    }, by
-      simp [advBound]
-      intro dist
-      apply obsEq_distinquishing
-      apply b
-  ⟩
+  obse_eq_step o₁ o₂ b
 | IndistinguishableI.simpleReduction a b c d =>
     sorry
 | IndistinguishableI.reduction a b c d =>
@@ -432,33 +537,36 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       apply re.2
       ⟩
 | IndistinguishableI.trans rm q_b ind1 ind2 =>
-    let ⟨asc1, Hasc1⟩ := symbolicSoundness ind1
-    let ⟨asc2, Hasc2⟩ := symbolicSoundness ind2
-    let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
-    ⟨joint,
-      (by
-        rw [advBoundEq]
-        simp [advBound2]
-        intro dist Hdepth
-        simp [joint, assumptionJoiner]
-        have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
-          asc1.values asc2.values (fun a b => reductionCombiner a b)
-          (fun x => ascToReal dist _ x) (by
-            intro j x1 x2
-            simp []
-            apply reductionCombinerCorrect
-          )
-        simp [sumJoining] at HHx
-        rw [<-HHx]
-        clear HHx
-        apply le_trans (advatangeTriangle _ rm _)
-        -- apply advatangeTriangle _ rm _
-        rw [advBoundEq] at Hasc1 Hasc2
-        simp [advBound2] at Hasc1 Hasc2
-        have L1 := add_le_add (Hasc1 dist Hdepth) (Hasc2 dist Hdepth)
-        apply L1
-      )
-    ⟩
-| IndistinguishableI.longSequence a b c d =>
-    sorry
-    -- sorry
+    transitive_step rm (symbolicSoundness ind1) (symbolicSoundness ind2)
+| IndistinguishableI.longSequence a q_b ro Hseq => by
+  have Hxx := fun (i : ℕ) (Hi : i < a) =>
+    symbolicSoundness (Hseq i Hi)
+  have HMain : forall (i : ℕ) (Hi : i < a+1),
+    {asc : AssumptionsUseT Assumptions O //
+      advBound Assumptions q_b O (ro ⟨0, zero_in_range _⟩) (ro ⟨i, Finset.mem_range.mpr Hi⟩) asc}
+  := (by
+    intro i Hi
+    induction i
+    · apply obse_eq_step
+      exact fun queriesList ↦ congrFun rfl
+    case succ n Hind =>
+      have long := Hind (Nat.lt_of_succ_lt Hi)
+      apply transitive_step _ long
+      apply Hxx n
+      exact Nat.succ_lt_succ_iff.mp Hi
+  )
+  apply HMain
+  exact lt_add_one a
+termination_by ind => lengthOfIndI ind
+decreasing_by
+  all_goals simp [lengthOfIndI]
+  · apply Nat.lt_add_right (lengthOfIndI ind2)
+    exact lt_one_add (lengthOfIndI ind1)
+  · apply Nat.lt_one_add_iff.mpr
+    apply sum_ge_entry2 ⟨i, by
+      simp [Finset.range, Hi]⟩
+    · simp [Finset.attach]
+      simp [Multiset.attach, Finset.range]
+      assumption
+    · rfl
+  -- sorry

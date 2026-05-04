@@ -142,11 +142,8 @@ inductive IndistinguishableI
       IndistinguishableI Assumptions Reductions κ q_b O ro₂ ro₃ →
       IndistinguishableI Assumptions Reductions κ q_b O ro₁ ro₃
   | longSequence {I : Type} {O : OracleSpec I} (l : ℕ)
-    -- (ro_start : RStateOracle O) (ro_end :  RStateOracle O )
     (q_b : ENat)
     (ro : Finset.range (l+1) -> RStateOracle O):
-    -- (Hstart : IndistinguishableI Assumptions Reductions κ q_b O ro_start (ro ⟨0, zero_in_range _⟩)) ->
-    -- (Hend : IndistinguishableI Assumptions Reductions κ q_b O ro_end (ro ⟨l, n_in_range _⟩)) ->
     (forall i, (Hi: i < l) ->
       IndistinguishableI Assumptions Reductions κ q_b O
         (ro_seq_fixed l ro i (Nat.le_of_succ_le Hi))
