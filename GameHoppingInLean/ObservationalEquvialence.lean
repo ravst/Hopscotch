@@ -2,17 +2,11 @@ import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.Misc.PMFLemmas
 
-structure QueryS {I : Type} (O : OracleSpec I) where
-  index : I
-  input : O.domain index
 
 -- def QueryS.toQuery {I : Type} {O : OracleSpec I} (q : QueryS O) :
 --   OracleSpec.OracleQuery O (O.range q.index) :=
 --   OracleSpec.query q.index q.input
 
-structure QueryResult {I : Type} (O : OracleSpec I) where
-  index : I
-  output : O.range index
 
 noncomputable def runQueriesAux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl3 O (RState S)) (queries : List (QueryS O)) :
   RState S (List (QueryResult O)) :=
@@ -131,43 +125,32 @@ lemma mapStateBijImpliesCorrectAbstraction {I : Type} {O : OracleSpec I}
 -- This is shown as correctAbstractionImpliesObsEq, but before that we need
 -- a few auxiliary lemma, starting with an alternative definition of runQueries.
 
-noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl3 O (RState S)) (queries : List (QueryS O)) (init : S):
-  PMF (List (QueryResult O) × S) :=
-  match queries with
-  | [] => pure ([], init)
-  | q :: qs => do
-    let (out, s) <- StateT.run (impl.impl q.index q.input) init
-    let (outL, sF) <- runQueries2Aux impl qs s
-    return ({index := q.index, output := out}::outL, sF)
-
-noncomputable def runQueries2 {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queries : List (QueryS O)) : PMF ((List (QueryResult O)) × ro.stateType) :=
-  ro.initialState >>= runQueries2Aux ro.queries queries
 
 lemma runQueriesEquiv {I : Type} {O : OracleSpec I} (ro : RStateOracle O) (queries : List (QueryS O)) : runQueries ro queries =
-   (runQueries2 ro queries).map Prod.fst
+   (RStateOracle.runQueries2 ro queries).map Prod.fst
  := by
   have hAux :
       ∀ (queries : List (QueryS O)) (init : ro.stateType),
         StateT.run (runQueriesAux ro.queries queries) init =
-          runQueries2Aux ro.queries queries init := by
+          RStateOracle.runQueries2Aux ro.queries queries init := by
     intro queries
     induction queries with
     | nil =>
         intro init
-        simp [runQueriesAux, runQueries2Aux]
+        simp [runQueriesAux, RStateOracle.runQueries2Aux]
     | cons q qs ih =>
         intro init
-        simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
-  simp [runQueries, runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
+        simp [runQueriesAux, RStateOracle.runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
+  simp [runQueries, RStateOracle.runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
 
 lemma correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f) queriesList
   : forall (init : ro₁.stateType),
-      (runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f y)) =
-      (runQueries2Aux ro₂.queries queriesList (f init))
+      (RStateOracle.runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f y)) =
+      (RStateOracle.runQueries2Aux ro₂.queries queriesList (f init))
   := by
     induction queriesList
-    simp [runQueries2Aux, PMF.map]
+    simp [RStateOracle.runQueries2Aux, PMF.map]
     case cons head tail Hind =>
       intro init
       have hStep :
@@ -178,7 +161,7 @@ lemma correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
           StateT.run (ro₂.queries.impl head.index head.input) (f init) =
             (StateT.run (ro₁.queries.impl head.index head.input) init).map (mapSecond f) := by
         simpa [mapInputState, mapOutputState] using hStep.symm
-      simp [runQueries2Aux]
+      simp [RStateOracle.runQueries2Aux]
       rw [hStep']
       simp [mapInputState, mapOutputState, StateT.run, mapSecond, Functor.map, PMF.map]
       conv =>
@@ -197,9 +180,9 @@ lemma correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
     rw [runQueriesEquiv (ro := ro₁) (queries := queriesList)]
     rw [runQueriesEquiv (ro := ro₂) (queries := queriesList)]
     have hRun2 :
-        (runQueries2 ro₁ queriesList).map (fun (x, y) => (x, f y)) =
-          (runQueries2 ro₂ queriesList) := by
-      simp [runQueries2]
+        (RStateOracle.runQueries2 ro₁ queriesList).map (fun (x, y) => (x, f y)) =
+          (RStateOracle.runQueries2 ro₂ queriesList) := by
+      simp [RStateOracle.runQueries2]
       rw [<- HCor.1]
       simp [PMF.map]
       conv =>
@@ -210,6 +193,73 @@ lemma correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
       simp [PMF.map]
     simpa [PMF.map_comp, Function.comp] using
       congrArg (fun p => p.map Prod.fst) hRun2
+
+
+
+--bind experiment
+
+noncomputable def bindInputState (f : S₁ → PMF S₂) (m : RState S₂ α) (s : S₁) : PMF (α × S₂) :=
+  do
+    let x : S₂ <- f s
+    StateT.run m x
+
+
+noncomputable def bindSecond {α β γ} (f : β → PMF γ) (p : α × β) : PMF (α × γ) :=
+  do
+    let y <- f p.2
+    return (p.1, y)
+
+noncomputable def bindOutputState (f : S₁ → PMF S₂) (m : RState S₁ α) (s : S₁) : PMF (α × S₂) :=
+  (StateT.run m s).bind (bindSecond f)
+
+def correctAbstractionBind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+    (f : ro₁.stateType → PMF ro₂.stateType) : Prop :=
+  ro₁.initialState.bind f = ro₂.initialState ∧
+  ∀ i (query : O.domain i),
+      bindOutputState f (ro₁.queries.impl i query) =
+      bindInputState f (ro₂.queries.impl i query)
+
+
+-- lemma correctAbstractionImpliesObsEqInnerBind {I : Type} {O : OracleSpec I}
+--   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f) queriesList
+--   : forall (init : ro₁.stateType),
+--       (RStateOracle.runQueries2Aux ro₁.queries queriesList init).bind (bindSecond f) =
+--       (f init).bind (RStateOracle.runQueries2Aux ro₂.queries queriesList)
+--   := by
+--     induction queriesList
+--     simp [RStateOracle.runQueries2Aux, PMF.map]
+--     case cons head tail Hind =>
+--       intro init
+--       have hStep :
+--           bindOutputState f (ro₁.queries.impl head.index head.input) init =
+--             bindInputState f (ro₂.queries.impl head.index head.input) init := by
+--         exact congrArg (fun g => g init) (HCor.2 head.index head.input)
+--       have hStep' :
+--           (f init).bind (StateT.run (ro₂.queries.impl head.index head.input)) =
+--             (StateT.run (ro₁.queries.impl head.index head.input) init).bind (bindSecond f) := by
+--         simpa [mapInputState, mapOutputState] using hStep.symm
+--       simp [RStateOracle.runQueries2Aux]
+--       -- simp only [GameHoppingSimplifyPMF]
+--       -- simp []
+--       rw [<-PMF.bind_bind]
+--       rw [hStep']
+--       simp [mapInputState, mapOutputState, StateT.run, mapSecond, Functor.map, PMF.map]
+--       congr
+--       ext1 q
+
+--       have HQ :
+--         (fun a => bindSecond f ({ index := head.index, output := q.1 } :: a.1, a.2)) = sorry := by sorry
+--       conv =>
+--         rhs
+--         arg 2
+--         intro a
+--         arg 1
+--         rw [<- Hind]
+--       simp []
+--       congr
+
+--end bind exp
+
 
 lemma mapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
     (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType ≃ ro₂.stateType)
@@ -264,8 +314,8 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → ro₂.stateType) (b : ℕ)
   (HStep : correctAbstractionBStep ro₁ ro₂ f b) (queriesList : List (QueryS O))
   (hq : queriesList.length ≤  b): ∃ k' ≤ b, ∀ (init : ro₁.stateType),
-  (runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f k' y)) =
-        (runQueries2Aux ro₂.queries queriesList (f b init))
+  (RStateOracle.runQueries2Aux ro₁.queries queriesList init).map (fun (x,y) => (x, f k' y)) =
+        (RStateOracle.runQueries2Aux ro₂.queries queriesList (f b init))
   := by
   induction queriesList generalizing b with
   | nil =>
@@ -273,7 +323,7 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
       constructor
       · exact le_rfl
       · intro init
-        simp [runQueries2Aux, PMF.map]
+        simp [RStateOracle.runQueries2Aux, PMF.map]
   | cons head tail ih =>
       cases b with
       | zero =>
@@ -295,7 +345,7 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
               · intro init
                 have hStepDropInit := congrFun hStepDrop init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepDropInit
-                simp [runQueries2Aux, PMF.map]
+                simp [RStateOracle.runQueries2Aux, PMF.map]
                 simp only [GameHoppingSimplifyPMF, mapSecond] at hStepDropInit
                 simp [← hStepDropInit, ← ih']
                 simp only [GameHoppingSimplifyPMF]
@@ -308,7 +358,7 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
               · intro init
                 have hStepKeepInit := congrFun hStepKeep init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepKeepInit
-                simp [runQueries2Aux, PMF.map]
+                simp [RStateOracle.runQueries2Aux, PMF.map]
                 simp only [GameHoppingSimplifyPMF, mapSecond] at hStepKeepInit
                 simp [← hStepKeepInit, ← ih']
                 simp only [GameHoppingSimplifyPMF]
@@ -319,15 +369,15 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
   (HCor : correctAbstractionB ro₁ ro₂ f b) :
   ObsEqBounded ro₁ ro₂ b := by
   intro queriesList hq
-  simp [runQueriesEquiv, runQueries2]
+  simp [runQueriesEquiv, RStateOracle.runQueries2]
   simp at hq
   obtain ⟨k', hk', hRun2Aux⟩ := correctAbstractionBImpliesObsEqInner ro₁ ro₂ f b HCor.2 queriesList hq
   have hRun2AuxFst : ∀ init : ro₁.stateType,
       PMF.map Prod.fst
         (PMF.map (fun x => match x with | (x, y) => (x, f k' y))
-          (runQueries2Aux ro₁.queries queriesList init)) =
+          (RStateOracle.runQueries2Aux ro₁.queries queriesList init)) =
       PMF.map Prod.fst
-        (runQueries2Aux ro₂.queries queriesList (f b init)) := by
+        (RStateOracle.runQueries2Aux ro₂.queries queriesList (f b init)) := by
     intro init
     exact congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init)
   simp at hRun2AuxFst

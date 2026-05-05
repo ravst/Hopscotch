@@ -34,8 +34,6 @@ def distancePMF (x y : PMF (Bool)) : NNReal :=
 -- noncomputable
 -- def distanceFam (x y : ℕ → PMF (Bool)) : ℕ → NNReal :=
 --   fun κ => distancePMF (x κ) (y κ)
-
-
 -- proper code
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)
@@ -258,10 +256,6 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 --     (sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner)
 --     :=
 --     by apply sumJoinerCorrect
-
-
-
- --
 
 
 -- -- both of this lemmas are probably false :-(
