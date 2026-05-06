@@ -220,45 +220,73 @@ def correctAbstractionBind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOr
       bindInputState f (ro₂.queries.impl i query)
 
 
--- lemma correctAbstractionImpliesObsEqInnerBind {I : Type} {O : OracleSpec I}
---   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f) queriesList
---   : forall (init : ro₁.stateType),
---       (RStateOracle.runQueries2Aux ro₁.queries queriesList init).bind (bindSecond f) =
---       (f init).bind (RStateOracle.runQueries2Aux ro₂.queries queriesList)
---   := by
---     induction queriesList
---     simp [RStateOracle.runQueries2Aux, PMF.map]
---     case cons head tail Hind =>
---       intro init
---       have hStep :
---           bindOutputState f (ro₁.queries.impl head.index head.input) init =
---             bindInputState f (ro₂.queries.impl head.index head.input) init := by
---         exact congrArg (fun g => g init) (HCor.2 head.index head.input)
---       have hStep' :
---           (f init).bind (StateT.run (ro₂.queries.impl head.index head.input)) =
---             (StateT.run (ro₁.queries.impl head.index head.input) init).bind (bindSecond f) := by
---         simpa [mapInputState, mapOutputState] using hStep.symm
---       simp [RStateOracle.runQueries2Aux]
---       -- simp only [GameHoppingSimplifyPMF]
---       -- simp []
---       rw [<-PMF.bind_bind]
---       rw [hStep']
---       simp [mapInputState, mapOutputState, StateT.run, mapSecond, Functor.map, PMF.map]
---       congr
---       ext1 q
+lemma correctAbstractionImpliesObsEqInnerBind {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+  (HCor : correctAbstractionBind ro₁ ro₂ f) queriesList
+  : forall (init : ro₁.stateType),
+      (RStateOracle.runQueries2Aux ro₁.queries queriesList init).bind (bindSecond f) =
+      (f init).bind (RStateOracle.runQueries2Aux ro₂.queries queriesList)
+  := by
+    induction queriesList with
+    | nil =>
+        intro init
+        simp [RStateOracle.runQueries2Aux, bindSecond]
+    | cons head tail Hind =>
+        intro init
+        have hStep :
+            bindOutputState f (ro₁.queries.impl head.index head.input) init =
+              bindInputState f (ro₂.queries.impl head.index head.input) init := by
+          exact congrArg (fun g => g init) (HCor.2 head.index head.input)
+        have hStep' :
+            (f init).bind (StateT.run (ro₂.queries.impl head.index head.input)) =
+              (StateT.run (ro₁.queries.impl head.index head.input) init).bind (bindSecond f) := by
+          simpa [bindInputState, bindOutputState] using hStep.symm
+        have hTail (out : O.range head.index) (s : ro₁.stateType) :
+            (RStateOracle.runQueries2Aux ro₁.queries tail s).bind
+                (fun a =>
+                  (f a.2).bind (fun y =>
+                    PMF.pure ({ index := head.index, output := out } :: a.1, y))) =
+              (f s).bind
+                (fun s₂ =>
+                    (RStateOracle.runQueries2Aux ro₂.queries tail s₂).bind
+                      (fun a =>
+                      PMF.pure ({ index := head.index, output := out } :: a.1, a.2))) := by
+          have h :=
+            congrArg
+              (fun p : PMF (List (QueryResult O) × ro₂.stateType) =>
+                p.map (fun a =>
+                  ({ index := head.index, output := out } :: a.1, a.2)))
+              (Hind s)
+          simpa [PMF.map_bind, bindSecond, PMF.bind_bind] using h
+        simp [RStateOracle.runQueries2Aux, bindSecond, PMF.bind_bind]
+        conv_lhs =>
+          arg 2
+          intro a
+          rw [hTail a.1 a.2]
+        rw [← PMF.bind_bind]
+        rw [hStep']
+        simp [bindSecond, PMF.bind_bind]
 
---       have HQ :
---         (fun a => bindSecond f ({ index := head.index, output := q.1 } :: a.1, a.2)) = sorry := by sorry
---       conv =>
---         rhs
---         arg 2
---         intro a
---         arg 1
---         rw [<- Hind]
---       simp []
---       congr
-
---end bind exp
+lemma correctAbstractionBindImpliesObsEq {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+  (HCor : correctAbstractionBind ro₁ ro₂ f) :
+    ObsEq ro₁ ro₂ := by
+  intro queriesList
+  rw [runQueriesEquiv (ro := ro₁) (queries := queriesList)]
+  rw [runQueriesEquiv (ro := ro₂) (queries := queriesList)]
+  have hRun2 :
+      (RStateOracle.runQueries2 ro₁ queriesList).bind (bindSecond f) =
+        RStateOracle.runQueries2 ro₂ queriesList := by
+    simp [RStateOracle.runQueries2]
+    conv_lhs =>
+      arg 2
+      intro init
+      rw [correctAbstractionImpliesObsEqInnerBind ro₁ ro₂ f HCor queriesList init]
+    rw [← PMF.bind_bind]
+    rw [HCor.1]
+  have hRun2Fst :=
+    congrArg (fun p => p.map Prod.fst) hRun2
+  simpa [PMF.map_bind, bindSecond, PMF.bind_bind] using hRun2Fst
 
 
 lemma mapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
