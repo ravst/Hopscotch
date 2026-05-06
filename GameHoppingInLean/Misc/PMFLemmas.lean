@@ -1,4 +1,5 @@
 import GameHoppingInLean.Misc.PMFSimpAttr
+import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.VCVio2.ToMathlib.General
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
@@ -153,6 +154,59 @@ theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β �
   change (p.bind f).map g = p.bind (fun x => (f x).map g)
   simpa using (PMF.map_bind (p := p) (q := f) (f := g))
 
+/-- Transporting a uniform `PMF` sample across an equivalence. -/
+theorem bind_uniformOfFintype_equiv {X Y α : Type}
+    [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y]
+    (e : X ≃ Y) (g : Y → PMF α) :
+    (PMF.uniformOfFintype Y).bind g =
+      (PMF.uniformOfFintype X).bind (fun x => g (e x)) := by
+  ext a
+  have htsum :
+      ∑' y : Y, ((Fintype.card Y : ENNReal)⁻¹ * (g y) a) =
+        ∑' x : X, ((Fintype.card Y : ENNReal)⁻¹ * (g (e x)) a) := by
+    simpa using
+      (Equiv.tsum_eq e (fun y : Y => ((Fintype.card Y : ENNReal)⁻¹ * (g y) a))).symm
+  calc
+    ((PMF.uniformOfFintype Y).bind g) a =
+        ∑' y : Y, ((Fintype.card Y : ENNReal)⁻¹ * (g y) a) := by
+          simp [PMF.bind_apply, PMF.uniformOfFintype_apply]
+    _ = ∑' x : X, ((Fintype.card Y : ENNReal)⁻¹ * (g (e x)) a) := htsum
+    _ = ((PMF.uniformOfFintype X).bind (fun x => g (e x))) a := by
+          simp [PMF.bind_apply, PMF.uniformOfFintype_apply, Fintype.card_congr e]
+
+/-- Mapping a uniform `PMF` through an equivalence gives the uniform `PMF`. -/
+@[GameHoppingSimplifyPMF]
+theorem map_uniformOfFintype_equiv {X Y : Type}
+    [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y] (e : X ≃ Y) :
+    (PMF.uniformOfFintype X).map e = PMF.uniformOfFintype Y := by
+  change (PMF.uniformOfFintype X).bind (fun x => PMF.pure (e x)) =
+    PMF.uniformOfFintype Y
+  simpa using
+    (PMF.bind_uniformOfFintype_equiv
+      (e := e) (g := (PMF.pure : Y → PMF Y))).symm
+
+/-- Two independent uniform bitvector draws, appended together, are the same as one
+uniform draw at the appended width. -/
+@[GameHoppingSimplifyPMF]
+theorem bind_uniformOfFintype_bitVec_append_do
+    {a b : ℕ} {α : Type} (f : BitVec (a + b) → PMF α) :
+    (do
+      let x₁ ← PMF.uniformOfFintype (BitVec a)
+      let x₂ ← PMF.uniformOfFintype (BitVec b)
+      f (x₁ ++ x₂)) =
+    (do
+      let x ← PMF.uniformOfFintype (BitVec (a + b))
+      f x) := by
+  change (PMF.uniformOfFintype (BitVec a)).bind
+      (fun x₁ => (PMF.uniformOfFintype (BitVec b)).bind
+        (fun x₂ => f (x₁ ++ x₂))) =
+    (PMF.uniformOfFintype (BitVec (a + b))).bind f
+  rw [← PMF.uniformOfFintype_prod_bind
+    (f := fun p : BitVec a × BitVec b => f (p.1 ++ p.2))]
+  exact (PMF.bind_uniformOfFintype_equiv
+    (e := RState.bitVecAppendEquiv a b)
+    (g := f)).symm
+
 end PMF
 
 namespace PMFSimp
@@ -194,6 +248,26 @@ private def mkIteBindRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) :=
       | _ => return none
   | _ => return none
 
+private def mkBitVecAppendUniformRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  try
+    let natTy := mkConst ``Nat
+    let a ← mkFreshExprMVar natTy
+    let b ← mkFreshExprMVar natTy
+    let α ← mkFreshTypeMVar
+    let ab ← mkAppM ``Nat.add #[a, b]
+    let bitVecAB ← mkAppM ``BitVec #[ab]
+    let pmfα ← mkAppM ``PMF #[α]
+    let fTy ← mkArrow bitVecAB pmfα
+    let f ← mkFreshExprMVar fTy
+    let pf ← mkAppM ``PMF.bind_uniformOfFintype_bitVec_append_do #[f]
+    let pfTy ← inferType pf
+    let some (_ty, lhs, rhs) := pfTy.eq? | return none
+    unless (← isDefEq lhs e) do
+      return none
+    return some (← instantiateMVars rhs, ← instantiateMVars pf)
+  catch _ =>
+    return none
+
 end PMFSimp
 
 /-- Simproc: remove a `PMF` bind when the continuation ignores the sampled value. -/
@@ -208,4 +282,11 @@ simproc [GameHoppingSimplifyPMF] pmfIteBind
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkIteBindRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
+
+/-- Simproc: collapse two uniform `BitVec` draws followed by append into one uniform draw. -/
+simproc [GameHoppingSimplifyPMF] pmfBitVecAppendUniform
+  (Bind.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkBitVecAppendUniformRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
