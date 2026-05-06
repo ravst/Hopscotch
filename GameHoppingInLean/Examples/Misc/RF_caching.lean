@@ -24,3 +24,19 @@ noncomputable def PRF_ideal2 (X Y : Type) [DecidableEq X] [Fintype Y] [Nonempty 
           StateT.set (c.insert x newVal)
           pure newVal
   }
+
+/-- The eagerly sampled random-function oracle and its lazy cached implementation are
+observationally equivalent. -/
+theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
+    [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y] :
+    ObsEq (PRF_ideal X Y) (PRF_ideal2 X Y) := by
+  sorry
+
+/-- Lift the cached random-function equivalence to indistinguishability. -/
+noncomputable def indistinguishable_PRF_ideal_PRF_ideal2
+    {Reductions : IndistinguishabilityReductions} (X Y : Type)
+    [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y] :
+    Indistinguishable IndistinguishabilityAssumptions.empty Reductions
+      (PRF_ideal X Y) (PRF_ideal2 X Y) := by
+  intro κ
+  exact Indistinguishable.of_ObsEq (obsEq_PRF_ideal_PRF_ideal2 X Y)
