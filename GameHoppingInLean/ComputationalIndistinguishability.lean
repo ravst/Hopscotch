@@ -100,7 +100,7 @@ lemma distSymm (x y : NNReal) : distance x y = distance y x := by
 lemma disPMFSymm (x y ) : distancePMF x y = distancePMF y x := by
   simp [distancePMF, distSymm]
 
-lemma distTriangle (x y z : NNReal) : distance x z ≤ distance x y + distance y z := by
+lemma distTriangle {x : NNReal} (y : NNReal) {z : NNReal} : distance x z ≤ distance x y + distance y z := by
   simp [distance]
   apply dist_triangle
 
@@ -145,15 +145,21 @@ lemma neglTriangle2 (f1 f2 f3: ℕ -> NNReal)
   : negl (fun i => distance (f1 i) (f3 i)) :=
   by
     apply neglTriangle _ (fun i => distance (f1 i) (f2 i)) (fun i => distance (f2 i) (f3 i)) <;> try assumption
-    exact fun i ↦ distTriangle (f1 i) (f2 i) (f3 i)
-
-
+    intro i
+    apply distTriangle
 
 lemma advatangeTriangle {I : Type} {O : OracleSpec I}
   {distinguisher : adversaryT O} (o1 o2 o3 : RStateOracle O) :
   advantage distinguisher o1 o3 <= advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
 by
   apply distTriangle
+
+lemma advantageRefl {I : Type} {O : OracleSpec I}
+  {distinguisher : adversaryT O} (o : RStateOracle O) :
+    advantage distinguisher o o = 0 :=
+by
+  simp [advantage, distancePMF, distSelf]
+
 
 lemma advatangeTriangleFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 o3 : famOracle Spec) :
@@ -276,10 +282,31 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 --     true
 --   } := by sorry
 
-lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
-  (dist : adversaryT O) : FreeMonad.depth dist <= q_b ->
-    advantage dist ro₁ ro₂ = 0 := by sorry
+lemma rState2Rstate_non_dist (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b):
+  advantage dist o (rState2Rstate q_b o) = 0 := by sorry
 
+lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
+  BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by sorry
+
+lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+  (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b) :
+    advantage dist ro₁ ro₂ = 0 :=
+by
+  have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
+  have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
+  have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
+  have H3 : advantage dist (rState2Rstate q_b ro₁) (rState2Rstate q_b ro₂) = 0 := by
+    simp [rState2Rstate]
+    rw [H3p]
+    apply advantageRefl
+  rw [<-nonpos_iff_eq_zero]
+  -- calc
+  --   advantage dist ro₁ ro₂ <=
+  -- have F : advantage dist ro₁ ro₂ <= 0 := by
+    -- apply distancePMFtriangle
+    -- sorry
+  -- calc??
+  sorry
 
 def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
