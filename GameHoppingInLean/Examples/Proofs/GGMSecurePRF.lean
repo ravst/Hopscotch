@@ -323,18 +323,82 @@ theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
     | none =>
         simp [hm, StateT.run, StateT.set]
         simp only [GameHoppingSimplifyPMF]
-        -- TODO: The simproc related to PMF.bind_uniformOfFintype_bitVec_append_do does not work. Make it run correclty as some simproces for groups.
-        sorry
+        simp [StateT.run, StateT.set, set]
+        rfl
     | some m =>
         simp
+
+def Finmap.mapKeys (s : Finmap (fun _ : α => β)) (f : β → γ) : Finmap (fun _ : α => γ) where
+  entries := s.entries.map (fun x => ⟨x.1, f x.2⟩)
+  nodupKeys := by
+    rw [← Multiset.nodup_keys]
+    simpa [Multiset.keys] using s.nodupKeys.nodup_keys
+
+@[simp]
+theorem Finmap.mapKeys_empty (f : β → γ) :
+    Finmap.mapKeys (∅ : Finmap (fun _ : α => β)) f = ∅ := by
+  rfl
+
+@[simp]
+theorem Finmap.lookup_mapKeys [DecidableEq α]
+    (m : Finmap (fun _ : α => β)) (f : β → γ) (x : α) :
+    (Finmap.mapKeys m f).lookup x = (m.lookup x).map f := by
+  rcases m with ⟨⟨l⟩, hl⟩
+  exact List.dlookup_map₂ (γ := fun _ : α => β) (δ := fun _ : α => γ) (f := fun _ => f) x
+
+@[simp]
+theorem Finmap.mapKeys_insert [DecidableEq α]
+    (m : Finmap (fun _ : α => β)) (f : β → γ) (x : α) (v : β) :
+    Finmap.mapKeys (m.insert x v) f = (Finmap.mapKeys m f).insert x (f v) := by
+  apply Finmap.ext_lookup
+  intro y
+  by_cases h : y = x
+  · subst y
+    simp
+  · simp [h]
 
 -- by correct abstraction, we map each seed in cache to its prgs.
 theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin n) :
     ObsEq (applySRReduction (GGMHybridStepReduction2PRG prg i) (PRG_real prg))
       (GGMHybrid2 prg i.castSucc) := by
-  sorry
-
+  apply ObsEq.symm
+  refine correctAbstractionImpliesObsEq _ _ (?_) (?_)
+  · simp[applySRReduction, GGMHybridStepReduction2PRG, GGMHybrid2, PRG_real]
+    intro f
+    exact ⟨(Finmap.mapKeys f prg.draw), ()⟩
+  · constructor
+    · simp [GGMHybrid2, applySRReduction, GGMHybridStepReduction2PRG, PRG_real]
+    · intro i_1 query
+      cases i_1
+      simp [OracleSpec.domain, SecurePRFSpec] at query
+      simp [GGMHybrid2, applySRReduction, GGMHybridStepReduction2PRG, PRG_real,
+            mapOutputState, mapInputState]
+      ext1 st
+      simp [mapOutputState, mapInputState, mapSecond, StateT.run, OracleComp.simulateQ, FreeMonad.roll, FreeMonad.mapM]
+      generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) st = m
+      cases m with
+      | none =>
+        simp
+        simp only [GameHoppingSimplifyPMF]
+        simp
+        simp only [GameHoppingSimplifyPMF]
+        congr 1
+        ext1 a
+        congr 2
+        rw [applyPRGs.eq_def]
+        generalize hk : n - i = k
+        cases k with
+        | zero => omega
+        | succ k'=> simp
+      | some x =>
+        simp
+        congr 2
+        rw [applyPRGs.eq_def]
+        generalize hk : n - i = k
+        cases k with
+        | zero => omega
+        | succ k'=> simp
 
 /-- One hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
