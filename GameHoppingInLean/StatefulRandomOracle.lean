@@ -72,28 +72,28 @@ noncomputable def runQueriesOnlyOut {I : Type} {O : OracleSpec I} (ro : RStateOr
 end RStateOracle
 
 
-structure BehavioralOracle {I : Type u} (O : OracleSpec I) : Type _ where
-  process : List (QueryS O) -> PMF (List (QueryResult O))
-  no_look_ahead : forall (ql : List (QueryS O)) (x1 x2 : QueryS O),
-    (process (List.cons x1 ql)).map (List.tail) =
-    (process (List.cons x2 ql)).map (List.tail)
-  well_formed : forall (ql : List (QueryS O)),
-      (process ql).map (fun l => l.map (QueryResult.index)) =
+structure BehavioralOracle {I : Type u} (O : OracleSpec I) (q_b : ENat): Type _ where
+  process : (l : List (QueryS O)) -> (l.length <= q_b) -> PMF (List (QueryResult O))
+  no_look_ahead : forall (ql : List (QueryS O)) (H : ql.length+1 <= q_b) (x1 x2 : QueryS O),
+    (process (List.cons x1 ql) H).map (List.tail) =
+    (process (List.cons x2 ql) H).map (List.tail)
+  well_formed : forall (ql : List (QueryS O)) (H : ql.length <= q_b),
+      (process ql H).map (fun l => l.map (QueryResult.index)) =
       pure (ql.map (QueryS.index))
 
-structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) : Type _ where
-  process : List (QueryWithResult O) -> (QueryS O) -> PMF (QueryResult O)
+structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) (q_b : ENat): Type _ where
+  process : (ql : List (QueryWithResult O)) -> (ql.length <= q_b) -> (i : I) -> (O.domain i) -> PMF (O.range i)
 
 namespace BehavioralOracle
 
-lemma BehavioralOracleLengthPreserving {I : Type} (O : OracleSpec I) (x : BehavioralOracle O) :
-  forall (ql : List (QueryS O)), pure ql.length = (x.process ql).map List.length :=
+lemma BehavioralOracleLengthPreserving {I : Type} {O : OracleSpec I} {q_b} (x : BehavioralOracle O q_b) :
+  forall (ql : List (QueryS O)) (H : ql.length <= q_b), pure ql.length = (x.process ql H).map List.length :=
 by
   sorry
 
-noncomputable def into {I : Type} (O : OracleSpec I) (o : RStateOracle O) : BehavioralOracle O :=
+noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : RStateOracle O) : BehavioralOracle O q_b :=
 {
-  process (ql : List (QueryS O)) :=
+  process (ql : List (QueryS O)) (H : ql.length <= q_b) :=
     RStateOracle.runQueriesOnlyOut o ql
   no_look_ahead := sorry
   well_formed := sorry
@@ -101,6 +101,33 @@ noncomputable def into {I : Type} (O : OracleSpec I) (o : RStateOracle O) : Beha
 
 end BehavioralOracle
 
+-- hard, we need to do conditional probabilities.
+def behavioralOracle1to2 {I : Type u} {O : OracleSpec I} {q_b : ENat} (x : BehavioralOracle O q_b) : BehavioralOracle2 O q_b :=
+  sorry
+
+noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b : ENat}
+  (x : BehavioralOracle2 O q_b) : RStateOracle O where
+  stateType := List (QueryWithResult O)
+  initialState := pure []
+  queries := {
+    impl i q :=
+      do
+        let state <- get
+        if H : state.length <= q_b then
+          let out <- x.process state H i q
+          set ({index := i, input := q, output := out : QueryWithResult O} :: state)
+          pure out
+        else
+          sorry
+  }
+
+
+noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec I} {q_b : ENat}
+  (x : BehavioralOracle O q_b) : RStateOracle O :=
+  behavioralOracle2toRstate (behavioralOracle1to2 x)
+
+noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : RStateOracle O) : RStateOracle O :=
+  behavioralOracle1toRstate (BehavioralOracle.into q_b x)
 
 -- def RStateOracleFam {I : Type} (O : OracleSpec I) := (κ : ℕ) -> RStateOracle O
 
