@@ -278,11 +278,71 @@ noncomputable def obsEq_rand_GGMHybrid_1_2 {Reductions : IndistinguishabilityRed
       GGMHybrid2 prg i := hRight
 
 
+noncomputable def Finmap.getWithProof {α : Type u} {β : α → Type v} [DecidableEq α]
+    (m : Finmap β) (x : α) (hx : x ∈ m.keys) : β x :=
+  Classical.choose (Finmap.mem_iff.mp (Finmap.mem_keys.mp hx))
+
+noncomputable def Finmap.funToFinMap {X : Type u} {Y : Type v} [DecidableEq X]
+    {S : Finset X} (f : S → Y) : Finmap (fun _ : X => Y) :=
+  Finmap.keysLookupEquiv.symm
+    ⟨(S, fun x => if h : x ∈ S then some (f ⟨x, h⟩) else none),
+      by
+        intro x
+        by_cases h : x ∈ S <;> simp [h]⟩
+
+def BitVec.flipLsb {i : ℕ} (x : BitVec i.succ) : BitVec i.succ :=
+  (BitVec.extractLsb' 1 i x).concat (!x.getLsbD 0)
+
+@[simp] private lemma BitVec.extractLsb'_one_concat {i : ℕ} (x : BitVec i) (b : Bool) :
+    BitVec.extractLsb' 1 i (x.concat b) = x := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro n hn
+  simp [BitVec.getLsbD_extractLsb', BitVec.getLsbD_concat, hn]
+
+@[simp] private lemma BitVec.flipLsb_concat_false {i : ℕ} (x : BitVec i) :
+    BitVec.flipLsb (x.concat false) = x.concat true := by
+  simp [BitVec.flipLsb]
+
+@[simp] private lemma BitVec.flipLsb_concat_true {i : ℕ} (x : BitVec i) :
+    BitVec.flipLsb (x.concat true) = x.concat false := by
+  simp [BitVec.flipLsb]
+
+noncomputable
+def abstractionGGMHybird_2_to_3 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k)) : PMF (Finmap (fun _ : BitVec i ↦ BitVec (k+k))) := by
+  classical
+  exact do
+    let missing :=  { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipLsb ∈ f.keys}
+    let missingVals <- PMF.uniformOfFintype (missing → BitVec k)
+    let definedKeys : Finset (BitVec i) := f.keys.image (fun y => BitVec.extractLsb' 1 i y)
+    let defined := { x : BitVec i // x ∈ definedKeys }
+    let definedVals (d : defined) : BitVec (k + k) :=
+      let x := d.1
+      let x0 : BitVec i.succ := x.concat false
+      let x1 : BitVec i.succ := x.concat true
+      if h0 : x0 ∈ f.keys then
+        if h1 : x1 ∈ f.keys then
+          (Finmap.getWithProof f x0 h0).append (Finmap.getWithProof f x1 h1)
+        else
+          (Finmap.getWithProof f x0 h0).append
+            (missingVals ⟨x1, h1, by simpa [BitVec.flipLsb, x0, x1] using h0⟩)
+      else
+        if h1 : x1 ∈ f.keys then
+          (missingVals ⟨x0, h0, by simpa [BitVec.flipLsb, x0, x1] using h1⟩).append
+            (Finmap.getWithProof f x1 h1)
+        else
+          BitVec.ofNat (k + k) 0
+    pure (Finmap.funToFinMap definedVals)
+
 -- hard, notrvial randomization shifts.
 theorem obsEq_GGMHybrid2_Vs_3 {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin n) :
     ObsEq (GGMHybrid2 prg (i.succ)) (GGMHybrid3 prg i) := by
-  sorry
+  refine correctAbstractionBindImpliesObsEq _ _
+    abstractionGGMHybird_2_to_3 ?_
+  constructor
+  · sorry
+  · intro idx query
+    sorry
 
 
 -- easy, just definition
