@@ -110,6 +110,7 @@ private noncomputable def missingAfterInsertEquiv {X Y : Type} [DecidableEq X]
       · simp [hx]
     · simp
 
+
 /-- The eagerly sampled random-function oracle and its lazy cached implementation are
 observationally equivalent. -/
 theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
@@ -146,11 +147,13 @@ theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
         Equiv.arrowCongr tmp_isoD (Equiv.refl Y)
       rw [← PMF.map_uniformOfFintype_equiv tmp_iso]
       simp [tmp_iso, tmp_isoD, Equiv.subtypeEquivRight, Equiv.subtypeEquiv, Equiv.arrowCongr]
-      congr 1; ext1 f
+      congr 1
+      ext1 f
       simp
       congr 1
       rw [ite_cond_eq_false] <;> try (simp; assumption)
-      congr 1; ext1 x
+      congr 1
+      ext1 x
       by_cases hx : x ∈ st.keys
       · rw [dite_cond_eq_true] <;> try (simp; right; assumption)
         rw [dite_cond_eq_true] <;> try (simp; assumption)
@@ -170,7 +173,8 @@ theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
     | some v =>
         simp [bindSecond, completePRFCache]
         simp only [GameHoppingSimplifyPMF]
-        congr 1; ext1 a
+        congr 1
+        ext1 a
         simp
         congr 2
         rw [dite_cond_eq_true]
