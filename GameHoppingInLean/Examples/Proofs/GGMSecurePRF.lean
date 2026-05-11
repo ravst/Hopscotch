@@ -309,8 +309,12 @@ noncomputable def Finmap.funToFinMap {X : Type u} {Y : Type v} [DecidableEq X]
   ext x
   simp [Finmap.mem_keys, Finmap.mem_insert, eq_comm, or_comm]
 
-def BitVec.flipLsb {i : ℕ} (x : BitVec i.succ) : BitVec i.succ :=
-  (BitVec.extractLsb' 1 i x).concat (!x.getLsbD 0)
+def BitVec.consMsb {i : ℕ} (b : Bool) (x : BitVec i) : BitVec i.succ :=
+  BitVec.cast (by omega)
+    ((BitVec.ofNat 1 (if b then 1 else 0)).append x)
+
+def BitVec.flipMsb {i : ℕ} (x : BitVec i.succ) : BitVec i.succ :=
+  BitVec.consMsb (!x.getLsbD i) (BitVec.extractLsb' 0 i x)
 
 @[simp] private lemma BitVec.extractLsb'_one_concat {i : ℕ} (x : BitVec i) (b : Bool) :
     BitVec.extractLsb' 1 i (x.concat b) = x := by
@@ -318,41 +322,44 @@ def BitVec.flipLsb {i : ℕ} (x : BitVec i.succ) : BitVec i.succ :=
   intro n hn
   simp [BitVec.getLsbD_extractLsb', BitVec.getLsbD_concat, hn]
 
-@[simp] private lemma BitVec.extractLsb'_one_extractLsb'_zero_succ
-    {n i : ℕ} (x : BitVec n) :
-    BitVec.extractLsb' 1 i (BitVec.extractLsb' 0 (i + 1) x) =
-      BitVec.extractLsb' 0 i x := by
-  sorry
-
-@[simp] private lemma BitVec.flipLsb_concat_false {i : ℕ} (x : BitVec i) :
-    BitVec.flipLsb (x.concat false) = x.concat true := by
-  simp [BitVec.flipLsb]
-
-@[simp] private lemma BitVec.flipLsb_concat_true {i : ℕ} (x : BitVec i) :
-    BitVec.flipLsb (x.concat true) = x.concat false := by
-  simp [BitVec.flipLsb]
-
-@[simp] private lemma BitVec.flipLsb_flipLsb {i : ℕ} (x : BitVec i.succ) :
-    x.flipLsb.flipLsb = x := by
+@[simp] private lemma BitVec.extractLsb'_one_concat_getLsbD {i : ℕ} (x : BitVec i.succ) :
+    (BitVec.extractLsb' 1 i x).concat (x.getLsbD 0) = x := by
   apply BitVec.eq_of_getLsbD_eq
   intro n hn
   by_cases hn0 : n = 0
   · subst n
-    simp [BitVec.flipLsb, BitVec.getLsbD_concat]
+    simp [BitVec.getLsbD_concat]
   · have hn' : n - 1 < i := by omega
     have hnidx : 1 + (n - 1) = n := by omega
-    simp [BitVec.flipLsb, BitVec.getLsbD_concat, BitVec.getLsbD_extractLsb',
-      hn0, hn', hnidx]
+    simp [BitVec.getLsbD_concat, BitVec.getLsbD_extractLsb', hn0, hn', hnidx]
+
+@[simp] private lemma BitVec.extractLsb'_one_extractLsb'_zero_succ
+    {n i : ℕ} (x : BitVec n) :
+    BitVec.extractLsb' 1 i (BitVec.extractLsb' 0 (i + 1) x) =
+      BitVec.extractLsb' 1 i x := by
+  sorry
+
+@[simp] private lemma BitVec.flipMsb_consMsb_false {i : ℕ} (x : BitVec i) :
+    BitVec.flipMsb (BitVec.consMsb false x) = BitVec.consMsb true x := by
+  sorry
+
+@[simp] private lemma BitVec.flipMsb_consMsb_true {i : ℕ} (x : BitVec i) :
+    BitVec.flipMsb (BitVec.consMsb true x) = BitVec.consMsb false x := by
+  sorry
+
+@[simp] private lemma BitVec.flipMsb_flipMsb {i : ℕ} (x : BitVec i.succ) :
+    x.flipMsb.flipMsb = x := by
+  sorry
 
 private noncomputable def missingAfterInsertKeysEquiv {i k : ℕ}
     (st : Finmap (fun _ : BitVec i.succ => BitVec k))
     (query : BitVec i.succ) (a : BitVec k) :
     ({ x : BitVec i.succ //
-        x ∉ (st.insert query a).keys ∧ x.flipLsb ∈ (st.insert query a).keys } →
+        x ∉ (st.insert query a).keys ∧ x.flipMsb ∈ (st.insert query a).keys } →
         BitVec k) ≃
       ({ x : BitVec i.succ //
         x ∉ st.keys ∪ ({query} : Finset (BitVec i.succ)) ∧
-          x.flipLsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k) :=
+          x.flipMsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k) :=
   Equiv.arrowCongr
     (Equiv.subtypeEquivRight fun x => by
       simp [Finmap.keys_insert_union, and_comm, and_left_comm, and_assoc,
@@ -364,13 +371,13 @@ private lemma uniform_missingAfterInsertKeys {i k : ℕ}
     (query : BitVec i.succ) (a : BitVec k) :
     PMF.uniformOfFintype
         ({ x : BitVec i.succ //
-          x ∉ (st.insert query a).keys ∧ x.flipLsb ∈ (st.insert query a).keys } →
+          x ∉ (st.insert query a).keys ∧ x.flipMsb ∈ (st.insert query a).keys } →
           BitVec k)
       =
     (PMF.uniformOfFintype
         ({ x : BitVec i.succ //
           x ∉ st.keys ∪ ({query} : Finset (BitVec i.succ)) ∧
-            x.flipLsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } →
+            x.flipMsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } →
           BitVec k)).map
       (missingAfterInsertKeysEquiv st query a).symm := by
   exact (PMF.map_uniformOfFintype_equiv
@@ -380,12 +387,12 @@ private noncomputable def missingBeforeInsertSplitEquiv {i k : ℕ}
     (st : Finmap (fun _ : BitVec i.succ => BitVec k))
     (query : BitVec i.succ)
     (hquery : query ∉ st.keys)
-    (hsibling : query.flipLsb ∈ st.keys) :
-    ({ x : BitVec i.succ // x ∉ st.keys ∧ x.flipLsb ∈ st.keys } → BitVec k) ≃
+    (hsibling : query.flipMsb ∈ st.keys) :
+    ({ x : BitVec i.succ // x ∉ st.keys ∧ x.flipMsb ∈ st.keys } → BitVec k) ≃
       BitVec k ×
         ({ x : BitVec i.succ //
           x ∉ st.keys ∪ ({query} : Finset (BitVec i.succ)) ∧
-            x.flipLsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k) where
+            x.flipMsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k) where
   toFun f :=
     ⟨f ⟨query, hquery, hsibling⟩,
       fun x => f ⟨x.1, by
@@ -394,11 +401,11 @@ private noncomputable def missingBeforeInsertSplitEquiv {i k : ℕ}
           rcases Finset.mem_union.mp x.2.2 with hflip | hflip
           · exact hflip
           · exfalso
-            have hxflip : x.1.flipLsb = query := by simpa using hflip
-            have hx : x.1 = query.flipLsb := by
+            have hxflip : x.1.flipMsb = query := by simpa using hflip
+            have hx : x.1 = query.flipMsb := by
               calc
-                x.1 = x.1.flipLsb.flipLsb := by simp
-                _ = query.flipLsb := by rw [hxflip]
+                x.1 = x.1.flipMsb.flipMsb := by simp
+                _ = query.flipMsb := by rw [hxflip]
             exact (Finset.not_mem_union.mp x.2.1).1 (by simpa [hx] using hsibling)⟩⟩
   invFun p x :=
     if hx : x.1 = query then
@@ -428,44 +435,85 @@ private lemma uniform_missingBeforeInsertSplit {i k : ℕ}
     (st : Finmap (fun _ : BitVec i.succ => BitVec k))
     (query : BitVec i.succ)
     (hquery : query ∉ st.keys)
-    (hsibling : query.flipLsb ∈ st.keys) :
+    (hsibling : query.flipMsb ∈ st.keys) :
     (PMF.uniformOfFintype
-        ({ x : BitVec i.succ // x ∉ st.keys ∧ x.flipLsb ∈ st.keys } → BitVec k)).map
+        ({ x : BitVec i.succ // x ∉ st.keys ∧ x.flipMsb ∈ st.keys } → BitVec k)).map
       (missingBeforeInsertSplitEquiv st query hquery hsibling)
       =
     PMF.uniformOfFintype
       (BitVec k ×
         ({ x : BitVec i.succ //
           x ∉ st.keys ∪ ({query} : Finset (BitVec i.succ)) ∧
-            x.flipLsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k)) := by
+            x.flipMsb ∈ st.keys ∪ ({query} : Finset (BitVec i.succ)) } → BitVec k)) := by
   exact PMF.map_uniformOfFintype_equiv
     (missingBeforeInsertSplitEquiv st query hquery hsibling)
 
 noncomputable
-def abstractionGGMHybird_2_to_3 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k)) : PMF (Finmap (fun _ : BitVec i ↦ BitVec (k+k))) := by
+def abstractionGGMHybird_2_to_3_inner {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k))
+  (missingVals : { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipMsb ∈ f.keys} -> BitVec k)
+: (Finmap (fun _ : BitVec i ↦ BitVec (k+k))) := by
   classical
-  exact do
-    let missing :=  { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipLsb ∈ f.keys}
-    let missingVals <- PMF.uniformOfFintype (missing → BitVec k)
-    let definedKeys : Finset (BitVec i) := f.keys.image (fun y => BitVec.extractLsb' 1 i y)
+  exact
+    let definedKeys : Finset (BitVec i) := f.keys.image (fun y => BitVec.extractLsb' 0 i y)
     -- let defined := { x : BitVec i // x ∈ definedKeys }
     let definedVals (d : definedKeys) : BitVec (k + k) :=
       let x := d.1
-      let x0 : BitVec i.succ := x.concat false
-      let x1 : BitVec i.succ := x.concat true
+      let x0 : BitVec i.succ := BitVec.consMsb false x
+      let x1 : BitVec i.succ := BitVec.consMsb true x
       if h0 : x0 ∈ f.keys then
         if h1 : x1 ∈ f.keys then
           (Finmap.getWithProof f x0 h0).append (Finmap.getWithProof f x1 h1)
         else
           (Finmap.getWithProof f x0 h0).append
-            (missingVals ⟨x1, h1, by simpa [BitVec.flipLsb, x0, x1] using h0⟩)
+            (missingVals ⟨x1, h1, by
+              have hflip : x1.flipMsb = x0 := by simp [x0, x1]
+              simpa [hflip] using h0⟩)
       else
         if h1 : x1 ∈ f.keys then
-          (missingVals ⟨x0, h0, by simpa [BitVec.flipLsb, x0, x1] using h1⟩).append
+          (missingVals ⟨x0, h0, by
+            have hflip : x0.flipMsb = x1 := by simp [x0, x1]
+            simpa [hflip] using h1⟩).append
             (Finmap.getWithProof f x1 h1)
         else
+          -- impossible branch
           BitVec.ofNat (k + k) 0
-    pure (Finmap.funToFinMap definedVals)
+    (Finmap.funToFinMap definedVals)
+
+lemma abstractionGGMHybird_2_to_3_inner_spec1 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k))
+  (missingVals : { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipMsb ∈ f.keys} -> BitVec k)
+  (q : BitVec (i+1)) (H : q ∈ f.keys) :
+  (let out : Finmap fun x ↦ BitVec (k + k) := abstractionGGMHybird_2_to_3_inner f missingVals
+  (Finmap.lookup (BitVec.extractLsb' 0 i q) out).map
+    (fun (x : BitVec (k+k)) => PRG.chooseHalfI x q[i])
+  ) =
+  some (f.getWithProof q H)
+:= by sorry
+
+lemma abstractionGGMHybird_2_to_3_inner_spec2 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k))
+  (missingVals : { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipMsb ∈ f.keys} -> BitVec k)
+  (q : BitVec (i+1)) (H : q ∉ f.keys ∧ q.flipMsb ∈ f.keys) :
+  (let out : Finmap fun x ↦ BitVec (k + k) := abstractionGGMHybird_2_to_3_inner f missingVals
+  (Finmap.lookup (BitVec.extractLsb' 0 i q) out).map
+    (fun (x : BitVec (k+k)) => PRG.chooseHalfI x q[i])
+  ) =
+  some (missingVals ⟨q, H⟩)
+:= by sorry
+
+lemma abstractionGGMHybird_2_to_3_inner_spec3 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k))
+  (missingVals : { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipMsb ∈ f.keys} -> BitVec k)
+  (q : BitVec (i+1)) (H : q ∉ f.keys ∧ q.flipMsb ∉ f.keys) :
+  (let out : Finmap fun x ↦ BitVec (k + k) := abstractionGGMHybird_2_to_3_inner f missingVals
+  (Finmap.lookup (BitVec.extractLsb' 0 i q) out).map
+    (fun (x : BitVec (k+k)) => PRG.chooseHalfI x q[i])
+  ) = none
+:= by sorry
+
+noncomputable
+def abstractionGGMHybird_2_to_3 {i k : ℕ} (f : Finmap (fun _ : BitVec (i.succ) ↦ BitVec k)) : PMF (Finmap (fun _ : BitVec i ↦ BitVec (k+k))) :=
+  do
+    let missing :=  { x : (BitVec i.succ) // x ∉ f.keys ∧ x.flipMsb ∈ f.keys}
+    let missingVals <- PMF.uniformOfFintype (missing → BitVec k)
+    return abstractionGGMHybird_2_to_3_inner f missingVals
 
 -- hard, notrvial randomization shifts.
 theorem obsEq_GGMHybrid2_Vs_3 {k n : ℕ}
@@ -474,66 +522,159 @@ theorem obsEq_GGMHybrid2_Vs_3 {k n : ℕ}
   refine correctAbstractionBindImpliesObsEq _ _
     abstractionGGMHybird_2_to_3 ?_
   constructor
-  · simp [GGMHybrid2, GGMHybrid3, abstractionGGMHybird_2_to_3, GGMHybrid2]
+  · simp [GGMHybrid2, GGMHybrid3, abstractionGGMHybird_2_to_3, abstractionGGMHybird_2_to_3_inner, GGMHybrid2]
   · intro idx query
+    simp [Fin.succ, GGMHybrid2]
     ext1 st
-    --simp [GGMHybrid2] at st
+    -- simp [GGMHybrid2] at st
     simp [SecurePRFSpec, abstractionGGMHybird_2_to_3, bindInputState, bindOutputState, StateT.run, GGMHybrid2, GGMHybrid3, bindSecond]
     simp [OracleSpec.domain, SecurePRFSpec] at query
     simp only [GameHoppingSimplifyPMF]
-    generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑(i.succ)) query) st = m
+
+    generalize hqsi : (BitVec.extractLsb' 0 (↑(i)+1) query) = qsi
+    generalize hqi : (BitVec.extractLsb' 0 ↑i query) = qi
+
+    -- let qbit : Bool := qsi.getLsbD 0
+    -- have hqsi_decomp : (BitVec.extractLsb' 1 (↑i) qsi).concat qbit = qsi := by
+    --   simpa [qbit] using BitVec.extractLsb'_one_concat_getLsbD qsi
+    have Hsi_decomp : qi = BitVec.extractLsb' 0 i qsi := by sorry
+    -- simp[hqsi_decomp]
+
+
+    generalize hm : Finmap.lookup qsi st = m
     cases m with
     | none =>
-      simp at hm
       simp [hm]
       simp only [GameHoppingSimplifyPMF]
+
       have hUniform (a : BitVec k) := by
-        exact uniform_missingAfterInsertKeys st
-          (BitVec.extractLsb' 0 (↑(i.succ)) query) a
+        exact uniform_missingAfterInsertKeys st qsi a
       simp at hUniform
+
       conv_lhs =>
         enter [2, a, 1]
         rw [hUniform a]
       clear hUniform
       simp only [GameHoppingSimplifyPMF]
-      let q : BitVec (↑(i.succ)) := BitVec.extractLsb' 0 (↑(i.succ)) query
-      have hqNotMem : q ∉ st.keys := by
-        intro hq
-        exact (Finmap.lookup_eq_none.mp hm) (Finmap.mem_keys.mp hq)
-      by_cases hParent :
-          ∃ a ∈ Finmap.keys st,
-            BitVec.extractLsb' 1 (↑i) a = BitVec.extractLsb' 0 (↑i) query
-      · have hsibling : q.flipLsb ∈ st.keys := by
-          rcases hParent with ⟨a, haMem, haPrefix⟩
-          have ha_ne_q : a ≠ q := by
-            intro ha
-            exact hqNotMem (by simpa [q, ha] using haMem)
-          have ha_eq_flip : a = q.flipLsb := by
-            -- `a` has the same parent prefix as `q`; since `q ∉ st.keys` but
-            -- `a ∈ st.keys`, the low bit must be the opposite one.
-            sorry
-          simpa [ha_eq_flip] using haMem
+      simp
+      simp only [GameHoppingSimplifyPMF]
+      by_cases Hm2 : qsi.flipMsb ∈ st.keys
+      ·
+        have hqsiNotMem : qsi ∉ st.keys := by
+          intro hqsiMem
+          exact (Finmap.lookup_eq_none.mp hm) (Finmap.mem_keys.mp hqsiMem)
         conv_rhs =>
           change (PMF.uniformOfFintype
             ({ x : BitVec (↑(i.succ)) //
-              x ∉ st.keys ∧ x.flipLsb ∈ st.keys } → BitVec k)).bind _
+              x ∉ st.keys ∧ x.flipMsb ∈ st.keys } → BitVec k)).bind _
           erw [PMF.bind_uniformOfFintype_equiv
-            (e := (missingBeforeInsertSplitEquiv st q hqNotMem hsibling).symm)]
+            (e := (missingBeforeInsertSplitEquiv st qsi hqsiNotMem Hm2).symm)]
           rw [PMF.uniformOfFintype_prod_bind]
         simp only [GameHoppingSimplifyPMF]
         congr 1
         ext1 a
         congr 1
         ext1 f
-        simp
+
+        --simp [missingBeforeInsertSplitEquiv]
+        rw [Hsi_decomp]
+        generalize hm3 : Finmap.lookup (BitVec.extractLsb' 0 (↑i) qsi)
+            (abstractionGGMHybird_2_to_3_inner st
+              ((missingBeforeInsertSplitEquiv st qsi hqsiNotMem Hm2).symm (a, f))) = m3
+        cases m3 with
+        | some m3' =>
+          simp
+          congr 2
+          · sorry
+          --simp only [GameHoppingSimplifyPMF]
+          ·
+            unfold abstractionGGMHybird_2_to_3_inner
+            apply Finmap.ext_lookup
+            intro d
+            simp [Finmap.lookup_funToFinMap]
+            by_cases hdqi : d = qi
+            ·
+
+              sorry
+            · have : BitVec.consMsb false d ≠  qsi := sorry
+              simp [this]
+              have : BitVec.consMsb true d ≠ qsi := sorry
+              simp [this]
+              simp [← Hsi_decomp, hdqi]
+              have : ¬ (qi = d) := sorry
+              simp [this]
+              have : forall b p, (Finmap.insert qsi a st).getWithProof (BitVec.consMsb b d) p = st.getWithProof (BitVec.consMsb b d) (by sorry) := by sorry
+              congr 1
+              ext1 h
+              congr 1
+              simp [this]
+              simp [missingBeforeInsertSplitEquiv,  missingAfterInsertKeysEquiv]
+
+
+
+              sorry
 
 
 
 
+        | none => sorry
 
-        sorry
+
+        --rw [abstractionGGMHybird_2_to_3_inner_spec1]
+        --simp [abstractionGGMHybird_2_to_3_inner]
+        -- have Hp :  ∃ a ∈ st.keys, BitVec.extractLsb' 0 (↑i) a = --qi := by
+        --   exists qsi.flipMsb
+        --   sorry
+        -- -- simp [Hp, missingBeforeInsertSplitEquiv]
+
+        -- split_ifs with hi hi2 hi3 h4
+        -- · -- contradition, qsi needs to belng to st.keys
+        --   sorry
+        -- · sorry
+        -- . sorry
+        -- · sorry
+        -- · sorry
+        -- · sorry
+
+
       ·
+      -- let q : BitVec (↑(i.succ)) := BitVec.extractLsb' 0 (↑(i.succ)) query
+      -- have hqNotMem : q ∉ st.keys := by
+      --   intro hq
+      --   exact (Finmap.lookup_eq_none.mp hm) (Finmap.mem_keys.mp hq)
+      -- by_cases hParent :
+      --     ∃ a ∈ Finmap.keys st,
+      --       BitVec.extractLsb' 1 (↑i) a = BitVec.extractLsb' 0 (↑i) query
+      -- · have hsibling : q.flipMsb ∈ st.keys := by
+      --     rcases hParent with ⟨a, haMem, haPrefix⟩
+      --     have ha_ne_q : a ≠ q := by
+      --       intro ha
+      --       exact hqNotMem (by simpa [q, ha] using haMem)
+      --     have ha_eq_flip : a = q.flipMsb := by
+      --       -- `a` has the same parent prefix as `q`; since `q ∉ st.keys` but
+      --       -- `a ∈ st.keys`, the low bit must be the opposite one.
+      --       sorry
+      --     simpa [ha_eq_flip] using haMem
+      --   conv_rhs =>
+      --     change (PMF.uniformOfFintype
+      --       ({ x : BitVec (↑(i.succ)) //
+      --         x ∉ st.keys ∧ x.flipMsb ∈ st.keys } → BitVec k)).bind _
+      --     erw [PMF.bind_uniformOfFintype_equiv
+      --       (e := (missingBeforeInsertSplitEquiv st q hqNotMem hsibling).symm)]
+      --     rw [PMF.uniformOfFintype_prod_bind]
+      --   simp only [GameHoppingSimplifyPMF]
+      --   congr 1
+      --   ext1 a
+      --   congr 1
+      --   ext1 f
+      --   simp
+
+
+
+
+
         sorry
+
     | some x => sorry
 
     -- generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑(i.succ)) query) st = m
