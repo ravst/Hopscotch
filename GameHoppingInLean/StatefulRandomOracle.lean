@@ -118,6 +118,7 @@ noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b :
           set ({index := i, input := q, output := out : QueryWithResult O} :: state)
           pure out
         else
+          -- problem with q_b==0 and O.range i = Empty
           sorry
   }
 
@@ -128,6 +129,7 @@ noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec I} {q_b :
 
 noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : RStateOracle O) : RStateOracle O :=
   behavioralOracle1toRstate (BehavioralOracle.into q_b x)
+
 
 -- def RStateOracleFam {I : Type} (O : OracleSpec I) := (κ : ℕ) -> RStateOracle O
 

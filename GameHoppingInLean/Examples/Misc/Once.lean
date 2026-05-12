@@ -330,7 +330,7 @@ theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [âˆ
   intro queries
   rw [runQueriesEquiv]
   rw [runQueriesEquiv]
-  simp [RStateOracle.runQueries2]
+  simp [RStateOracle.runQueriesOnlyOut, RStateOracle.runQueries2]
   conv =>
     rhs
     arg 2
