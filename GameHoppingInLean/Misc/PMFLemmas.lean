@@ -185,6 +185,51 @@ theorem map_uniformOfFintype_equiv {X Y : Type}
     (PMF.bind_uniformOfFintype_equiv
       (e := e) (g := (PMF.pure : Y → PMF Y))).symm
 
+/-- Split a function into its value at one point and its values everywhere else. -/
+noncomputable def evalFunctionEquiv (X Y : Type) [DecidableEq X] (x : X) :
+    (X → Y) ≃ Y × ({x' : X // x' ≠ x} → Y) where
+  toFun f := (f x, fun x' => f x')
+  invFun p x' := if h : x' = x then p.1 else p.2 ⟨x', h⟩
+  left_inv f := by
+    funext x'
+    by_cases h : x' = x
+    · subst x'
+      simp
+    · simp [h]
+  right_inv p := by
+    apply Prod.ext
+    · simp
+    · funext x'
+      simp [x'.2]
+
+/-- Sampling a uniform function and evaluating it at one fixed input is the same as
+sampling a uniform value directly. -/
+@[GameHoppingSimplifyPMF]
+theorem bind_uniformOfFintype_eval_do {X Y α : Type}
+    [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y]
+    (x : X) (rest : Y → PMF α) :
+    (do
+      let f ← PMF.uniformOfFintype (X → Y)
+      rest (f x)) =
+    (do
+      let y ← PMF.uniformOfFintype Y
+      rest y) := by
+  let rest' : Y × ({x' : X // x' ≠ x} → Y) → PMF α := fun p => rest p.1
+  calc
+    (do
+      let f ← PMF.uniformOfFintype (X → Y)
+      rest (f x)) =
+        (PMF.uniformOfFintype (Y × ({x' : X // x' ≠ x} → Y))).bind rest' := by
+          simpa [rest', evalFunctionEquiv] using
+            (PMF.bind_uniformOfFintype_equiv
+              (e := PMF.evalFunctionEquiv X Y x) (g := rest')).symm
+    _ =
+      (do
+        let y ← PMF.uniformOfFintype Y
+        rest y) := by
+        rw [PMF.uniformOfFintype_prod_bind]
+        simp [rest', PMF.bind_const]
+
 /-- Two independent uniform bitvector draws, appended together, are the same as one
 uniform draw at the appended width. -/
 @[GameHoppingSimplifyPMF]
@@ -262,6 +307,16 @@ private def getBitVecWidth? (e : Expr) : Option Expr :=
 private def getUniformBitVecWidth? (e : Expr) : Option Expr :=
   match e.getAppFnArgs with
   | (``PMF.uniformOfFintype, #[ty, _, _]) => getBitVecWidth? ty
+  | _ => none
+
+private def getArrowType? : Expr → Option (Expr × Expr)
+  | .forallE _ dom cod _ =>
+      if cod.hasLooseBVar 0 then none else some (dom, cod)
+  | _ => none
+
+private def getUniformFunctionType? (e : Expr) : Option (Expr × Expr) :=
+  match e.getAppFnArgs with
+  | (``PMF.uniformOfFintype, #[ty, _, _]) => getArrowType? ty
   | _ => none
 
 private def getBitVecAppendArgs? (e : Expr) : Option (Expr × Expr) :=
@@ -345,6 +400,86 @@ private def mkBitVecAppendUniformRewriteProof? (e : Expr) : MetaM (Option (Expr 
   catch _ =>
     return none
 
+private partial def abstractFunctionEvalOccurrencesAux?
+    (e : Expr) (depth : Nat) (arg? : Option Expr) (saw : Bool) :
+    MetaM (Option (Expr × Option Expr × Bool)) := do
+  match e with
+  | .bvar idx =>
+      if idx == depth then
+        return none
+      else
+        return some (e, arg?, saw)
+  | .app fn arg =>
+      if fn == mkBVar depth then
+        if arg.hasLooseBVar depth then
+          return none
+        let arg? ←
+          match arg? with
+          | none => pure (some arg)
+          | some old =>
+              unless old == arg do
+                return none
+              pure (some old)
+        return some (mkBVar depth, arg?, true)
+      else
+        let some (fn', arg?, saw) ← abstractFunctionEvalOccurrencesAux? fn depth arg? saw
+          | return none
+        let some (arg', arg?, saw) ← abstractFunctionEvalOccurrencesAux? arg depth arg? saw
+          | return none
+        return some (.app fn' arg', arg?, saw)
+  | .lam n ty body bi =>
+      let some (ty', arg?, saw) ← abstractFunctionEvalOccurrencesAux? ty depth arg? saw
+        | return none
+      let some (body', arg?, saw) ← abstractFunctionEvalOccurrencesAux? body (depth + 1) arg? saw
+        | return none
+      return some (.lam n ty' body' bi, arg?, saw)
+  | .forallE n ty body bi =>
+      let some (ty', arg?, saw) ← abstractFunctionEvalOccurrencesAux? ty depth arg? saw
+        | return none
+      let some (body', arg?, saw) ← abstractFunctionEvalOccurrencesAux? body (depth + 1) arg? saw
+        | return none
+      return some (.forallE n ty' body' bi, arg?, saw)
+  | .letE n ty val body nondep =>
+      let some (ty', arg?, saw) ← abstractFunctionEvalOccurrencesAux? ty depth arg? saw
+        | return none
+      let some (val', arg?, saw) ← abstractFunctionEvalOccurrencesAux? val depth arg? saw
+        | return none
+      let some (body', arg?, saw) ← abstractFunctionEvalOccurrencesAux? body (depth + 1) arg? saw
+        | return none
+      return some (.letE n ty' val' body' nondep, arg?, saw)
+  | .mdata md body =>
+      let some (body', arg?, saw) ← abstractFunctionEvalOccurrencesAux? body depth arg? saw
+        | return none
+      return some (.mdata md body', arg?, saw)
+  | .proj s i body =>
+      let some (body', arg?, saw) ← abstractFunctionEvalOccurrencesAux? body depth arg? saw
+        | return none
+      return some (.proj s i body', arg?, saw)
+  | _ => return some (e, arg?, saw)
+
+private def abstractFunctionEvalOccurrences? (body : Expr) : MetaM (Option (Expr × Expr)) := do
+  let some (body', some arg, true) ← abstractFunctionEvalOccurrencesAux? body 0 none false
+    | return none
+  return some (body', arg)
+
+private def mkUniformFunctionEvalRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  try
+    let some (m, _instBind, _α, _β, x, rest₁) ← getBind? e | return none
+    unless ← isPMF? m do
+      return none
+    let some (_X, Y) := getUniformFunctionType? x | return none
+    let .lam fName _fTy body fBi := rest₁ | return none
+    let some (body', arg) ← abstractFunctionEvalOccurrences? body | return none
+    let rest := Expr.lam fName Y body' fBi
+    let pf ← mkAppM ``PMF.bind_uniformOfFintype_eval_do #[arg, rest]
+    let pfTy ← inferType pf
+    let some (_ty, lhs, rhs) := pfTy.eq? | return none
+    unless (← isDefEq lhs e) do
+      return none
+    return some (rhs, pf)
+  catch _ =>
+    return none
+
 end PMFSimp
 
 /-- Simproc: remove a `PMF` bind when the continuation ignores the sampled value. -/
@@ -366,4 +501,12 @@ simproc [GameHoppingSimplifyPMF] pmfBitVecAppendUniform
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkBitVecAppendUniformRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
+
+/-- Simproc: replace a uniform function draw used only at one fixed input by a uniform draw of
+the corresponding output value. -/
+simproc [GameHoppingSimplifyPMF] pmfUniformFunctionEval
+  (Bind.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkUniformFunctionEvalRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
