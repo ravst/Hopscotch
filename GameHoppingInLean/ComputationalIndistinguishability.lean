@@ -47,6 +47,33 @@ noncomputable def runDinstinguisher {I : Type} {O : OracleSpec I}
     (comp init).map (fun x => x.1)
 
 
+noncomputable def runDinstinguisher_inner {I stateType : Type _} {O : OracleSpec I}
+  (d : OracleComp O Bool) (impl : QueryImpl3 O (RState stateType)) (init : stateType): PMF Bool :=
+  let comp := OracleComp.simulateQ (query_impl_convert impl) d
+  (comp init).map (fun x => x.1)
+
+lemma runDinstinguisher_inner_bind {I stateType : Type _} {O : OracleSpec I}
+  (ro : QueryImpl3 O (RState stateType)) (init : stateType)
+  (q : O.OracleQuery β)
+  (cont : β → FreeMonad O.OracleQuery Bool)
+  : runDinstinguisher_inner (FreeMonad.roll q cont) ro init =
+  (do
+    let (out, state) <- (query_impl_convert ro).impl q init
+    runDinstinguisher_inner (cont out) ro state
+  )
+:= by
+  simp [runDinstinguisher_inner, OracleComp.simulateQ, PMF.map]
+  congr 1
+
+lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
+  (d : OracleComp (withPMFSpec O) Bool) (impl : RStateOracle O) :
+  runDinstinguisher d impl =
+  (do
+    let init <- impl.initialState
+    runDinstinguisher_inner d (addPMFtoImpl impl.queries) init)
+:= by
+  simp [runDinstinguisher, runDinstinguisher_inner]
+
 lemma goodDoubleAction {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (dist : adversaryT O2) (r : ComplexInitReduction O1 O2) (o : RStateOracle O1) :
   runDinstinguisher dist (applyComplexInitReduction r o) =
@@ -282,7 +309,91 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 --     true
 --   } := by sorry
 
-lemma rState2Rstate_non_dist (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b):
+lemma obseEq_from_2_steps {A : Type _}
+  (init : PMF A)
+  (f g : A -> PMF Bool)
+  (H : forall a : A, distancePMF (f a) (g a) = 0)
+  :
+  distancePMF (init.bind f) (init.bind g) = 0 := by sorry
+
+lemma correctAbstraction2ind_inner  {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂: Type _} (dist : OracleComp O Bool)
+  (ro₁ : QueryImpl3 O (RState stateType₁))
+  (ro₂ : QueryImpl3 O (RState stateType₂))
+  (f : stateType₁ → PMF stateType₂)
+  (Habs : ∀ i (query : O.domain i),
+      bindOutputState f (ro₁.impl i query) =
+      bindInputState f (ro₂.impl i query)) :
+  forall (init : stateType₁),
+  distancePMF
+    (runDinstinguisher_inner dist ro₁ init)
+    (do
+      let init_v <- f init
+      runDinstinguisher_inner dist ro₂ init_v)= 0
+  :=  by
+  induction dist
+  case pure v =>
+    simp [advantage, runDinstinguisher_inner, query_impl_convert, OracleComp.simulateQ]
+    simp [distancePMF, distSelf]
+  case roll  β q cont Hind =>
+    intro init
+    simp [runDinstinguisher_inner_bind]
+    cases q
+    case query i t =>
+    simp []
+    have X := congr_fun (Habs i t) init
+    simp [bindOutputState, bindInputState] at X
+    simp [StateT.run] at X
+    rw [<-PMF.bind_bind]
+    rw [<-X]
+    simp [bindSecond]
+    apply obseEq_from_2_steps
+    intro a
+    apply Hind a.1
+
+lemma correctAbstractionAfterwithPMFSpec {I : Type _} {stateType₁ stateType₂ : Type _} {O : OracleSpec I}
+  (ro₁ : QueryImpl3 O (RState stateType₁)) (ro₂ : QueryImpl3 O (RState stateType₂))
+  (f : stateType₁ → PMF stateType₂) (Habs : correctAbstractionBindDiag ro₁ ro₂ f)
+  : correctAbstractionBindDiag (addPMFtoImpl ro₁) (addPMFtoImpl ro₂) f := by
+  simp [correctAbstractionBindDiag] at Habs
+  simp [correctAbstractionBindDiag]
+  intro i q
+  ext1 z
+  simp [bindOutputState, bindInputState]
+  simp [StateT.run, addPMFtoImpl]
+  cases i
+  case oracle x =>
+    simp []
+    have X := congr_fun (Habs x q)
+    simp [bindOutputState, bindInputState, StateT.run] at X
+    apply X
+  case sample y =>
+    simp []
+    simp [bindSecond, Function.comp, PMF.map]
+    simp only [GameHoppingSimplifyPMF]
+
+    sorry
+
+lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+  (Habs : correctAbstractionBind ro₁ ro₂ f) :
+  advantage dist ro₁ ro₂ = 0
+:= by
+    simp [advantage]
+    simp [runDinstinguisher2inner]
+    rw [<-Habs.1]
+    simp []
+    apply obseEq_from_2_steps
+    intro a
+    simp [adversaryT] at dist
+    have X := correctAbstraction2ind_inner (O := withPMFSpec O) dist (addPMFtoImpl ro₁.queries) (addPMFtoImpl ro₂.queries) f
+    apply X
+    -- correct abstraction after addPMFtoIMPL, todo.
+    apply correctAbstractionAfterwithPMFSpec
+    apply Habs.2
+
+
+
+lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b):
   advantage dist o (rState2Rstate q_b o) = 0 := by sorry
 
 lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
