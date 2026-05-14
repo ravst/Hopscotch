@@ -323,125 +323,132 @@ lemma existsMapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
 -- version with bind.
 
 
-def correctAbstractionBindLine {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-    (f g : ro₁.stateType → PMF ro₂.stateType)
-    (i : I) (query : O.domain i) : Prop :=
-      bindOutputState f (ro₁.queries.impl i query) =
-      bindInputState g (ro₂.queries.impl i query)
+-- def correctAbstractionBindLine {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+--     (f g : ro₁.stateType → PMF ro₂.stateType)
+--     (i : I) (query : O.domain i) : Prop :=
+--       bindOutputState f (ro₁.queries.impl i query) =
+--       bindInputState g (ro₂.queries.impl i query)
 
+def goodValuation {I : Type _} {O : OracleSpec I} (ro : RStateOracle O) (val : ro.stateType -> ENat)
+  : Prop :=
+  ∀ i (query : O.domain i) (s : ro.stateType),
+  (ro.queries.impl i query s).support ⊆ {x | val x.2 >= val s - 1}
 
 def correctAbstractionBindBound_step {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-  (f : ℕ → ro₁.stateType → PMF ro₂.stateType) (b : ℕ) : Prop :=
-∀ i (query : O.domain i) (k : Fin b),
-    bindOutputState (f k) (ro₁.queries.impl i query) =
-    bindInputState (f (k + 1)) (ro₂.queries.impl i query) ∨
-    bindOutputState (f (k+1)) (ro₁.queries.impl i query) =
-    bindInputState (f (k+1)) (ro₂.queries.impl i query)
+  (f : ro₁.stateType → PMF ro₂.stateType)
+  (val : ro₁.stateType → ENat)
+  : Prop :=
+∀ i (query : O.domain i) (s : ro₁.stateType),
+    (val s > 0) ->
+    bindOutputState f (ro₁.queries.impl i query) s =
+    bindInputState f (ro₂.queries.impl i query) s
 
 def correctAbstractionBindBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
-  (f : ℕ → ro₁.stateType → PMF ro₂.stateType) (b : ℕ) : Prop :=
-ro₁.initialState.bind (f b) = ro₂.initialState ∧
-correctAbstractionBindBound_step ro₁ ro₂ f b
+  (f : ro₁.stateType → PMF ro₂.stateType) (val : ro₁.stateType → ENat) : Prop :=
+ro₁.initialState.bind f = ro₂.initialState ∧
+goodValuation ro₁ val ∧
+correctAbstractionBindBound_step ro₁ ro₂ f val
 
-lemma correctAbstractionBindBoundStep_monotone {I : Type} {O : OracleSpec I}
-  (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → PMF ro₂.stateType)
-  {b₁ b₂ : ℕ} (HCor : correctAbstractionBindBound_step ro₁ ro₂ f b₂) (hle : b₁ ≤ b₂) :
-  correctAbstractionBindBound_step ro₁ ro₂ f b₁ := by
-  intro i query k
-  exact HCor i query ⟨k, lt_of_lt_of_le k.2 hle⟩
+
+def correctAbstractionBindBound2 {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+  (f : ro₁.stateType → PMF ro₂.stateType) (val : ro₁.stateType → ENat) (b : ENat): Prop :=
+  correctAbstractionBindBound ro₁ ro₂ f val ∧
+  ro₁.initialState.support ⊆ {x | val x >= b}
+
+-- inductive correctAbstractionBiindBound2_ind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+--   (f : ro₁.stateType → PMF ro₂.stateType)
+--   : (s : ro₁.stateType) -> (Nat) -> Prop :=
+-- | zero s : correctAbstractionBiindBound2_ind ro₁ ro₂ f s 0
+-- | next s n :
+--   (forall i (query : O.domain i) so',
+--     so' ∈ ((ro₁.queries.impl i query s).support) ->
+--     correctAbstractionBiindBound2_ind ro₁ ro₂ f so'.2 n) ->
+--   correctAbstractionBiindBound2_ind ro₁ ro₂ f s (n+1)
+
+lemma bindCongrOnSupport (x : PMF A) (Hf : forall y (_ : y ∈ x.support), f y = g y)
+  : x.bind f = x.bind g :=
+by
+  rw [<-PMF.bindOnSupport_eq_bind]
+  rw [<-PMF.bindOnSupport_eq_bind]
+  congr 1
+  ext1 a
+  ext1 Ha
+  apply Hf
+  assumption
 
 lemma correctAbstractionBind_bound_ImpliesObsEqInner {I : Type} {O : OracleSpec I}
-  (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → PMF ro₂.stateType) (b : ℕ)
-  (HStep : correctAbstractionBindBound_step ro₁ ro₂ f b) (queriesList : List (QueryS O))
-  (hq : queriesList.length ≤  b): ∃ k' ≤ b, ∀ (init : ro₁.stateType),
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+  (val : ro₁.stateType → ENat) (Hval : goodValuation ro₁ val)
+  (HStep : correctAbstractionBindBound_step ro₁ ro₂ f val) (queriesList : List (QueryS O))
+  :  ∀ (init : ro₁.stateType), (hq : queriesList.length ≤  val init) ->
   (do
     let (x, y) <- (RStateOracle.runQueries2Aux ro₁.queries queriesList init)
-    let z <- (f k' y)
+    let z <- (f y)
     return (x, z)
    ) =
-      (f b init).bind (RStateOracle.runQueries2Aux ro₂.queries queriesList)
+      (f init).bind (RStateOracle.runQueries2Aux ro₂.queries queriesList)
   := by
-  induction queriesList generalizing b with
+  induction queriesList with
   | nil =>
-      exists b
-      constructor
-      · exact le_rfl
-      · intro init
-        simp [RStateOracle.runQueries2Aux, PMF.map]
+      intro init
+      simp [RStateOracle.runQueries2Aux, PMF.map]
   | cons head tail ih =>
-      cases b with
-      | zero =>
-          simp at hq
-      | succ b =>
-          obtain hStep := HStep head.index head.input ⟨b, by omega⟩
-          have hq_tail_b : tail.length ≤ b := by
-            simpa using Nat.succ_le_succ_iff.mp hq
-          have hq_tail_succ : tail.length ≤ b + 1 := by
-            omega
-          cases hStep with
-          | inl hStepDrop =>
-              have HStep_b : correctAbstractionBindBound_step ro₁ ro₂ f b :=
-                correctAbstractionBindBoundStep_monotone ro₁ ro₂ f HStep (by omega)
-              obtain ⟨k', hk', ih'⟩ := ih b HStep_b hq_tail_b
-              exists k'
-              constructor
-              · omega
-              · intro init
-                have hStepDropInit := congrFun hStepDrop init
-                simp [bindOutputState, bindInputState, bindSecond] at hStepDropInit
-                simp [RStateOracle.runQueries2Aux, PMF.map]
-                -- simp only [GameHoppingSimplifyPMF, bindSecond] at hStepDropInit
-                conv =>
-                  rhs
-                  rw [<-PMF.bind_bind]
-                  arg 1
-                  rw [← hStepDropInit]
-                simp [bindSecond]
-                congr 1
-                ext1 a
-                rw [<-PMF.bind_bind]
-                simp [← ih']
-          | inr hStepKeep =>
-              obtain ⟨k', hk', ih'⟩ := ih (b + 1) HStep hq_tail_succ
-              exists k'
-              constructor
-              · exact hk'
-              · intro init
-                have hStepKeepInit := congrFun hStepKeep init
-                simp [bindOutputState, bindInputState, bindSecond] at hStepKeepInit
-                simp [RStateOracle.runQueries2Aux, PMF.map]
-                -- simp only [GameHoppingSimplifyPMF, mapSecond] at hStepKeepInit
-                conv =>
-                  rhs
-                  rw [<-PMF.bind_bind]
-                  rw [← hStepKeepInit]
-                simp []
-                congr 1
-                ext1 a
-                simp [bindSecond]
-                rw [<-PMF.bind_bind]
-                rw [← ih']
-                simp only [GameHoppingSimplifyPMF]
-                simp
+          intro init Hinit
+          simp at Hinit
+          have hStep := HStep head.index head.input init (by
+            suffices ¬ (val init = 0) from pos_of_ne_zero this
+            intro Hval
+            simp [Hval] at Hinit
+          )
+          simp [bindOutputState, bindInputState, bindSecond] at hStep
+          simp [RStateOracle.runQueries2Aux, PMF.map]
+          conv =>
+            rhs
+            rw [<-PMF.bind_bind]
+            arg 1
+            rw [← hStep]
+          simp [bindSecond]
+          apply bindCongrOnSupport
+          intro a
+          intro Ha
+          rw [<-PMF.bind_bind]
+          rw [← ih]
+          simp []
+          suffices val init-1 <= val a.2 by
+            have X : tail.length+1-1  <= val init -1 := by
+              exact tsub_le_tsub_right Hinit 1
+            have X' :  tail.length <= val init -1 := by
+              exact X
+            exact Preorder.le_trans (↑tail.length) (val init - 1) (val a.2) X this
+          have X := Hval head.index head.input init Ha
+          apply X
 
-lemma correctAbstractionBindBoundImpliesObsEqBounded {I : Type} {O : OracleSpec I}
-  (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → PMF ro₂.stateType) (b : ℕ)
-  (HCor : correctAbstractionBindBound ro₁ ro₂ f b) :
+
+lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+  (val : ro₁.stateType → ENat)
+  (b : ℕ)
+  (HB : correctAbstractionBindBound2 ro₁ ro₂ f val b) :
   ObsEqBounded ro₁ ro₂ b := by
   intro queriesList hq
   simp [runQueriesEquiv, RStateOracle.runQueries2, RStateOracle.runQueriesOnlyOut]
   simp at hq
-  obtain ⟨k', hk', hRun2Aux⟩ := correctAbstractionBind_bound_ImpliesObsEqInner ro₁ ro₂ f b HCor.2 queriesList hq
-  have hRun2AuxFst := fun init =>  congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init)
+  obtain ⟨HCor, Hinit⟩ := HB
+  have hRun2Aux := correctAbstractionBind_bound_ImpliesObsEqInner ro₁ ro₂ f val HCor.2.1 HCor.2.2 queriesList
+  have hRun2AuxFst := fun init Hinit =>  congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init Hinit)
   simp at hRun2AuxFst
   simp only [GameHoppingSimplifyPMF]
   simp only [GameHoppingSimplifyPMF] at hRun2AuxFst
   simp at hRun2AuxFst
   simp [← HCor.1]
-  simp [hRun2AuxFst]
-
-
-
+  apply bindCongrOnSupport
+  intro y Hy
+  apply hRun2AuxFst y
+  have X := Hinit Hy
+  simp at X
+  apply Preorder.le_trans
+  · exact ENat.coe_le_coe.mpr hq
+  · apply X
 
 
 -- version with map
@@ -551,7 +558,13 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
 
 
 lemma rState2Rstate_correct_abstraction_bind2 {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : Nat):
-  exists f : ℕ -> (rState2Rstate q_b o).stateType -> PMF o.stateType, correctAbstractionBindBound (rState2Rstate none o) o f q_b := by sorry
+  exists (f : (rState2Rstate q_b o).stateType -> PMF o.stateType)
+    (val : (rState2Rstate none o).stateType -> ENat),
+    correctAbstractionBindBound2 (rState2Rstate q_b o) o f val q_b := by sorry
 
-lemma rState2Rstate_correct_abstraction_bind {I : Type} {O : OracleSpec I} (o : RStateOracle O):
-  exists f : (rState2Rstate none o).stateType -> PMF o.stateType, correctAbstractionBind (rState2Rstate none o) o f := by sorry
+-- also true. It is a bit problematic that implication from correctAbstractionBindBound2 f val none (for some val) to
+--  correctAbstractionBind f (the same f) is nontrivial/false. It is implied that diagram commutes on rechable states, but it could not commute elsewhere (val have to be infty on rechable states and could be zero otherwise)
+-- lemma rState2Rstate_correct_abstraction_bind {I : Type} {O : OracleSpec I} (o : RStateOracle O):
+--   exists
+--     (f : (rState2Rstate none o).stateType -> PMF o.stateType),
+--     correctAbstractionBind (rState2Rstate none o) o f := by sorry
