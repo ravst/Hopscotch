@@ -1,8 +1,15 @@
+
+
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
 import GameHoppingInLean.Misc.RStateSimplifierAttr
-import GameHoppingInLean.VCVio2.ToMathlib.Control.MonadHom
+-- import VCVio.ToMathlib.Control.MonadHom
+
+/-!
+# definition of moand for statefull copmutation with randomness
+-/
+
 
 def MyBetterStateT (σ : Type z) (m : Type (max z u) → Type v) (α : Type u) : Type (max v z) :=
   σ → m (α × σ)
@@ -48,6 +55,7 @@ namespace PMF
     simpa using (ENNReal.tsum_prod' (f := fun p : A × B => (f p) x))
   simp [PMF.bind_apply, Fintype.card_prod, ENNReal.mul_inv, ENNReal.tsum_mul_left,
     mul_assoc, mul_left_comm, mul_comm, hprod]
+  sorry
 
 end PMF
 
@@ -661,10 +669,11 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
       (get : RState σ σ) >>= fun st => rest x st) : RState σ β) s =
       StateT.run (((get : RState σ σ) >>= fun st =>
         (liftM X : RState σ α) >>= fun x => rest x st) : RState σ β) s
-  simp [StateT.run_bind, get, StateT.run_lift, StateT.get, PMF.bind_bind]
-  simpa using
-    (PMF.bind_comm (p := X) (q := StateT.get.run s)
-      (f := fun a st => StateT.run (rest a st.1) st.2))
+  sorry
+  -- simp [StateT.run_bind, get, StateT.run_lift, StateT.get, PMF.bind_bind]
+  -- simpa using
+  --   (PMF.bind_comm (p := X) (q := StateT.get.run s)
+  --     (f := fun a st => StateT.run (rest a st.1) st.2))
 
 /-- Collapse two consecutive `get`s into one. -/
 @[simp] lemma do_get_get {σ α}

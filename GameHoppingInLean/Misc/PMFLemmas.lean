@@ -1,6 +1,6 @@
 import GameHoppingInLean.Misc.PMFSimpAttr
 import GameHoppingInLean.MonadRandomState
-import GameHoppingInLean.VCVio2.ToMathlib.General
+import VCVio.ToMathlib.General
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
 open Lean Meta

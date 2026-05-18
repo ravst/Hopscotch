@@ -1,14 +1,14 @@
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleComp
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.SimSemantics.SimulateQ
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.OracleComp
+import VCVio.OracleComp.SimSemantics.SimulateQ
+import VCVio.OracleComp.OracleSpec
 import GameHoppingInLean.IndistinguishabilityDef
 import Mathlib.Data.Finset.Defs
 import Mathlib.Data.Set.Defs
 import Mathlib.Data.Multiset.UnionInter
-import GameHoppingInLean.VCVio2.ToMathlib.Control.FreeMonad
+import VCVio.ToMathlib.Control.FreeMonad
 import Mathlib.Data.Finset.Empty
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 

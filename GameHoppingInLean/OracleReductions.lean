@@ -1,22 +1,21 @@
 import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleComp
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.SimSemantics.SimulateQ
-import GameHoppingInLean.VCVio2.VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.OracleComp
+import VCVio.OracleComp.SimSemantics.SimulateQ
+import VCVio.OracleComp.OracleSpec
 
 universe u
 
 def simpleReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : OracleSpec I₂) :=
-  QueryImpl3 O₂ (OracleComp O₁)
+  QueryImpl O₂ (OracleComp O₁)
 
 noncomputable def applySimpleReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
     (reduction : simpleReduction O₁ O₂) (oracle : RStateOracle O₁) : RStateOracle O₂ where
   stateType := oracle.stateType
   initialState := oracle.initialState
-  queries := {
-    impl i q :=
-      OracleComp.simulateQ (query_impl_convert oracle.queries)
-        (reduction.impl i q)
-  }
+  queries := fun q =>
+      simulateQ (oracle.queries)
+        (reduction q)
+
 
 /-- Oracle indices for a source oracle set plus a generic "sample from a PMF" operation. -/
 inductive withPMFI (I : Type u) : Type (max u 1)

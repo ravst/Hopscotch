@@ -8,11 +8,23 @@ pp.unicode.fun = true # pretty-prints `fun a ↦ b`
 relaxedAutoImplicit = false
 weak.linter.mathlibStandardSet = true
 maxSynthPendingDepth = 3
+# TODO: remove
+linter.unusedSimpArgs = false
+weak.linter.style.longLine = false
+weak.linter.flexible = false
+weak.linter.style.header  = false
+
+
+[[require]]
+name = "VCVio"
+scope = "Verified-zkEVM"
+rev = "0471c3b8a2756c9a80f4d779d8c8e1c0f6d73cce"
+
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-
+rev = "v4.29.0"
 
 [[lean_lib]]
 name = "GameHoppingInLean"
