@@ -343,16 +343,15 @@ def correctAbstractionBindBound_step {I : Type} {O : OracleSpec I} (ro₁ ro₂ 
     bindOutputState f (ro₁.queries.impl i query) s =
     bindInputState f (ro₂.queries.impl i query) s
 
-def correctAbstractionBindBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+def correctAbstractionBindBound_inner {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
   (f : ro₁.stateType → PMF ro₂.stateType) (val : ro₁.stateType → ENat) : Prop :=
 ro₁.initialState.bind f = ro₂.initialState ∧
 goodValuation ro₁ val ∧
 correctAbstractionBindBound_step ro₁ ro₂ f val
 
-
-def correctAbstractionBindBound2 {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+def correctAbstractionBindBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
   (f : ro₁.stateType → PMF ro₂.stateType) (val : ro₁.stateType → ENat) (b : ENat): Prop :=
-  correctAbstractionBindBound ro₁ ro₂ f val ∧
+  correctAbstractionBindBound_inner ro₁ ro₂ f val ∧
   ro₁.initialState.support ⊆ {x | val x >= b}
 
 -- inductive correctAbstractionBiindBound2_ind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
@@ -428,7 +427,7 @@ lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
   (val : ro₁.stateType → ENat)
   (b : ℕ)
-  (HB : correctAbstractionBindBound2 ro₁ ro₂ f val b) :
+  (HB : correctAbstractionBindBound ro₁ ro₂ f val b) :
   ObsEqBounded ro₁ ro₂ b := by
   intro queriesList hq
   simp [runQueriesEquiv, RStateOracle.runQueries2, RStateOracle.runQueriesOnlyOut]
@@ -560,7 +559,7 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
 lemma rState2Rstate_correct_abstraction_bind2 {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : Nat):
   exists (f : (rState2Rstate q_b o).stateType -> PMF o.stateType)
     (val : (rState2Rstate none o).stateType -> ENat),
-    correctAbstractionBindBound2 (rState2Rstate q_b o) o f val q_b := by sorry
+    correctAbstractionBindBound (rState2Rstate q_b o) o f val q_b := by sorry
 
 -- also true. It is a bit problematic that implication from correctAbstractionBindBound2 f val none (for some val) to
 --  correctAbstractionBind f (the same f) is nontrivial/false. It is implied that diagram commutes on rechable states, but it could not commute elsewhere (val have to be infty on rechable states and could be zero otherwise)
