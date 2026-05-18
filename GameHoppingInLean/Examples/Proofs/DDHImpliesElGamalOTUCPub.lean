@@ -4,6 +4,8 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
 import GameHoppingInLean.Examples.Constructions.ElGamal
 import GameHoppingInLean.Examples.Misc.Once
+
+import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.PMFLiftOrder
 import GameHoppingInLean.Misc.Isos
@@ -20,11 +22,7 @@ def otucPubEavesdropIq : IndCpaPubQ → Bool
   | .getPk => false
   | .eavesdrop => true
 
-lemma obsEq_trans {I : Type} {O : OracleSpec I}
-    {ro₁ ro₂ ro₃ : RStateOracle O} (h₁₂ : ObsEq ro₁ ro₂) (h₂₃ : ObsEq ro₂ ro₃) :
-    ObsEq ro₁ ro₃ := by
-  intro queriesList
-  rw [h₁₂ queriesList, h₂₃ queriesList]
+
 
 /-- The ElGamal randomness sampled on an `eavesdrop` query, factored out so it can
 be moved between local and global scope. -/

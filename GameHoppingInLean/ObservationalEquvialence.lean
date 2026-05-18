@@ -68,6 +68,12 @@ def obsEqReflexive (ro₁ ro₂ : RStateOracle O) (hEq : ro₁ = ro₂) :
     rw [hEq]
     simp [ObsEq]
 
+lemma obsEq_trans {I : Type} {O : OracleSpec I}
+    {ro₁ ro₂ ro₃ : RStateOracle O} (h₁₂ : ObsEq ro₁ ro₂) (h₂₃ : ObsEq ro₂ ro₃) :
+    ObsEq ro₁ ro₃ := by
+  intro queriesList
+  rw [h₁₂ queriesList, h₂₃ queriesList]
+
 lemma ObsEq.symm {ro₁ ro₂ : RStateOracle O} (h : ObsEq ro₁ ro₂) :
     ObsEq ro₂ ro₁ := by
   intro queriesList

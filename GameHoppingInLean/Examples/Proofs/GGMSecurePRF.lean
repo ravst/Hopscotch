@@ -356,21 +356,6 @@ theorem BitVec.eq_or_eq_flipMsb_of_extractLsb'_eq {k : ℕ} {x q : BitVec k.succ
         ← BitVec.getLsbD_eq_getElem (x := q.flipMsb) (i := j) (h := hj)]
       exact hbits'.trans hflip'.symm
 
-def BitVec.withMsb {n : ℕ} (b : Bool) (v : BitVec n) : BitVec n.succ :=
-  BitVec.cast (by omega) (BitVec.ofBool b ++ v)
-
-@[simp] theorem BitVec.extractLsb'_withMsb {n : ℕ} (b : Bool) (v : BitVec n) :
-    BitVec.extractLsb' 0 n (BitVec.withMsb b v) = v := by
-  rw [BitVec.withMsb]
-  apply BitVec.eq_of_getElem_eq
-  intro j hj
-  rw [BitVec.getElem_extractLsb']
-  rw [BitVec.getLsbD_eq_getElem (x := BitVec.cast (by omega) (BitVec.ofBool b ++ v))
-    (h := by omega)]
-  rw [BitVec.getElem_cast]
-  rw [BitVec.getElem_append]
-  simp [hj]
-
 @[simp] theorem BitVec.extractLsb'_zero_extractLsb'_zero {n m l : ℕ} (hml : m ≤ l)
     (v : BitVec n) :
     BitVec.extractLsb' 0 m (BitVec.extractLsb' 0 l v) =
@@ -397,133 +382,6 @@ def BitVec.withMsb {n : ℕ} (b : Bool) (v : BitVec n) : BitVec n.succ :=
   congr 1
   omega
 
-/-- Expand a total parent-label function at depth `i` into a total child-label function
-at depth `i + 1`.
-
-The low `i` bits of the child index select the parent, and the new most-significant
-bit selects which half of the parent's `BitVec (k + k)` label to use. -/
-def GGMHybrid2_Vs_3_absFun {k n : ℕ} (i : Fin n)
-    (f : BitVec i.1 → BitVec (k + k)) : BitVec i.succ.1 → BitVec k :=
-  fun v => PRG.chooseHalfI (f (BitVec.extractLsb' 0 i.1 v)) (v.getLsbD i.1)
-
-def GGMHybrid2_Vs_3_unabsFun {k n : ℕ} (i : Fin n)
-    (f : BitVec i.succ.1 → BitVec k) : BitVec i.1 → BitVec (k + k) :=
-  fun v => f (BitVec.withMsb true v) ++ f (BitVec.withMsb false v)
-
-noncomputable def GGMHybrid2_Vs_3_absCache {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) :
-    Finmap (fun _x : BitVec i.succ.1 => BitVec k) :=
-  cache.entries.toList.foldl
-    (fun child entry =>
-      (child.insert (BitVec.withMsb false entry.1) (PRG.chooseHalfI entry.2 false)).insert
-        (BitVec.withMsb true entry.1) (PRG.chooseHalfI entry.2 true))
-    ∅
-
-@[simp] theorem GGMHybrid2_Vs_3_absCache_empty {k n : ℕ} (i : Fin n) :
-    GGMHybrid2_Vs_3_absCache (k := k) i ∅ = ∅ := by
-  unfold GGMHybrid2_Vs_3_absCache
-  rw [show (∅ : Finmap (fun _x : BitVec i.1 => BitVec (k + k))).entries.toList = [] by
-    rw [Multiset.toList_eq_nil]
-    rfl]
-  rfl
-
-private lemma GGMHybrid2_Vs_3_absCache_mem_keys_foldl {k n : ℕ} (i : Fin n)
-    (l : List (Sigma (fun _x : BitVec i.1 => BitVec (k + k))))
-    (child : Finmap (fun _x : BitVec i.succ.1 => BitVec k)) (x : BitVec i.succ.1) :
-    x ∈ (l.foldl
-      (fun child entry =>
-        (child.insert (BitVec.withMsb false entry.1) (PRG.chooseHalfI entry.2 false)).insert
-          (BitVec.withMsb true entry.1) (PRG.chooseHalfI entry.2 true))
-      child).keys ↔
-      x ∈ child.keys ∨
-        ∃ entry ∈ l,
-          x = BitVec.withMsb false entry.1 ∨ x = BitVec.withMsb true entry.1 := by
-  induction l generalizing child with
-  | nil =>
-      simp
-  | cons hd tl ih =>
-      rw [List.foldl_cons, ih]
-      constructor
-      · rintro (h | ⟨entry, hentry, hx⟩)
-        · rw [Finmap.mem_keys] at h
-          simp [Finmap.mem_keys, Finmap.mem_insert] at h
-          rcases h with h | h | h
-          · exact Or.inr ⟨hd, by simp, Or.inr h⟩
-          · exact Or.inr ⟨hd, by simp, Or.inl h⟩
-          · exact Or.inl h
-        · exact Or.inr ⟨entry, by simp [hentry], hx⟩
-      · rintro (h | ⟨entry, hentry, hx⟩)
-        · left
-          rw [Finmap.mem_keys] at h
-          rw [Finmap.mem_keys]
-          simp [Finmap.mem_insert, h]
-        · simp at hentry
-          rcases hentry with rfl | hentry
-          · left
-            rw [Finmap.mem_keys]
-            rcases hx with hx | hx <;> simp [Finmap.mem_keys, Finmap.mem_insert, hx]
-          · right
-            exact ⟨entry, hentry, hx⟩
-
-theorem GGMHybrid2_Vs_3_absCache_mem_keys {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1) :
-    x ∈ (GGMHybrid2_Vs_3_absCache i cache).keys ↔
-      ∃ parent ∈ cache.keys,
-        x = BitVec.withMsb false parent ∨ x = BitVec.withMsb true parent := by
-  unfold GGMHybrid2_Vs_3_absCache
-  rw [GGMHybrid2_Vs_3_absCache_mem_keys_foldl]
-  constructor
-  · rintro (h | ⟨entry, hentry, hx⟩)
-    · simp at h
-    · exact ⟨entry.1, by
-        rw [Finmap.mem_keys, Finmap.mem_def]
-        exact Multiset.mem_map.mpr ⟨entry, Multiset.mem_toList.mp hentry, rfl⟩, hx⟩
-  · rintro ⟨parent, hparent, hx⟩
-    right
-    rw [Finmap.mem_keys, Finmap.mem_def] at hparent
-    rcases Multiset.mem_map.mp hparent with ⟨entry, hentry, hkey⟩
-    exact ⟨entry, Multiset.mem_toList.mpr hentry, by simpa [hkey] using hx⟩
-
-theorem GGMHybrid2_Vs_3_absCache_keys {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) :
-    (GGMHybrid2_Vs_3_absCache i cache).keys =
-      cache.keys.biUnion
-        (fun parent => ({BitVec.withMsb false parent, BitVec.withMsb true parent} : Finset _)) := by
-  ext x
-  rw [GGMHybrid2_Vs_3_absCache_mem_keys]
-  simp
-
-theorem GGMHybrid2_Vs_3_absCache_extractLsb'_mem_keys {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) {x : BitVec i.succ.1}
-    (hx : x ∈ (GGMHybrid2_Vs_3_absCache i cache).keys) :
-    BitVec.extractLsb' 0 i.1 x ∈ cache.keys := by
-  rcases (GGMHybrid2_Vs_3_absCache_mem_keys i cache x).mp hx with
-    ⟨parent, hparent, hxfalse | hxtrue⟩
-  · subst x
-    simpa using hparent
-  · subst x
-    simpa using hparent
-
-theorem GGMHybrid2_Vs_3_absCache_not_mem_keys_of_lookup_none {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) {x : BitVec i.succ.1}
-    (hlookup : cache.lookup (BitVec.extractLsb' 0 i.1 x) = none) :
-    x ∉ (GGMHybrid2_Vs_3_absCache i cache).keys := by
-  intro hx
-  have hparent := GGMHybrid2_Vs_3_absCache_extractLsb'_mem_keys i cache hx
-  have hnot : BitVec.extractLsb' 0 i.1 x ∉ cache.keys := by
-    rw [Finmap.mem_keys]
-    exact Finmap.lookup_eq_none.mp hlookup
-  exact hnot hparent
-
--- theorem GGMHybrid2_Vs_3_absCache_lookup_extractLsb'_of_lookup_some {k n : ℕ}
---     (i : Fin n) (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k)))
---     {q : BitVec n} {m : BitVec (k + k)}
---     (hlookup : cache.lookup (BitVec.extractLsb' 0 i.1 q) = some m) :
---     (GGMHybrid2_Vs_3_absCache i cache).lookup
---         (BitVec.extractLsb' 0 (i.1 + 1) q) =
---       some (PRG.chooseHalfI m q[i.1]) := by
---   sorry
-
 /-- The sibling pair that should be sampled together when moving from depth `i`
 to depth `i + 1`. -/
 noncomputable def GGMHybrid2_Vs_3_batch {n : ℕ} (i : Fin n) :
@@ -537,138 +395,6 @@ noncomputable def GGMHybrid2_Vs_3_batch {n : ℕ} (i : Fin n) :
 @[simp] theorem GGMHybrid2_Vs_3_batch_flip {n : ℕ} (i : Fin n)
     (x : BitVec i.succ.1) : x.flipMsb ∈ GGMHybrid2_Vs_3_batch i x := by
   simp [GGMHybrid2_Vs_3_batch]
-
-theorem GGMHybrid2_Vs_3_absCache_flip_not_mem_keys_of_lookup_none {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) {x : BitVec i.succ.1}
-    (hlookup : cache.lookup (BitVec.extractLsb' 0 i.1 x) = none) :
-    x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i cache).keys := by
-  have hlookupFlip :
-      cache.lookup (BitVec.extractLsb' 0 i.1 x.flipMsb) = none := by
-    change cache.lookup (BitVec.extractLsb' 0 i.1 (BitVec.flipMsb x)) = none
-    rw [BitVec.extractLsb'_zero_flipMsb]
-    exact hlookup
-  exact GGMHybrid2_Vs_3_absCache_not_mem_keys_of_lookup_none i cache hlookupFlip
-
-noncomputable def GGMHybrid2_Vs_3_missingBatchBoolEquiv {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1)
-    (hx : x ∉ (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (hflip : x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i cache).keys) :
-    Bool ≃
-      {x' : BitVec i.succ.1 //
-        x' ∈
-          {x' ∈ GGMHybrid2_Vs_3_batch i x |
-            x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} where
-  toFun b :=
-    if hb : b = false then
-      ⟨x, by simp [hb, GGMHybrid2_Vs_3_batch, hx]⟩
-    else
-      ⟨x.flipMsb, by simp [hb, GGMHybrid2_Vs_3_batch, hflip]⟩
-  invFun x' := if x'.1 = x then false else true
-  left_inv b := by
-    by_cases hb : b = false
-    · subst b
-      simp
-    · cases b <;> simp at hb ⊢
-  right_inv x' := by
-    apply Subtype.ext
-    by_cases hx' : x'.1 = x
-    · simp [hx']
-    · have hxmem := x'.2
-      have hxmemBatch : x'.1 ∈ GGMHybrid2_Vs_3_batch i x := (Finset.mem_filter.mp hxmem).1
-      simp [GGMHybrid2_Vs_3_batch] at hxmemBatch
-      rcases hxmemBatch with h | h
-      · exact False.elim (hx' h)
-      · simp [hx', h]
-
-noncomputable def GGMHybrid2_Vs_3_missingBatchFunBoolEquiv {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1)
-    (hx : x ∉ (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (hflip : x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i cache).keys) :
-    ({x' : BitVec i.succ.1 //
-        x' ∈
-          {x' ∈ GGMHybrid2_Vs_3_batch i x |
-            x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k) ≃
-      (Bool → BitVec k) :=
-  Equiv.arrowCongr (GGMHybrid2_Vs_3_missingBatchBoolEquiv i cache x hx hflip).symm
-    (Equiv.refl (BitVec k))
-
-noncomputable def GGMHybrid2_Vs_3_missingBatchFunPairEquiv {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1)
-    (hx : x ∉ (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (hflip : x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i cache).keys) :
-    ({x' : BitVec i.succ.1 //
-        x' ∈
-          {x' ∈ GGMHybrid2_Vs_3_batch i x |
-            x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k) ≃
-      (BitVec k × BitVec k) :=
-  (GGMHybrid2_Vs_3_missingBatchFunBoolEquiv i cache x hx hflip).trans
-    (Equiv.boolArrowEquivProd (BitVec k))
-
-noncomputable def GGMHybrid2_Vs_3_parentLabelPairEquiv (k : ℕ) :
-    BitVec (k + k) ≃ BitVec k × BitVec k :=
-  (RState.bitVecAppendEquiv k k).symm
-
-theorem GGMHybrid2_Vs_3_bind_uniform_missingBatch_pair {k n : ℕ} {A : Type}
-    (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1)
-    (hx : x ∉ (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (hflip : x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (rest :
-      ({x' : BitVec i.succ.1 //
-          x' ∈
-            {x' ∈ GGMHybrid2_Vs_3_batch i x |
-              x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k) → PMF A) :
-    (do
-      let a ← PMF.uniformOfFintype
-        ({x' : BitVec i.succ.1 //
-          x' ∈
-            {x' ∈ GGMHybrid2_Vs_3_batch i x |
-              x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k)
-      rest a) =
-    (do
-      let p ← PMF.uniformOfFintype (BitVec k × BitVec k)
-      rest ((GGMHybrid2_Vs_3_missingBatchFunPairEquiv i cache x hx hflip).symm p)) := by
-  exact PMF.bind_uniformOfFintype_equiv
-    (e := (GGMHybrid2_Vs_3_missingBatchFunPairEquiv i cache x hx hflip).symm)
-    (g := rest)
-
-theorem GGMHybrid2_Vs_3_bind_uniform_missingBatch_pair_query {k n : ℕ} {A : Type}
-    (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (query : BitVec n)
-    (hx : BitVec.extractLsb' 0 (i.1 + 1) query ∉
-      (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (hflip : (BitVec.extractLsb' 0 (i.1 + 1) query).flipMsb ∉
-      (GGMHybrid2_Vs_3_absCache i cache).keys)
-    (rest :
-      ({x' : BitVec (i.1 + 1) //
-          x' ∈
-            {x' ∈ GGMHybrid2_Vs_3_batch i (BitVec.extractLsb' 0 (i.1 + 1) query) |
-              x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k) → PMF A) :
-    (do
-      let a ← PMF.uniformOfFintype
-        ({x' : BitVec (i.1 + 1) //
-          x' ∈
-            {x' ∈ GGMHybrid2_Vs_3_batch i (BitVec.extractLsb' 0 (i.1 + 1) query) |
-              x' ∉ (GGMHybrid2_Vs_3_absCache i cache).keys}} → BitVec k)
-      rest a) =
-    (do
-      let p ← PMF.uniformOfFintype (BitVec k × BitVec k)
-      rest ((GGMHybrid2_Vs_3_missingBatchFunPairEquiv i cache
-        (BitVec.extractLsb' 0 (i.1 + 1) query) hx hflip).symm p)) := by
-  simpa using GGMHybrid2_Vs_3_bind_uniform_missingBatch_pair
-    (i := i) (cache := cache) (x := BitVec.extractLsb' 0 (i.1 + 1) query) hx hflip rest
-
-theorem GGMHybrid2_Vs_3_bind_uniform_parentLabel_pair {k : ℕ} {A : Type}
-    (rest : BitVec (k + k) → PMF A) :
-    (do
-      let label ← PMF.uniformOfFintype (BitVec (k + k))
-      rest label) =
-    (do
-      let p ← PMF.uniformOfFintype (BitVec k × BitVec k)
-      rest ((GGMHybrid2_Vs_3_parentLabelPairEquiv k).symm p)) := by
-  exact PMF.bind_uniformOfFintype_equiv
-    (e := (GGMHybrid2_Vs_3_parentLabelPairEquiv k).symm)
-    (g := rest)
 
 theorem PMF.bind_uniformOfFintype_bitVec_swap_append_do
     {k : ℕ} {α : Type} (f : BitVec (k + k) → PMF α) :
@@ -689,79 +415,12 @@ theorem PMF.bind_uniformOfFintype_bitVec_swap_append_do
     (e := (Equiv.prodComm (BitVec k) (BitVec k)).trans (RState.bitVecAppendEquiv k k))
     (g := f)).symm
 
-theorem GGMHybrid2_Vs_3_batch_filter_eq_pair {k n : ℕ} (i : Fin n)
-    (cache : Finmap (fun _x : BitVec i.succ.1 => BitVec k)) (x : BitVec i.succ.1)
-    (hx : x ∉ cache.keys) (hflip : x.flipMsb ∉ cache.keys) :
-    ({x' ∈ GGMHybrid2_Vs_3_batch i x | x' ∉ cache.keys} : Finset (BitVec i.succ.1)) =
-      ({x, x.flipMsb} : Finset (BitVec i.succ.1)) := by
-  ext y
-  by_cases hyx : y = x
-  · subst y
-    simp [GGMHybrid2_Vs_3_batch, hx]
-  · by_cases hyf : y = x.flipMsb
-    · subst y
-      simp [GGMHybrid2_Vs_3_batch, hflip]
-    · simp [GGMHybrid2_Vs_3_batch, hyx, hyf]
-
-theorem GGMHybrid2_Vs_3_batch_query_pair_draw {k n : ℕ} (i : Fin n)
-    (parentCache : Finmap (fun _x : BitVec i.1 => BitVec (k + k))) (x : BitVec i.succ.1)
-    (hlookup : parentCache.lookup (BitVec.extractLsb' 0 i.1 x) = none) :
-    StateT.run
-      ((PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-        (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)).queries.impl () x)
-      (GGMHybrid2_Vs_3_absCache i parentCache) =
-    (do
-      let p ← PMF.uniformOfFintype (BitVec k × BitVec k)
-      let a := (GGMHybrid2_Vs_3_missingBatchFunPairEquiv i parentCache x
-        (GGMHybrid2_Vs_3_absCache_not_mem_keys_of_lookup_none i parentCache hlookup)
-        (GGMHybrid2_Vs_3_absCache_flip_not_mem_keys_of_lookup_none i parentCache hlookup)).symm p
-      PMF.pure
-        (a ⟨x, by
-          simp [GGMHybrid2_Vs_3_batch,
-            GGMHybrid2_Vs_3_absCache_not_mem_keys_of_lookup_none i parentCache hlookup]⟩,
-          Finmap.union
-            (GGMHybrid2_Vs_3_absCache i parentCache :
-              Finmap (fun _x : BitVec i.succ.1 => BitVec k))
-            (FinmapFromFun
-              ({x' ∈ GGMHybrid2_Vs_3_batch i x |
-                x' ∉ (GGMHybrid2_Vs_3_absCache i parentCache).keys})
-              a))) := by
-  classical
-  let hx : x ∉ (GGMHybrid2_Vs_3_absCache i parentCache).keys :=
-    GGMHybrid2_Vs_3_absCache_not_mem_keys_of_lookup_none i parentCache hlookup
-  let hflip : x.flipMsb ∉ (GGMHybrid2_Vs_3_absCache i parentCache).keys :=
-    GGMHybrid2_Vs_3_absCache_flip_not_mem_keys_of_lookup_none i parentCache hlookup
-  simp [PRF_ideal_cache_batch, hx, StateT.run, StateT.set, Function.comp_def]
-  simpa [PMF.uniformOfFintype_prod_bind] using
-    PMF.bind_uniformOfFintype_equiv
-      (e := (GGMHybrid2_Vs_3_missingBatchFunPairEquiv i parentCache x hx hflip).symm)
-      (g := fun a =>
-        PMF.pure
-          (a ⟨x, by simp [GGMHybrid2_Vs_3_batch, hx]⟩,
-            Finmap.union
-              (GGMHybrid2_Vs_3_absCache i parentCache :
-                Finmap (fun _x : BitVec i.succ.1 => BitVec k))
-              (FinmapFromFun
-                ({x' ∈ GGMHybrid2_Vs_3_batch i x |
-                  x' ∉ (GGMHybrid2_Vs_3_absCache i parentCache).keys})
-                a)))
-
-noncomputable def GGMHybrid2_Vs_3_absState {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
-    (cache : (GGMHybrid3 prg i).stateType) :
-    (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-      (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-        (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i))).stateType :=
-  ((), GGMHybrid2_Vs_3_absCache i cache)
-
-
 noncomputable def PRF_ideal_cache_batch_flipMsb (i : ℕ) (Y : Type) [Fintype Y] [Nonempty Y] :
     RStateOracle (SecurePRFSpec (BitVec i.succ) Y) where
   stateType := Finmap (fun _x : (BitVec i.succ) => Y)
   initialState := pure ∅
   queries := {
-    impl := fun u x => by
-      -- classical
-      exact
+    impl := fun u x =>
       letI : DecidableEq ((SecurePRFSpec (BitVec i.succ) Y).domain u) := by
         simp [SecurePRFSpec, OracleSpec.domain]
         exact inferInstance
@@ -777,14 +436,12 @@ noncomputable def PRF_ideal_cache_batch_flipMsb (i : ℕ) (Y : Type) [Fintype Y]
         return v1
   }
 
-
 noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ)  :
     RStateOracle (SecurePRFSpec (BitVec i.succ) (BitVec k)) where
   stateType := Finmap (fun _x : (BitVec i) => BitVec (k + k))
   initialState := pure ∅
   queries := {
     impl := fun _ x => by
-      -- classical
       simp[SecurePRFSpec, OracleSpec.domain] at x
       exact do
       let c <- get
