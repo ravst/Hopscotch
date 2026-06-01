@@ -32,29 +32,19 @@ theorem obsEq_indCpaL_apply_left_real {K : Type} {C : ℕ → Type} (scheme : Sy
     case eavesdrop n m =>
     ext1 st
     simp [IndCpaL, IndCpaRand_to_IndCpaL, IndCpaRandReal]
-    simp [OracleReduction.apply,
-      StateT.run, simulateQ, PFunctor.FreeM.mapM, PMF.map, mapInputState, mapOutputState,
-      OracleReduction.liftWithPMFAndState, OracleReduction.query, liftM, monadLift, MonadLift.monadLift]
-
-
-    sorry
-
-
-  -- ext1 α; ext1 q
-  -- cases q
-  -- case query n msg =>
-  -- cases msg
-  -- case  mk m₀ m₁ =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
-  ext1 k
-  simp [FreeMonad.lift]
+    simp [OracleReduction.apply, OracleComp.instMonadLiftOracleQuery._aux_1, simulateQ, OracleReduction.query,
+      PFunctor.FreeM.mapM, liftM, monadLift, MonadLift.monadLift]
+    simp [OracleReduction.liftWithPMFAndState]
+    simp [mapInputState, mapOutputState, mapSecond, PMF.map]
+    simp [StateT.lift, StateT.run, StateT.get]
+    congr
 
 /-- Under the random ciphertext oracle, forwarding the left vs right challenge message is
 observationally equivalent (the message is ignored). -/
 theorem obsEq_apply_left_rand_apply_right_rand {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
-    ObsEq (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme))
-      (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme)) := by
+    ObsEq (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme))
+      (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme)) := by
   apply obsEqReflexive
   simp [IndCpaRandRand, applySimpleReduction, OracleComp.simulateQ, IndCpaRand_to_IndCpaL,
     IndCpaRand_to_IndCpaR]
