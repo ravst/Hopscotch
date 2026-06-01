@@ -309,12 +309,20 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 --     true
 --   } := by sorry
 
+lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x = y := by sorry
+
 lemma obseEq_from_2_steps {A : Type _}
   (init : PMF A)
   (f g : A -> PMF Bool)
   (H : forall a : A, distancePMF (f a) (g a) = 0)
   :
-  distancePMF (init.bind f) (init.bind g) = 0 := by sorry
+  distancePMF (init.bind f) (init.bind g) = 0 := by
+    have H : f=g := by
+      ext1 c
+      apply distanceOnBoolIrreflexive
+      apply H
+    rw [H]
+    apply distSelf
 
 lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
   (ro₁ : QueryImpl O (RState stateType₁))
@@ -439,7 +447,7 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
 
 noncomputable def ascToReal {I : Type} {O : OracleSpec I}
   (distinguisher : OracleComp (withPMFSpec O) Bool)
-  (assumption : SingleAssumption) (x :ℕ × (OracleReduction assumption.O O)) : NNReal :=
+  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) : NNReal :=
   (x).1 *
     advantage
       (OracleReduction.applyReductionToAdversary (x).2 distinguisher)
@@ -464,7 +472,7 @@ by
   simp [advBound2 , advBound, ascToReal]
 
 
-def advantage_reduction {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+def advantage_reduction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (dist : adversaryT O2) (o1 o2 : RStateOracle O1)
   (r : OracleReduction O1 O2) :
   advantage dist (OracleReduction.apply r o1) (OracleReduction.apply r o2) =
@@ -574,7 +582,6 @@ noncomputable def transitive_step
   : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc} :=
     let ⟨asc1, Hasc1⟩ := as1
     let ⟨asc2, Hasc2⟩ := as2
-
     let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
     ⟨joint,
       (by
@@ -601,7 +608,7 @@ noncomputable def transitive_step
       )
     ⟩
 
-lemma nextInRange {n : ℕ} {x : ℕ} ( H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
+lemma nextInRange {n : ℕ} {x : ℕ} (H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
 by
   refine Finset.mem_range_succ_iff.mpr ?_
   simp [Finset.range] at H
@@ -644,13 +651,13 @@ theorem sum_ge_entry2 {y : ℕ} {X : Type u} {s : Finset X} (a : X) (ha : a ∈ 
     y ≤ ∑ x ∈ s, f x :=
 by
   apply Nat.le_trans
-  apply Hle
+  · apply Hle
   apply sum_ge_entry
   assumption
 
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
-      {κ :  ℕ} {q_b : ENat}
+      {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
       {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc}
