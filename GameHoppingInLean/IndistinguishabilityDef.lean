@@ -2,16 +2,30 @@ import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.ObservationalEquvialence
 
-/-- For each oracle spec `O`, a set of oracle pairs on `O` that may be assumed
-IndistinguishableI. -/
--- abbrev IndistinguishabilityAssumptions :=
---   {I : Type} → (O : OracleSpec I) → Set (RStateOracle O × RStateOracle O)
+/- # Indistinguishability Definition-/
 
+/-- In this file, we define the type called IndistinguisabilityI, which represents a proof
+of indistinguishability between two stateful random oracles. It is in Type and not in Prop,
+because we might want to inspect it to see how the indistinguishability is established,
+e.g. in order to estabilsh a concrete bound on the advantage of an adversary or to
+see what kind of reductions were used.
+
+The definition of IndistinguishabilityI is paremetrized by the indistingushabiliy assumptions,
+i.e. the set of pairs of oracles that we assume to be indistinguishable.
+-/
+/- ## Indisringuishability Assumptions -/
+
+/- A single indistinguishability assumption, consists of an oracle specification over a set of queries,
+and a pair of oracles of that specifications, which we assume to be indistinguishable.
+-/
 structure SingleAssumption where
   I : Type
   O : OracleSpec I
   i : RStateOracle O × RStateOracle O
 
+/- Indistinguishability Assumptions are modeled as an indexed family of single assumptions.
+The index type is arbitrary, but we require it to be decidable, so that it is easier to
+count how many times each assumption is used in a proof. -/
 structure IndistinguishabilityAssumptions where
   Idx : Type
   [decEq : DecidableEq Idx]
@@ -23,15 +37,8 @@ def empty : IndistinguishabilityAssumptions := {
   Idx := Empty,
   assumptions := fun x => Empty.elim x
   }
-end IndistinguishabilityAssumptions
 
 instance {A : IndistinguishabilityAssumptions} : DecidableEq A.Idx := A.decEq
-
-
-
-def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
-  : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
-  := ⟨I, O, p⟩
 
 /-- Disjoint union of two assumption families. The resulting index type is the sum of the
 original index types, and each side is selected by `Sum.inl` or `Sum.inr`. -/
@@ -41,35 +48,14 @@ def oplus (A B : IndistinguishabilityAssumptions) : IndistinguishabilityAssumpti
     | Sum.inl i => A.assumptions i
     | Sum.inr i => B.assumptions i
 
-infixl:65 " ⊕ " => oplus
 
-/-- For each pair of specs `(O₁, O₂)`, a set of allowed stateful randomized reductions
-from `O₁` to `O₂`. -/
-abbrev IndistinguishabilitySRReductions :=
-  {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) → Set (SRReduction O₁ O₂)
+infixl:65 " ⊕ " => IndistinguishabilityAssumptions.oplus
 
-/-- For each pair of specs `(O₁, O₂)`, a set of allowed reductions whose initialization may
-query the source oracle. -/
-abbrev IndistinguishabilityComplexInitReductions :=
-  {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) →
-    Set (ComplexInitReduction O₁ O₂)
+end IndistinguishabilityAssumptions
 
-/-- For each pair of specs `(O₁, O₂)`, a set of allowed randomized (stateless) reductions
-from `O₁` to `O₂`. -/
-abbrev IndistinguishabilityRandomReductions :=
-  {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) → Set (RReduction O₁ O₂)
-
-/-- For each pair of specs `(O₁, O₂)`, a set of allowed simple reductions
-from `O₁` to `O₂`. -/
-abbrev IndistinguishabilitySimpleReductions :=
-  {I₁ I₂ : Type} → (O₁ : OracleSpec I₁) → (O₂ : OracleSpec I₂) → Set (simpleReduction O₁ O₂)
-
-/-- Reduction sets used in indistinguishability proofs. -/
-structure IndistinguishabilityReductions where
-  reductions : IndistinguishabilitySRReductions
-  complexInitReductions : IndistinguishabilityComplexInitReductions
-  simpleReductions : IndistinguishabilitySimpleReductions
-  randomReductions : IndistinguishabilityRandomReductions
+def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
+  : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
+  := ⟨I, O, p⟩
 
 /-- Inductively generated indistinguishability relation for a fixed oracle spec.
 

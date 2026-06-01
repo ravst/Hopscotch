@@ -2,6 +2,7 @@ import GameHoppingInLean.Basic
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.IndistinguishabilityDef
 -- import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 -- import GameHoppingInLean.OracleReductions
 -- import GameHoppingInLean.ComputationalIndistinguishability
