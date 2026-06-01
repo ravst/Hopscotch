@@ -581,3 +581,11 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
 --   exists
 --     (f : (rState2Rstate none o).stateType -> PMF o.stateType),
 --     correctAbstractionBind (rState2Rstate none o) o f := by sorry
+
+-- ## Useful helper lemmas about ObsEq and ObsEqBounded
+
+@[symm]
+lemma ObsEqSymm {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O) :
+  ObsEq ro₁ ro₂ -> ObsEq ro₂ ro₁ := by
+  intro h queriesList
+  rw [h queriesList]
