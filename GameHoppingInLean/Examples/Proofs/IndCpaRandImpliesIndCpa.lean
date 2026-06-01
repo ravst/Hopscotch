@@ -31,7 +31,8 @@ theorem obsEq_indCpaL_apply_left_real {K : Type} {C : ℕ → Type} (scheme : Sy
     cases query
     case eavesdrop n m =>
     ext1 st
-    simp [IndCpaL, IndCpaRand_to_IndCpaL, IndCpaRandReal, OracleReduction.apply,
+    simp [IndCpaL, IndCpaRand_to_IndCpaL, IndCpaRandReal]
+    simp [OracleReduction.apply,
       StateT.run, simulateQ, PFunctor.FreeM.mapM, PMF.map, mapInputState, mapOutputState,
       OracleReduction.liftWithPMFAndState, OracleReduction.query, liftM, monadLift, MonadLift.monadLift]
 
