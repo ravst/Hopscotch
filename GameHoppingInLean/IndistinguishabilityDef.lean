@@ -362,7 +362,7 @@ mutual
       | IndistinguishableI.trans a q_b H1 H2 => funAdd (assumptionsUse H1) (assumptionsUse H2)
       | IndistinguishableI.longSequence l q_b ro H =>
           fun i =>
-            Finset.sum (α := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (H j.1 (by
+            Finset.sum (ι := Finset.range (l)) (Finset.univ) (fun j => assumptionsUse (H j.1 (by
               cases j
               case mk val prop =>
               simp [Finset.range] at prop

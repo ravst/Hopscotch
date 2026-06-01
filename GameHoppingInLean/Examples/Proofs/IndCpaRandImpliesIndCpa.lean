@@ -3,9 +3,11 @@ import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
-def IndCpaRand_to_IndCpaL {C : ℕ → Type} : simpleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
-  impl n t := match n, t with
-    | _n, (m₀, _m₁) => ctxt (C := C) m₀
+def IndCpaRand_to_IndCpaL {C : ℕ → Type} : ComplexInitReduction (IndCpaRandSpec C) (IndCpaSpec C) where
+  stateType := Unit
+  initialState := pure ()
+  queries := fun ⟨n, (m₀, _m₁)⟩ =>
+    ctxt (C := C) m₀
 
 /-- Simple reduction from the single-message `ctxt` oracle to the right IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₁)`. -/

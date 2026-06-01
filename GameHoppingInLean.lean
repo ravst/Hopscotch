@@ -4,7 +4,7 @@ import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 -- import GameHoppingInLean.ComputationalIndistinguishability
--- import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
+import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 -- import GameHoppingInLean.Examples.Proofs.OneTimeUniformCyphertextsPubImpliesOneTimeSecrecy
 -- import GameHoppingInLean.Examples.Proofs.OneTimeSecrecyImpliesIndCPAPub
 -- import GameHoppingInLean.Examples.Proofs.OUTCInnerImpliesOUTCDouble

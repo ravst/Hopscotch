@@ -2,25 +2,25 @@ import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.PubEnc
 
 /-- Query indices for the public-key IND-CPA interface. -/
-inductive IndCpaPubQ where
+inductive IndCpaPubQ (M : Type) where
   | getPk
-  | eavesdrop
+  | eavesdrop (msg_pair : M × M)
 
 /-- Public-key IND-CPA oracle spec with a public-key reveal query and an
 unrestricted left/right eavesdropping query. -/
-def IndCpaPubSpec (PubK M C : Type) : OracleSpec IndCpaPubQ
-  | .getPk => (Unit, PubK)
-  | .eavesdrop => (M × M, C)
+def IndCpaPubSpec (PubK M C : Type) : OracleSpec (IndCpaPubQ M)
+  | .getPk => PubK
+  | .eavesdrop _=> C
 
 /-- Convenience query constructor for revealing the public key. -/
 @[reducible, inline] def indCpaPubGetPk {PubK M C : Type} :
     OracleComp (IndCpaPubSpec PubK M C) PubK :=
-  (IndCpaPubSpec PubK M C).query .getPk ()
+  (IndCpaPubSpec PubK M C).query .getPk
 
 /-- Convenience query constructor for public-key IND-CPA `eavesdrop(m₀, m₁)`. -/
 @[reducible, inline] def indCpaPubEavesdrop {PubK M C : Type} (m₀ m₁ : M) :
     OracleComp (IndCpaPubSpec PubK M C) C :=
-  (IndCpaPubSpec PubK M C).query .eavesdrop (m₀, m₁)
+  (IndCpaPubSpec PubK M C).query (.eavesdrop (m₀, m₁))
 
 /-- Left public-key IND-CPA oracle:
 * `getPk` returns the public key
@@ -32,14 +32,13 @@ noncomputable def IndCpaPubL {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries :=fun input => match input with
+      | .getPk => do
           get
-      | .eavesdrop, (m₀, _m₁) => do
+      | .eavesdrop (m₀, _m₁) => do
           let pk <- get
           scheme.encrypt pk m₀
-  }
+
 
 /-- Right public-key IND-CPA oracle:
 * `getPk` returns the public key
@@ -51,14 +50,13 @@ noncomputable def IndCpaPubR {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun input => match input with
+      | .getPk => do
           get
-      | .eavesdrop, (_m₀, m₁) => do
+      | .eavesdrop (_m₀, m₁) => do
           let pk <- get
           scheme.encrypt pk m₁
-  }
+
 
 /-- The oracle pair corresponding to the public-key IND-CPA security definition,
 for use in an `Assumptions` set. -/
@@ -70,7 +68,7 @@ noncomputable def IndCpaPubAssumption {PubK SecK M C : Type}
 noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
     SingleAssumption where
-  I := IndCpaPubQ
+  I := IndCpaPubQ M
   O := IndCpaPubSpec PubK M C
   i := IndCpaPubAssumption scheme
 
