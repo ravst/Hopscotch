@@ -1,17 +1,18 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
+import GameHoppingInLean.OracleReductions
 
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
-def IndCpaRand_to_IndCpaL {C : ℕ → Type} : ComplexInitReduction (IndCpaRandSpec C) (IndCpaSpec C) where
+def IndCpaRand_to_IndCpaL {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨n, (m₀, _m₁)⟩ =>
-    ctxt (C := C) m₀
+    OracleReduction.query ((⟨n, m₀⟩ : (n : ℕ) × (BitVec n)))
 
 /-- Simple reduction from the single-message `ctxt` oracle to the right IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₁)`. -/
-def IndCpaRand_to_IndCpaR {C : ℕ → Type} : simpleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
+def IndCpaRand_to_IndCpaR {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
   impl n t := match n, t with
     | _n, (_m₀, m₁) => ctxt (C := C) m₁
 
