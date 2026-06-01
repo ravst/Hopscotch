@@ -55,8 +55,7 @@ noncomputable def IndCpaRandAssumption' {K : Type} {C : ℕ → Type}
 /-- IND-CPA-rand security definition as an instance of `Indistinguishable`. -/
 def IndCpaRandDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (IndCpaRandReal scheme) (IndCpaRandRand scheme)

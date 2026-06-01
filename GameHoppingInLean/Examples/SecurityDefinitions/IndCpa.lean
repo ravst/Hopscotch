@@ -50,7 +50,6 @@ noncomputable def IndCpaAssumption' {K : Type} {C : ℕ → Type} (scheme : SymE
 /-- IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (IndCpaL scheme) (IndCpaR scheme)

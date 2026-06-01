@@ -81,18 +81,16 @@ noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
 /-- Public-key IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaPubDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (IndCpaPubL scheme)
     (IndCpaPubR scheme)
 
 /-- The bounded step version of `IndCpaPubDef` but for a fixed number of steps --/
 def IndCpaPubDefQ
    (Assumptions : IndistinguishabilityAssumptions)
-   (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  IndistinguishableQ Assumptions Reductions
+  IndistinguishableQ Assumptions
     (IndCpaPubSpec PubK M C)
     (IndCpaPubL scheme)
     (IndCpaPubR scheme)
