@@ -46,89 +46,90 @@ theorem obsEq_apply_left_rand_apply_right_rand {K : Type} {C : ℕ → Type}
     ObsEq (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme))
       (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme)) := by
   apply obsEqReflexive
-  simp [IndCpaRandRand, applySimpleReduction, OracleComp.simulateQ, IndCpaRand_to_IndCpaL,
-    IndCpaRand_to_IndCpaR]
-  funext α ⟨n, msg'⟩ s
-  rfl
+  simp [IndCpaRandRand, IndCpaRand_to_IndCpaL, IndCpaRand_to_IndCpaR]
+  simp [OracleReduction.apply, OracleComp.instMonadLiftOracleQuery._aux_1, simulateQ, OracleReduction.query,
+      PFunctor.FreeM.mapM, liftM, monadLift, MonadLift.monadLift]
+  simp [OracleReduction.liftWithPMFAndState]
+  congr
 
 /-- Applying the right reduction to the real `ctxt` oracle is observationally equivalent to
 `IND_CPA_R`. -/
 theorem obsEq_apply_right_real_indCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    ObsEq (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme))
+    ObsEq (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme))
       (IndCpaR scheme) := by
-  apply obsEqReflexive
-  simp [IndCpaR, IndCpaRandReal, applySimpleReduction]
-  ext1 α; ext1 q
-  cases q with
-  | mk m₀ m₁ =>
-    simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaR, ctxt]
-    ext1 k
+  apply ObsEq.symm
+  apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
+  constructor
+  · simp [IndCpaR, IndCpaRand_to_IndCpaR, IndCpaRandReal, OracleReduction.apply, StateT.run, simulateQ, PFunctor.FreeM.mapM, PMF.map]
     congr
-    simp [FreeMonad.lift]
-  -- | hEq =>
-  --
+  · intro query
+    cases query
+    case eavesdrop n m =>
+    ext1 st
+    simp [IndCpaR, IndCpaRand_to_IndCpaR, IndCpaRandReal]
+    simp [OracleReduction.apply, OracleComp.instMonadLiftOracleQuery._aux_1, simulateQ, OracleReduction.query,
+      PFunctor.FreeM.mapM, liftM, monadLift, MonadLift.monadLift]
+    simp [OracleReduction.liftWithPMFAndState]
+    simp [mapInputState, mapOutputState, mapSecond, PMF.map]
+    simp [StateT.lift, StateT.run, StateT.get]
+    congr
 
 /-- IND-CPA left/right indistinguishability derived from IND-CPA-rand indistinguishability,
 via the two simple reductions. -/
 noncomputable def indCpaRandImpliesIndCpa
-    {Reductions : IndistinguishabilityReductions}
     {K : Type} {C : ℕ → Type} [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
     (scheme : SymEncScheme K C)
-    (hLeftRed : (IndCpaRand_to_IndCpaL (C := C)) ∈
-      Reductions.simpleReductions (IndCpaRandSpec C) (IndCpaSpec C))
-    (hRightRed : (IndCpaRand_to_IndCpaR (C := C)) ∈
-      Reductions.simpleReductions (IndCpaRandSpec C) (IndCpaSpec C))
-    : IndCpaDef (IndCpaRandAssumption' scheme) Reductions scheme := by
+    : IndCpaDef (IndCpaRandAssumption' scheme) scheme := by
   intro κ
   have hRealRand :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaRandSpec C) (IndCpaRandReal scheme) (IndCpaRandRand scheme) := by
     simpa [IndCpaRandAssumption', IndCpaRandAssumptionFull, IndCpaRandAssumption] using
       (IndistinguishableI.assumption
         (Assumptions := IndCpaRandAssumption' scheme)
-        (Reductions := Reductions) (κ := κ) (q_b := none) ())
+        (κ := κ) (q_b := none) ())
 
   have hRandReal :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaRandSpec C) (IndCpaRandRand scheme) (IndCpaRandReal scheme) :=
     IndistinguishableI.symm none hRealRand
 
   have h1 :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C) (IndCpaL scheme)
-          (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme)) :=
+          (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme)) :=
     Indistinguishable.of_ObsEq (obsEq_indCpaL_apply_left_real scheme)
 
   have h2 :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C)
-          (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme))
-          (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme)) :=
-    IndistinguishableI.simpleReduction (r := IndCpaRand_to_IndCpaL (C := C)) none hRealRand hLeftRed
+          (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme))
+          (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme)) :=
+    IndistinguishableI.complexInitReduction _ _ hRealRand
 
   have h3 :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C)
-          (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme))
-          (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme)) :=
+          (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandRand scheme))
+          (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme)) :=
     Indistinguishable.of_ObsEq (obsEq_apply_left_rand_apply_right_rand scheme)
 
   have h4 :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C)
-          (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme))
-          (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme)) :=
-    IndistinguishableI.simpleReduction (r := IndCpaRand_to_IndCpaR (C := C)) none hRandReal hRightRed
+          (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandRand scheme))
+          (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme)) :=
+    IndistinguishableI.complexInitReduction _ _ hRandReal
 
   have h5 :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C)
-          (applySimpleReduction (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme))
+          (OracleReduction.apply (IndCpaRand_to_IndCpaR (C := C)) (IndCpaRandReal scheme))
           (IndCpaR scheme) :=
     Indistinguishable.of_ObsEq (obsEq_apply_right_real_indCpaR scheme)
 
   have h :
-      IndistinguishableI (IndCpaRandAssumption' scheme) Reductions κ none
+      IndistinguishableI (IndCpaRandAssumption' scheme) κ none
         (IndCpaSpec C) (IndCpaL scheme) (IndCpaR scheme) :=
     Indistinguishable.transitive h1 <|
       Indistinguishable.transitive h2 <|
