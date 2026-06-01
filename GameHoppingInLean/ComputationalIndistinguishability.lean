@@ -10,6 +10,7 @@ import Mathlib.Data.Set.Defs
 import Mathlib.Data.Multiset.UnionInter
 import Mathlib.Data.Finset.Empty
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Data.ENat.Lattice
 
 -- generic intro. move.
 
@@ -395,24 +396,25 @@ lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
 -- lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
 --   BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by sorry
 
-def depth.{uA, uB} (P : PFunctor.{uA, uB}) (α : Type uB) : PFunctor.FreeM P α -> ℕ
+noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
 | PFunctor.FreeM.pure _ => 0
-| PFunctor.FreeM.roll input cont =>
-  (Finset.sup Finset.univ fun n => depth (cont n)) + 1
+| PFunctor.FreeM.roll _input cont =>
+  1 + iSup (fun u => depth (cont u))
 
 
 lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
-  (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b) :
+  (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
     advantage dist ro₁ ro₂ = 0 :=
 by
-  have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
-  have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
-  have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
-  have H3 : advantage dist (rState2Rstate q_b ro₁) (rState2Rstate q_b ro₂) = 0 := by
-    simp [rState2Rstate]
-    rw [H3p]
-    apply advantageRefl
-  rw [<-nonpos_iff_eq_zero]
+  -- have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
+  -- have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
+  -- have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
+  -- have H3 : advantage dist (rState2Rstate q_b ro₁) (rState2Rstate q_b ro₂) = 0 := by
+  --   simp [rState2Rstate]
+  --   rw [H3p]
+  --   apply advantageRefl
+  -- rw [<-nonpos_iff_eq_zero]
+
   -- calc
   --   advantage dist ro₁ ro₂ <=
   -- have F : advantage dist ro₁ ro₂ <= 0 := by
@@ -427,7 +429,7 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     [Fintype (Assumptions.Idx)]
     : Prop :=
     forall distinguisher,
-      FreeMonad.depth distinguisher ≤ q_b ->
+      FreeM.depth distinguisher ≤ q_b ->
       (advantage distinguisher ro1 ro2) <= ∑ j,
         (asc.values j).1 *
         advantage
@@ -436,7 +438,7 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
 
 
 noncomputable def ascToReal {I : Type} {O : OracleSpec I}
-  (distinguisher : FreeMonad (withPMFSpec O).OracleQuery Bool)
+  (distinguisher : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption) (x :ℕ × (OracleReduction assumption.O O)) : NNReal :=
   (x).1 *
     advantage
@@ -449,7 +451,7 @@ def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     [Fintype (Assumptions.Idx)]
     : Prop :=
     forall distinguisher,
-      FreeMonad.depth distinguisher ≤ q_b ->
+      FreeM.depth distinguisher ≤ q_b ->
       (advantage distinguisher ro1 ro2) <= ∑ j : { x // x ∈ asc.subset },
         ascToReal distinguisher (Assumptions.assumptions j) (asc.values j)
 
@@ -471,16 +473,54 @@ def advantage_reduction {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
     rw [goodDoubleAction]
     rw [goodDoubleAction]
 
-noncomputable def reductionCombiner {I1 I2: Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  (x : OracleReduction.SRReductionComp O s1 t)
+  (s2 : Type) [Nonempty s2]
+  : OracleReduction.SRReductionComp O (s1 ⊕ s2) t :=
+  sorry
+def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  (x : OracleReduction.SRReductionComp O s1 t)
+  (s2 : Type) [Nonempty s2]
+  : OracleReduction.SRReductionComp O (s2 ⊕ s1) t :=
+  sorry
+
+lemma IfAllQueiresNonEmptyThenNo (I : Type _) (O : OracleSpec I)
+  (H : forall x : I, Nonempty (O x))
+  (Z : Type _) (HZ : IsEmpty Z) : IsEmpty (OracleComp O Z) := by sorry
+
+lemma EmptyStateAlternative (I : Type _) (O : OracleSpec I)
+  (Z : Type _) (x : OracleComp O Z) :
+  Nonempty Z \/ (exists x : I, IsEmpty (O x)) :=
+  open Classical in
+  byContradiction
+  (by
+    intro H
+    simp at H
+    have L := IfAllQueiresNonEmptyThenNo I O H.2 Z
+    have Es : ¬ (IsEmpty (OracleComp O Z)) := by
+      simp [Nonempty]
+      constructor
+      apply x
+    apply Es
+    apply L
+    apply H.1
+  )
+
+
+
+noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2)) : ℕ × (OracleReduction O1 O2) :=
+  let x1is := x1.2.initialState
+  let x2is := x2.2.initialState
+
   (x1.1+x2.1, {
     stateType := (x1.2.stateType ⊕ x2.2.stateType)
     initialState := (do
-      let x : Bool <- RReduction.sample (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
+      let x : Bool <- OracleReduction.initSample (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
         by
           have H : x1.1 <= x1.1 + x2.1 :=  by
             exact Nat.le_add_right x1.1 x2.1
-          refine ENNReal.div_le_of_le_mul ?_
+          refine NNReal.div_le_of_le_mul ?_
           simp
           )
         )
@@ -491,21 +531,20 @@ noncomputable def reductionCombiner {I1 I2: Type} {O1 : OracleSpec I1} {O2 : Ora
         let init <- x2.2.initialState
         return Sum.inr init
     )
-    queries := {
-      impl i q := (do
-        let x <- srGet!
+    queries := fun q => (do
+        let x <- orGet!
         match x with
         | Sum.inl s =>
-          let x := (x1.2.queries.impl i q)
-          SRReduction.addToStateL x _
+          let xI : Nonempty x2.2.stateType := sorry
+          addToStateL (x1.2.queries q) _
         | Sum.inr s =>
-          SRReduction.addToStateR (x2.2.queries.impl i q) _
+          let xI : Nonempty x1.2.stateType := sorry
+          addToStateR (x2.2.queries q) _
       )
-    }
   })
 
-lemma reductionCombinerCorrect {I: Type} {O : OracleSpec I}
-  (dist : FreeMonad (withPMFSpec O).OracleQuery Bool)
+lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
+  (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
@@ -571,30 +610,25 @@ by
 
 def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
-      {Reductions : IndistinguishabilityReductions}
-      {κ :  ℕ} {q_b : ENat}
+      {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions Reductions κ q_b O o₁ o₂) -> ℕ
+      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) -> ℕ
 | IndistinguishableI.assumption idx =>
   0
 | IndistinguishableI.obsEqB a b =>
   0
-| IndistinguishableI.simpleReduction a b c d =>
-  1 + lengthOfIndI c
-| IndistinguishableI.reduction a b c d =>
-  1 + lengthOfIndI c
-| IndistinguishableI.randReduction a b c d =>
-  1 + lengthOfIndI c
-| @IndistinguishableI.OracleReduction Assumptions Reductions κ I1 I2 O1 O2 r ro1 o₁ b ind Hr =>
+| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
   1 + lengthOfIndI ind
 | IndistinguishableI.symm q_b ind  =>
   1 + lengthOfIndI ind
 | IndistinguishableI.trans rm q_b ind1 ind2 =>
   1 + lengthOfIndI ind1 + lengthOfIndI ind2
 | IndistinguishableI.longSequence a q_b ro Hseq =>
-  1 + ∑ ⟨i, Hi⟩ : Finset.range a, lengthOfIndI (Hseq i (by
-    simp [Finset.range] at Hi
-    apply Hi
+  1 + ∑ i : Finset.range a, lengthOfIndI (Hseq i (by
+    cases i
+    case mk val prop =>
+    simp []
+    exact List.mem_range.mp prop
   ))
 
 
@@ -616,10 +650,9 @@ by
 
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
-      {Reductions : IndistinguishabilityReductions}
       {κ :  ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions Reductions κ q_b O o₁ o₂) ->
+      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
       {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc}
 | IndistinguishableI.assumption idx =>
   ⟨{ subset := {idx}, values := fun xp => by
@@ -632,22 +665,16 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
     by
       simp [advBound]
       intro dist Hdist
-      rw [OracleReduction.applyReductionToAdversary_identity]
+      rw [OracleReduction.applyComplexInitReduction2_identity]
   ⟩
 | IndistinguishableI.obsEqB a b =>
   obse_eq_step o₁ o₂ b
-| IndistinguishableI.simpleReduction a b c d =>
-    sorry
-| IndistinguishableI.reduction a b c d =>
-    sorry
-| IndistinguishableI.randReduction a b c d =>
-    sorry
-| @IndistinguishableI.OracleReduction Assumptions Reductions κ I1 I2 O1 O2 r ro1 o₁ b ind Hr => by
+| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind => by
     let ⟨asc, Hasc⟩ := symbolicSoundness ind
     exact
       ⟨{
         subset := asc.subset
-        values := fun x => ((asc.values x).1, OracleReduction2_compose (asc.values x).2 r)
+        values := fun x => ((asc.values x).1, OracleReduction.ComplexInitReduction2_compose (asc.values x).2 r)
       },
       by
         simp [advBound]
@@ -659,7 +686,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
         apply le_of_eq
         congr
         ext j
-        rw [OracleReduction2_compose_apply]
+        rw [OracleReduction.ComplexInitReduction2_compose_apply]
       ⟩
 | IndistinguishableI.symm q_b ind  =>
     let re := symbolicSoundness ind
@@ -699,8 +726,6 @@ decreasing_by
   · apply Nat.lt_one_add_iff.mpr
     apply sum_ge_entry2 ⟨i, by
       simp [Finset.range, Hi]⟩
-    · simp [Finset.attach]
-      simp [Multiset.attach, Finset.range]
-      assumption
+    · apply Finset.mem_attach
     · rfl
   -- sorry
