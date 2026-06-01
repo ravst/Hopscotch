@@ -3,7 +3,8 @@ import GameHoppingInLean.Examples.Schemes.SymEnc
 
 /-- IND-CPA eavesdropping oracle spec.
 The query indexed by `n` takes a pair of `n`-bit messages and returns an `n`-bit ciphertext. -/
-def IndCpaDomain : Type := (n : ℕ) × ((BitVec n) × (BitVec n))
+inductive IndCpaDomain : Type
+| eavesdrop (n : ℕ) (msgs : (BitVec n) × (BitVec n))
 
 def IndCpaSpec (C : ℕ → Type) : OracleSpec IndCpaDomain :=
   fun ⟨n, _m⟩ => C n

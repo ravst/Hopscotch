@@ -8,26 +8,42 @@ def IndCpaRand_to_IndCpaL {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨n, (m₀, _m₁)⟩ =>
-    OracleReduction.query ((⟨n, m₀⟩ : (n : ℕ) × (BitVec n)))
+    OracleReduction.query (IndCpaRandDomain.ctxt n m₀)
 
 /-- Simple reduction from the single-message `ctxt` oracle to the right IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₁)`. -/
 def IndCpaRand_to_IndCpaR {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
-  impl n t := match n, t with
-    | _n, (_m₀, m₁) => ctxt (C := C) m₁
+  stateType := Unit
+  initialState := pure ()
+  queries := fun ⟨n, (_m₀, m₁)⟩ =>
+    OracleReduction.query (IndCpaRandDomain.ctxt n m₁)
 
 /-- `IND_CPA_L` is observationally equivalent to applying the left reduction to
 the real `ctxt` oracle. -/
 theorem obsEq_indCpaL_apply_left_real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     ObsEq (IndCpaL scheme)
-      (applySimpleReduction (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme)) := by
-  apply obsEqReflexive
-  simp [IndCpaL, IndCpaRandReal, applySimpleReduction]
-  ext1 α; ext1 q
-  cases q
+      (OracleReduction.apply (IndCpaRand_to_IndCpaL (C := C)) (IndCpaRandReal scheme)) := by
+  apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
+  constructor
+  · simp [IndCpaL, IndCpaRand_to_IndCpaL, IndCpaRandReal, OracleReduction.apply, StateT.run, simulateQ, PFunctor.FreeM.mapM, PMF.map]
+    congr
+  · intro query
+    cases query
+    case eavesdrop n m =>
+    ext1 st
+    simp [IndCpaL, IndCpaRand_to_IndCpaL, IndCpaRandReal, OracleReduction.apply,
+      StateT.run, simulateQ, PFunctor.FreeM.mapM, PMF.map, mapInputState, mapOutputState,
+      OracleReduction.liftWithPMFAndState, OracleReduction.query, liftM, monadLift, MonadLift.monadLift]
+
+
+    sorry
+
+
+  -- ext1 α; ext1 q
+  -- cases q
   -- case query n msg =>
   -- cases msg
-  case  mk m₀ m₁ =>
+  -- case  mk m₀ m₁ =>
   simp [OracleComp.simulateQ, FreeMonad.mapM, IndCpaRand_to_IndCpaL, ctxt]
   ext1 k
   simp [FreeMonad.lift]

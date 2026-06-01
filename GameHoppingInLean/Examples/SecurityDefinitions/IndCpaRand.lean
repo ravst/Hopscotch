@@ -3,8 +3,8 @@ import GameHoppingInLean.Examples.Schemes.SymEnc
 
 /-- IND-CPA "real vs random ciphertext" oracle spec.
 The query indexed by `n` takes a single `n`-bit message and returns an `n`-bit ciphertext. -/
-def IndCpaRandDomain : Type := (n : ℕ) × (BitVec n)
-
+inductive IndCpaRandDomain : Type
+| ctxt (n : ℕ) (msg : BitVec n)
 
 def IndCpaRandSpec (C : ℕ → Type) : OracleSpec IndCpaRandDomain :=
   fun ⟨n, q⟩ =>
