@@ -2,6 +2,7 @@ import GameHoppingInLean.StatefulRandomOracle
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.OracleComp.OracleSpec
+import ToMathlib.PFunctor.Free
 
 universe u
 
@@ -47,6 +48,10 @@ structure OracleReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : Or
   queries : QueryImpl O₂ (OracleComp (withPMFAndStateSpec stateType O₁))
 
 namespace OracleReduction
+
+/-- Computations available to a stateful randomized reduction over source oracle spec `O`. -/
+abbrev SRReductionComp {I : Type u} (O : OracleSpec I) (s : Type) :=
+  OracleComp (withPMFAndStateSpec s O)
 
 /- ## Applying a reduction -/
 
@@ -175,64 +180,64 @@ noncomputable def identity {I : Type} (O : OracleSpec I) : OracleReduction O O w
   initialState := pure ()
   queries := fun i => query i
 
+def statefulOracleComp {I : Type _} (O : OracleSpec I) (state : Type) : Type _ -> Type _ := StateT state (OracleComp O)
+instance {I : Type _} (O : OracleSpec I) (state : Type) [Monad (OracleComp O)] : Monad (statefulOracleComp O state) := StateT.instMonad
 
--- abbrev StateOracleReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : OracleSpec I₂) :=
---   OracleReduction O₁ O₂
 
--- def stateTQueryImpl {I : Type} {O : OracleSpec I} {state : Type} :
---     QueryImpl (withPMFAndStateSpec state O)
---       (StateT state (OracleComp (withPMFSpec O)))
---   | withPMFAndStateI.oracle i =>
---       StateT.lift ((withPMFSpec O).query (withPMFI.oracle i))
---   | withPMFAndStateI.sample p =>
---       StateT.lift ((withPMFSpec O).query (withPMFI.sample p))
---   | withPMFAndStateI.getState =>
---       StateT.get
---   | withPMFAndStateI.setState a =>
---       StateT.set a
+def defaultImpl {I : Type} {O : OracleSpec I} {state : Type}
+  : QueryImpl (withPMFAndStateSpec state O) (statefulOracleComp (withPMFSpec O) state) := fun
+  | .oracle a =>
+    StateT.lift (OracleComp.queryBind (withPMFI.oracle a) (fun x => return x))
+    -- the same as `StateT.lift (OracleComp.lift (OracleSpec.query (withPMFI.oracle a)))`, choose which to use
+  | .sample a =>
+    StateT.lift (OracleComp.queryBind (withPMFI.sample a) (fun x => return x))
+  | .getState =>
+    do
+      let x <- StateT.get
+      return x
+  | .setState a =>
+    do
+      let _ <- StateT.set a
+      return ()
 
--- def lower {I : Type} {O : OracleSpec I} {state Output : Type}
---     (comp : OracleComp (withPMFAndStateSpec state O) Output) (init : state) :
---     OracleComp (withPMFSpec O) Output :=
---   let x : StateT state (OracleComp (withPMFSpec O)) Output :=
---     simulateQ (stateTQueryImpl (O := O) (state := state)) comp
---   let y : OracleComp (withPMFSpec O) (Output × state) := x init
---   y <&> fun x => x.1
+/-- Next, we show how to apply oracle reduction, the other way around, i.e. to the adversary -/
+def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+    (reduction : OracleReduction O₁ O₂) (dist : OracleComp (withPMFSpec O₂) Output)
+    : OracleComp (withPMFSpec O₁) Output :=
+    let lower {state : Type}
+        (comp : OracleComp (withPMFAndStateSpec state O₁) Output) (init : state) :
+        OracleComp (withPMFSpec O₁) Output :=
+      let x : statefulOracleComp (withPMFSpec O₁) state Output :=
+        simulateQ (@defaultImpl I₁ O₁ state) comp
+      let y : OracleComp (withPMFSpec O₁) (Output × state) := x init
+      y <&> (fun x => x.1)
+    let addPMFtoImpl2 {stateType : Type}
+        (impl : QueryImpl O₂ (SRReductionComp O₁ stateType)) :
+        QueryImpl (withPMFSpec O₂) (SRReductionComp O₁ stateType) :=
+      fun
+        | withPMFI.oracle t => impl t
+        | withPMFI.sample p =>
+            OracleComp.lift (OracleSpec.query (withPMFAndStateI.sample p))
+    let x : OracleComp (withPMFAndStateSpec reduction.stateType O₁) Output :=
+      simulateQ (addPMFtoImpl2 reduction.queries) dist
+    let y : reduction.stateType → OracleComp (withPMFSpec O₁) Output := lower x
+    do
+      let sample : reduction.stateType <- reduction.initialState
+      y sample
 
--- def addPMFToQueryImpl {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
---     {stateType : Type}
---     (impl : QueryImpl O₁ (OracleComp (withPMFAndStateSpec stateType O₂))) :
---     QueryImpl (withPMFSpec O₁) (OracleComp (withPMFAndStateSpec stateType O₂))
---   | withPMFI.oracle i => impl i
---   | withPMFI.sample p => sample p
+lemma applyComplexInitReduction2_identity  {Output I : Type} {O : OracleSpec I}
+  (dist : OracleComp (withPMFSpec O) Output)
+  : applyReductionToAdversary (OracleReduction.identity O) dist = dist := by sorry
 
--- /-- Apply a reduction to a distinguisher/adversary computation. -/
--- def applyToComp {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
---     (reduction : OracleReduction O₁ O₂) (dist : OracleComp (withPMFSpec O₂) Output) :
---     OracleComp (withPMFSpec O₁) Output :=
---   let x : OracleComp (withPMFAndStateSpec reduction.stateType O₁) Output :=
---     simulateQ (addPMFToQueryImpl reduction.queries) dist
---   let y : reduction.stateType → OracleComp (withPMFSpec O₁) Output := lower x
---   do
---     let sample : reduction.stateType ← reduction.initialState
---     y sample
 
--- lemma applyToComp_identity {Output I : Type} {O : OracleSpec I}
---     (dist : OracleComp (withPMFSpec O) Output) :
---     applyToComp (identity O) dist = dist := by
---   sorry
+/-- Apply a reduction whose initialization may query the underlying oracle. -/
+def ComplexInitReduction2_compose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+    (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃) : OracleReduction O₁ O₃ := by sorry
 
--- def compose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
---     {O₃ : OracleSpec I₃} (r1 : OracleReduction O₁ O₂)
---     (r2 : OracleReduction O₂ O₃) : OracleReduction O₁ O₃ := by
---   sorry
-
--- lemma compose_applyToComp {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁}
---     {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
---     (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
---     (dist : OracleComp (withPMFSpec O₃) Output) :
---     applyToComp (compose r1 r2) dist =
---       applyToComp r1 (applyToComp r2 dist) := by
---   sorry
-
-end OracleReduction
+/-- Apply a reduction whose initialization may query the underlying oracle. -/
+lemma ComplexInitReduction2_compose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+    (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
+    (dist : OracleComp (withPMFSpec O₃) Output) :
+    applyReductionToAdversary (ComplexInitReduction2_compose r1 r2) dist =
+    applyReductionToAdversary r1 (applyReductionToAdversary r2 dist)
+       := by sorry

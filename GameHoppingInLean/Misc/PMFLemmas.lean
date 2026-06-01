@@ -227,8 +227,8 @@ theorem bind_uniformOfFintype_eval_do {X Y α : Type}
       (do
         let y ← PMF.uniformOfFintype Y
         rest y) := by
-        rw [PMF.uniformOfFintype_prod_bind]
-        simp [rest', PMF.bind_const]
+          rw [PMF.uniformOfFintype_prod_bind]
+          simp [rest', PMF.bind_const]
 
 /-- Two independent uniform bitvector draws, appended together, are the same as one
 uniform draw at the appended width. -/
