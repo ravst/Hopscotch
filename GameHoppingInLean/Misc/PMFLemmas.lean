@@ -1,7 +1,7 @@
 import GameHoppingInLean.Misc.PMFSimpAttr
 import GameHoppingInLean.MonadRandomState
-import ToMathlib.General
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
+import ToMathlib.General
 
 open Lean Meta
 
@@ -13,7 +13,7 @@ theorem bind_eq_do {α β : Type} (A : PMF α) (X : α → PMF β) :
     A.bind (fun a => X a) = (do
       let a ← A
       X a) := by
-  exact PMF.ext (congrFun rfl)
+  rfl
 
 /-- Rewrite a `PMF.map` into monadic form. -/
 @[GameHoppingSimplifyPMF]

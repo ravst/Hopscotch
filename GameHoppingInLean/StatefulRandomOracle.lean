@@ -68,6 +68,7 @@ noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl 
 noncomputable def runQueries2 {I : Type} {O : OracleSpec  I} (ro : RStateOracle O) (queries : List I) : PMF ((List (QueryWithResult O)) × ro.stateType) :=
   ro.initialState >>= runQueries2Aux ro.queries queries
 
+/-- Run a finite list of concrete oracle queries and keep only their observable outputs. -/
 noncomputable def runQueriesOnlyOut {I : Type} {O : OracleSpec I} (ro : RStateOracle O)
   (queries : List I) : PMF (List (QueryWithResult O)) :=
   (runQueries2 ro queries).map Prod.fst

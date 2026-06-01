@@ -2,11 +2,18 @@ import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.Misc.PMFLemmas
 
+/- # Observational Equivalence -/
 
--- def QueryS.toQuery {I : Type} {O : OracleSpec I} (q : QueryS O) :
---   OracleSpec.OracleQuery O (O.range q.index) :=
---   OracleSpec.query q.index q.input
+/- In this file, we define the notion of observational equivalence for stateful random oracles,
+   which is the main notion of equivalence used in our game-hopping proofs.
+   It is basically the extensional equality of the two oracles as seen from the outside,
+   and is define in terms of the distributions on query outputs:
+   two oracles are observationally equivalent if for every finite list of queries,
+   the distribution of the lists of of outputs they produce in response to those queries is the same.
 
+   In particular, the internal state of the oracles is not being observed, so it is possible for two oracles
+   even if their internal states are represented by different types.
+-/
 
 -- noncomputable def runQueriesAux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List (QueryS O)) :
 --   RState S (List (QueryResult O)) :=
@@ -36,11 +43,15 @@ import GameHoppingInLean.Misc.PMFLemmas
 --         simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
 --   simp [RStateOracle.runQueriesOnlyOut, runQueries, RStateOracle.runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
 
-/-- Two stateful random oracles are observationally equal if, after any finite replay
-context of prior queries, they induce the same output distribution on every next query. -/
+/-- Two stateful random oracles are observationally equal when every finite replay of
+concrete queries induces the same distribution on observable query/output transcripts. -/
 def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
   ∀ queriesList, runQueriesOnlyOut ro₁ queriesList = runQueriesOnlyOut ro₂ queriesList
 
+
+/- ## Bounded Observational Equivalence -/
+
+/-- A version of observational equivalence with an bound on how many queries are we allowed to ask -/
 def ObsEqBounded (ro₁ ro₂ : RStateOracle O) (q_b : ENat): Prop :=
   ∀ queriesList, queriesList.length <= q_b  -> runQueriesOnlyOut ro₁ queriesList = runQueriesOnlyOut ro₂ queriesList
 
@@ -95,6 +106,10 @@ lemma ObsEqBounded.symm {ro₁ ro₂ : RStateOracle O} {q_b : ENat}
 -- This is a kind of "bisimulation" condition, and is often easier to check than
 -- the full definition of observational equivalence.
 
+/-- In our proofs the main tool for showing observational equivalence is abstraction, i.e.
+    a function mapping the internal states of one oracle to the internal states of another oracle, such that
+    the initial states are mapped to each other, and the output distributions of queries commute with the mapping.
+-/
 def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
   (p.1, f p.2)
 
@@ -104,10 +119,11 @@ def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
 def mapInputState (f : S₁ → S₂) (m : RState S₂ α) (s : S₁) : PMF (α × S₂) :=
   StateT.run m (f s)
 
-noncomputable
-def mapOutputState (f : S₁ → S₂) (m : RState S₁ α) (s : S₁) : PMF (α × S₂) :=
+noncomputable def mapOutputState (f : S₁ → S₂) (m : RState S₁ α) (s : S₁) :
+    PMF (α × S₂) :=
   (StateT.run m s).map (mapSecond f)
 
+/-- Usual deterministic-state abstraction between two stateful oracle implementations. -/
 def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → ro₂.stateType) : Prop :=
   ro₁.initialState.map f = ro₂.initialState ∧
@@ -115,28 +131,19 @@ def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle
       mapOutputState f (ro₁.queries query) =
       mapInputState f (ro₂.queries query)
 
+/-- A more general version of abstraction allows for probabilistic mappings between states. -/
+noncomputable def bindInputState (f : S₁ → PMF S₂) (m : RState S₂ α) (s : S₁) :
+    PMF (α × S₂) := do
+  let x : S₂ ← f s
+  StateT.run m x
 
--- We now want to prove that existence of a correctAbstraction impliesObsEq.
--- This is shown as correctAbstractionImpliesObsEq, but before that we need
--- a few auxiliary lemma, starting with an alternative definition of runQueries.
+noncomputable def bindSecond {α β γ} (f : β → PMF γ) (p : α × β) :
+    PMF (α × γ) := do
+  let y ← f p.2
+  return (p.1, y)
 
-
-
-
-
---bind version of correct abstraction
-noncomputable def bindInputState (f : S₁ → PMF S₂) (m : RState S₂ α) (s : S₁) : PMF (α × S₂) :=
-  do
-    let x : S₂ <- f s
-    StateT.run m x
-
-
-noncomputable def bindSecond {α β γ} (f : β → PMF γ) (p : α × β) : PMF (α × γ) :=
-  do
-    let y <- f p.2
-    return (p.1, y)
-
-noncomputable def bindOutputState (f : S₁ → PMF S₂) (m : RState S₁ α) (s : S₁) : PMF (α × S₂) :=
+noncomputable def bindOutputState (f : S₁ → PMF S₂) (m : RState S₁ α) (s : S₁) :
+    PMF (α × S₂) :=
   (StateT.run m s).bind (bindSecond f)
 
 def correctAbstractionBindDiag {I : Type _} {stateType₁ stateType₂ : Type _} {O : OracleSpec I}
@@ -147,6 +154,7 @@ def correctAbstractionBindDiag {I : Type _} {stateType₁ stateType₂ : Type _}
       bindInputState f (ro₂ query)
 
 
+/-- Bind/probabilistic-state abstraction between two stateful oracles. -/
 def correctAbstractionBind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
     (f : ro₁.stateType → PMF ro₂.stateType) : Prop :=
   ro₁.initialState.bind f = ro₂.initialState ∧
@@ -155,6 +163,9 @@ def correctAbstractionBind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOr
       bindInputState f (ro₂.queries query)
 
 
+/-- ## Correctness of Abstraction -/
+/- In this section we show that the existence of a correct abstraction between two oracles,
+   implies observation equivalence -/
 lemma correctAbstractionImpliesObsEqInnerBind {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType) (HCor : correctAbstractionBind ro₁ ro₂ f) queriesList
   : forall (init : ro₁.stateType),
@@ -194,8 +205,6 @@ lemma correctAbstractionBindImpliesObsEq {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType) (HCor : correctAbstractionBind ro₁ ro₂ f)
   : ObsEq ro₁ ro₂ := by
     intro queriesList
-    -- rw [runQueriesEquiv (ro := ro₁) (queries := queriesList)]
-    -- rw [runQueriesEquiv (ro := ro₂) (queries := queriesList)]
     have hRun2 :
         (runQueries2 ro₁ queriesList).bind (bindSecond f) =
         (runQueries2 ro₂ queriesList) := by
@@ -321,24 +330,26 @@ lemma existsMapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
   exact mapStateBijImpliesObsEq ro₁ ro₂ f hInit hStep
 
 
-  --- Now, we need a version of the correct abstraction for the bounded obs eq,
-  --- this time the abstraction is also parametrized by a natural number, which
-  --- decreases by at most one in each step.
 
--- version with bind.
+/- ## Correct Bounded Abstraction -/
 
+/- In this section we define, and proof correctness of the bounded abstraction,
+which is a version of abstraction used to show bounded observational equivalence.
+Such an abstraction consists of a mapping between the states of the two oracles,
+and a valuatiion function from the states of the first oracle to the natural number (extended with infinity),
+such that the valuation of the initial states is above the bound,
+each query decreases the valuation by at most one,
+and the abstraction condition (commuting square) holds for states whose valuation non zero.
+-/
 
--- def correctAbstractionBindLine {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
---     (f g : ro₁.stateType → PMF ro₂.stateType)
---     (i : I) (query : O.Domain) : Prop :=
---       bindOutputState f (ro₁.queries query) =
---       bindInputState g (ro₂.queries query)
-
+/-- A valuation is good if each query decreases it by at most one. -/
 def goodValuation {I : Type _} {O : OracleSpec I} (ro : RStateOracle O) (val : ro.stateType -> ENat)
   : Prop :=
   ∀ (query : O.Domain) (s : ro.stateType),
   (ro.queries query s).support ⊆ {x | val x.2 >= val s - 1}
 
+/-- Step condition for the weighted bind abstraction.  The commuting square is only required
+from states whose valuation is still positive. -/
 def correctAbstractionBindBound_step {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
   (f : ro₁.stateType → PMF ro₂.stateType)
   (val : ro₁.stateType → ENat)
@@ -348,6 +359,7 @@ def correctAbstractionBindBound_step {I : Type} {O : OracleSpec I} (ro₁ ro₂ 
     bindOutputState f (ro₁.queries query) s =
     bindInputState f (ro₂.queries query) s
 
+/-- Weighted bind abstraction, without a specific initial query budget. -/
 def correctAbstractionBindBound_inner {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
   (f : ro₁.stateType → PMF ro₂.stateType) (val : ro₁.stateType → ENat) : Prop :=
 ro₁.initialState.bind f = ro₂.initialState ∧
@@ -359,15 +371,9 @@ def correctAbstractionBindBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RSt
   correctAbstractionBindBound_inner ro₁ ro₂ f val ∧
   ro₁.initialState.support ⊆ {x | val x >= b}
 
--- inductive correctAbstractionBiindBound2_ind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
---   (f : ro₁.stateType → PMF ro₂.stateType)
---   : (s : ro₁.stateType) -> (Nat) -> Prop :=
--- | zero s : correctAbstractionBiindBound2_ind ro₁ ro₂ f s 0
--- | next s n :
---   (forall i (query : O.Domain) so',
---     so' ∈ ((ro₁.queries query s).support) ->
---     correctAbstractionBiindBound2_ind ro₁ ro₂ f so'.2 n) ->
---   correctAbstractionBiindBound2_ind ro₁ ro₂ f s (n+1)
+
+/-- ## Correctness of Bounded Abstraction -/
+/- Finally, we show that correct bounded abstraction, implies bounded observational equivalence. -/
 
 lemma bindCongrOnSupport (x : PMF A) (Hf : forall y (_ : y ∈ x.support), f y = g y)
   : x.bind f = x.bind g :=
@@ -427,7 +433,6 @@ lemma correctAbstractionBind_bound_ImpliesObsEqInner {I : Type} {O : OracleSpec 
           have X := Hval head init Ha
           apply X
 
-
 lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
   (val : ro₁.stateType → ENat)
@@ -454,8 +459,8 @@ lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec
   · exact ENat.coe_le_coe.mpr hq
   · apply X
 
+-- ## version with explicit indices
 
--- version with map
 def correctAbstractionB {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
   (f : ℕ → ro₁.stateType → ro₂.stateType) (b : ℕ) : Prop :=
 ro₁.initialState.map (f b) = ro₂.initialState ∧
@@ -558,6 +563,8 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
   simp [hRun2AuxFst]
   simp only [GameHoppingSimplifyPMF]
   simp
+
+
 
 
 
