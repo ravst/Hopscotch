@@ -56,8 +56,6 @@ structure RStateOracle {I : Type u} (O : OracleSpec I) where
   initialState : PMF stateType
   queries : QueryImpl O (RState stateType)
 
-namespace RStateOracle
-
 noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List I) (init : S):
   PMF (List (QueryWithResult O) × S) :=
   match queries with
@@ -70,11 +68,9 @@ noncomputable def runQueries2Aux {I : Type} {O : OracleSpec I} {S : Type} (impl 
 noncomputable def runQueries2 {I : Type} {O : OracleSpec  I} (ro : RStateOracle O) (queries : List I) : PMF ((List (QueryWithResult O)) × ro.stateType) :=
   ro.initialState >>= runQueries2Aux ro.queries queries
 
-noncomputable def runQueriesOnlyOut {I : Type} {O : OracleSpec  I} (ro : RStateOracle O)
+noncomputable def runQueriesOnlyOut {I : Type} {O : OracleSpec I} (ro : RStateOracle O)
   (queries : List I) : PMF (List (QueryWithResult O)) :=
-  (RStateOracle.runQueries2 ro queries).map Prod.fst
-
-end RStateOracle
+  (runQueries2 ro queries).map Prod.fst
 
 
 -- structure BehavioralOracle {I : Type u} (O : OracleSpec  I) (q_b : ENat): Type _ where

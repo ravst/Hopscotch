@@ -1,6 +1,6 @@
 import GameHoppingInLean.Misc.PMFSimpAttr
 import GameHoppingInLean.MonadRandomState
-import VCVio.ToMathlib.General
+import ToMathlib.General
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 
 open Lean Meta
@@ -13,7 +13,7 @@ theorem bind_eq_do {α β : Type} (A : PMF α) (X : α → PMF β) :
     A.bind (fun a => X a) = (do
       let a ← A
       X a) := by
-  exact (PMF.monad_bind_eq_bind A X).symm
+  exact PMF.ext (congrFun rfl)
 
 /-- Rewrite a `PMF.map` into monadic form. -/
 @[GameHoppingSimplifyPMF]
@@ -227,8 +227,8 @@ theorem bind_uniformOfFintype_eval_do {X Y α : Type}
       (do
         let y ← PMF.uniformOfFintype Y
         rest y) := by
-        rw [PMF.uniformOfFintype_prod_bind]
-        simp [rest', PMF.bind_const]
+          rw [PMF.uniformOfFintype_prod_bind]
+          simp [rest', PMF.bind_const]
 
 /-- Two independent uniform bitvector draws, appended together, are the same as one
 uniform draw at the appended width. -/
