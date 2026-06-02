@@ -309,7 +309,26 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 --     true
 --   } := by sorry
 
-lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x = y := by sorry
+lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x = y := by
+  simp [distancePMF, distance] at H
+  injection H with H
+  simp [eq_of_dist_eq_zero] at H
+  ext1 a
+  have Ttrue : x true =  y true := by
+    rw [<-pmf_non_inf]
+    rw [<-pmf_non_inf]
+    simp [H]
+  have S : forall x : PMF Bool, x true + x false = 1 := by
+    sorry
+  cases a
+  case h.true =>
+    assumption
+  case h.false =>
+    have L1 := S x
+    have L2 := S y
+    rw [<-L1] at L2
+    rw [Ttrue] at L2
+    sorry
 
 lemma obseEq_from_2_steps {A : Type _}
   (init : PMF A)
@@ -483,44 +502,84 @@ def advantage_reduction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
 
 def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
   (x : OracleReduction.SRReductionComp O s1 t)
-  (s2 : Type) [Nonempty s2]
+  (s2 : Type) [Nonempty s1]
   : OracleReduction.SRReductionComp O (s1 ⊕ s2) t :=
   sorry
+
+
 def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
   (x : OracleReduction.SRReductionComp O s1 t)
-  (s2 : Type) [Nonempty s2]
+  (s2 : Type) [Nonempty s1]
   : OracleReduction.SRReductionComp O (s2 ⊕ s1) t :=
   sorry
 
-lemma IfAllQueiresNonEmptyThenNo (I : Type _) (O : OracleSpec I)
-  (H : forall x : I, Nonempty (O x))
-  (Z : Type _) (HZ : IsEmpty Z) : IsEmpty (OracleComp O Z) := by sorry
 
-lemma EmptyStateAlternative (I : Type _) (O : OracleSpec I)
-  (Z : Type _) (x : OracleComp O Z) :
-  Nonempty Z \/ (exists x : I, IsEmpty (O x)) :=
+lemma pmf_nonempty (x : PMF X) : Nonempty X :=
   open Classical in
-  byContradiction
-  (by
+  byContradiction (by
     intro H
     simp at H
-    have L := IfAllQueiresNonEmptyThenNo I O H.2 Z
-    have Es : ¬ (IsEmpty (OracleComp O Z)) := by
-      simp [Nonempty]
-      constructor
-      apply x
-    apply Es
-    apply L
-    apply H.1
+    cases x
+    case mk d Hd =>
+    simp [HasSum] at Hd
+    simp [Filter.atTop, default, Set.Ici]  at Hd
+    simp [Filter.Tendsto]  at Hd
   )
 
+lemma QueryImpl2NonEmpty (stateType : Type _) {I : Type _} {O : OracleSpec I}
+  (x : QueryImpl O (RState stateType))
+  [Hs : Nonempty stateType]:
+  forall x : I, Nonempty (O x) := by
+    intro input
+    cases Hs
+    case intro init =>
+    have Z := pmf_nonempty (x input init)
+    cases Z
+    case intro a =>
+    constructor
+    exact a.1
+
+lemma non_trivial_spec {I : Type _} {O : OracleSpec I} (ro : RStateOracle O) :
+  forall x : I, Nonempty (O x) :=
+  by
+    have Hstate : Nonempty ro.stateType := pmf_nonempty ro.initialState
+    apply QueryImpl2NonEmpty ro.stateType ro.queries
+
+lemma implementableWihtPMF {I : Type _} (O : OracleSpec I) (H : forall x : I, Nonempty (O x)) :
+  forall x, Nonempty ((withPMFSpec O) x) := by
+  intro input
+  cases input
+  case oracle inpu =>
+    simp [withPMFSpec]
+    apply H
+  case sample d =>
+    simp [withPMFSpec]
+    apply pmf_nonempty d
+
+--somehow inverse of QueryImpl2NonEmpty
+noncomputable def anyImplementation {I : Type _} (O : OracleSpec I)
+  (H : forall x : I, Nonempty (O x))
+  : QueryImpl O Id := by
+    open Classical in
+    intro x
+    have y := Classical.choice (H x)
+    exact y
+
+lemma oracleCompToObject {Z : Type l2} {I : Type l1} (O : OracleSpec.{l1, l2} I)
+  (H : forall x : I, Nonempty (O x))
+  (comp : OracleComp O Z)
+  : Nonempty Z := by
+  let impl := anyImplementation O H
+  let l := simulateQ impl comp
+  constructor
+  exact l
 
 
-noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (x1 x2 : ℕ × (OracleReduction O1 O2)) : ℕ × (OracleReduction O1 O2) :=
-  let x1is := x1.2.initialState
-  let x2is := x2.2.initialState
-
+noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : ℕ × (OracleReduction O1 O2))
+  [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
+  : ℕ × (OracleReduction O1 O2)
+  :=
   (x1.1+x2.1, {
     stateType := (x1.2.stateType ⊕ x2.2.stateType)
     initialState := (do
@@ -543,13 +602,48 @@ noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Or
         let x <- orGet!
         match x with
         | Sum.inl s =>
-          let xI : Nonempty x2.2.stateType := sorry
           addToStateL (x1.2.queries q) _
         | Sum.inr s =>
-          let xI : Nonempty x1.2.stateType := sorry
           addToStateR (x2.2.queries q) _
       )
   })
+
+
+lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
+  (dist : OracleComp (withPMFSpec O) Bool)
+  (assumption : SingleAssumption)
+  (x1 x2 : ℕ × (OracleReduction assumption.O O))
+  [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
+  : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
+  ascToReal dist assumption (reductionCombiner_nontrivial x1 x2) :=
+  by
+    sorry
+
+
+noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : ℕ × (OracleReduction O1 O2))
+  : ℕ × (OracleReduction O1 O2)
+  :=
+  open Classical in
+  if HO1 : forall x : I1, Nonempty (O1 x) then
+    have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x1.2.initialState
+    have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x2.2.initialState
+    reductionCombiner_nontrivial x1 x2
+  else by
+    simp at HO1
+    have Hx := Classical.choose_spec HO1
+    constructor
+    · exact 0
+    · exact {
+        stateType := Unit,
+        initialState := pure (),
+        queries := fun input =>
+          do
+            let y <- orQuery(Classical.choose HO1)
+            by
+              exfalso
+              exact IsEmpty.false y
+        }
 
 lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
@@ -557,7 +651,13 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner x1 x2) :=
-  by sorry
+  by
+    have H := non_trivial_spec assumption.i.1
+    simp [reductionCombiner]
+    simp [H]
+    have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x1.2.initialState
+    have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x2.2.initialState
+    apply reductionCombinerCorrect_nontrivial
 
 
 noncomputable def obse_eq_step
