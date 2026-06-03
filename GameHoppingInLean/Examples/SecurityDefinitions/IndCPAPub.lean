@@ -72,11 +72,12 @@ noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
   O := IndCpaPubSpec PubK M C
   i := IndCpaPubAssumption scheme
 
-noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
-    (scheme : PubEncScheme PubK SecK M C) :
-    IndistinguishabilityAssumptions where
-  Idx := Unit
-  assumptions := fun _ => IndCpaPubAssumptionFull scheme
+-- TODO; add PubEncSchemeFamily and convert this defintion to family version
+-- noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
+--     (scheme : PubEncScheme PubK SecK M C) :
+--     IndistinguishabilityAssumptions where
+--   Idx := Unit
+--   assumptions := fun _ => IndCpaPubAssumptionFull scheme
 
 /-- Public-key IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaPubDef

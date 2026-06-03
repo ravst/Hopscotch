@@ -29,7 +29,7 @@ count how many times each assumption is used in a proof. -/
 structure IndistinguishabilityAssumptions where
   Idx : Type
   [decEq : DecidableEq Idx]
-  assumptions : Idx → SingleAssumption
+  assumptions : Idx -> SingleAssumption
 
 namespace IndistinguishabilityAssumptions
 

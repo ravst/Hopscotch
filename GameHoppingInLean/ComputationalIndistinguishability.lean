@@ -500,18 +500,70 @@ def advantage_reduction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
     rw [goodDoubleAction]
     rw [goodDoubleAction]
 
-def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
+noncomputable def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  (s2 : Type) [Ns1 : Nonempty s1]
   (x : OracleReduction.SRReductionComp O s1 t)
-  (s2 : Type) [Nonempty s1]
   : OracleReduction.SRReductionComp O (s1 ⊕ s2) t :=
-  sorry
+  match x with
+  | .roll query cont =>
+    do
+      let queryRes <- (do
+        match h : query with
+        | .oracle q =>
+          let res <- orQuery(q)
+          return (h ▸ res)
+        | .sample d =>
+          let res <- orSample(d)
+          return (h ▸ res)
+        | .getState =>
+          let state <- orGet!
+          let v1 := state.getLeft?.getD (Classical.choice Ns1)
+          return (h ▸ v1)
+        | .setState x =>
+          let _ <- orSet(Sum.inl x)
+          return (h ▸ ())
+      )
+      let res := cont queryRes
+      addToStateL s2 res
+  | .pure val =>
+    pure val
 
+lemma addToStateL_spec {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  (s2 : Type) [Ns1 : Nonempty s1]
+  (x : OracleReduction.SRReductionComp O s1 t) (impl_state : Type _)
+  (impl : QueryImpl (withPMFAndStateSpec s1 O) (RState impl_state)) :
+  simulateQ impl x =
+  simulateQ sorry (addToStateL s2 x)
 
-def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  := by sorry
+
+noncomputable def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
+  (s2 : Type) [Ns1 : Nonempty s1]
   (x : OracleReduction.SRReductionComp O s1 t)
-  (s2 : Type) [Nonempty s1]
   : OracleReduction.SRReductionComp O (s2 ⊕ s1) t :=
-  sorry
+  match x with
+  | .roll query cont =>
+    do
+      let queryRes <- (do
+        match h : query with
+        | .oracle q =>
+          let res <- orQuery(q)
+          return (h ▸ res)
+        | .sample d =>
+          let res <- orSample(d)
+          return (h ▸ res)
+        | .getState =>
+          let state <- orGet!
+          let v1 := state.getRight?.getD (Classical.choice Ns1)
+          return (h ▸ v1)
+        | .setState x =>
+          let _ <- orSet(Sum.inr x)
+          return (h ▸ ())
+      )
+      let res := cont queryRes
+      addToStateR s2 res
+  | .pure val =>
+    pure val
 
 
 lemma pmf_nonempty (x : PMF X) : Nonempty X :=
@@ -528,7 +580,7 @@ lemma pmf_nonempty (x : PMF X) : Nonempty X :=
 
 lemma QueryImpl2NonEmpty (stateType : Type _) {I : Type _} {O : OracleSpec I}
   (x : QueryImpl O (RState stateType))
-  [Hs : Nonempty stateType]:
+  [Hs : Nonempty stateType] :
   forall x : I, Nonempty (O x) := by
     intro input
     cases Hs
@@ -602,9 +654,9 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
         let x <- orGet!
         match x with
         | Sum.inl s =>
-          addToStateL (x1.2.queries q) _
+          addToStateL _ (x1.2.queries q)
         | Sum.inr s =>
-          addToStateR (x2.2.queries q) _
+          addToStateR _ (x2.2.queries q)
       )
   })
 
@@ -617,6 +669,7 @@ lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner_nontrivial x1 x2) :=
   by
+
     sorry
 
 
