@@ -1,0 +1,149 @@
+import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Misc.SimpAttrLemmas
+import Lean
+
+open Lean Elab Tactic Meta
+
+/-- Turn an observational-equivalence proof goal into an indistinguishability proof. -/
+syntax "obs_eq" : tactic
+
+macro_rules
+  | `(tactic| obs_eq) => `(tactic| apply Indistinguishable.of_ObsEq)
+
+private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Array Expr) := do
+  let idxTypeWhnf ← withTransparency .all <| whnf idxType
+  let defaultCandidate ←
+    try
+      pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
+    catch _ =>
+      pure #[]
+  let structuralCandidates ←
+    match idxTypeWhnf.getAppFnArgs with
+    | (``Unit, #[]) =>
+        pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
+    | (``PUnit, #[]) =>
+        pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
+    | (``Empty, #[]) =>
+        pure #[]
+    | (``PEmpty, #[]) =>
+        pure #[]
+    | (``Bool, #[]) =>
+        pure #[mkConst ``Bool.false, mkConst ``Bool.true]
+    | (``Sum, #[α, β]) =>
+        let lefts ← gameHoppingIndexCandidates α
+        let rights ← gameHoppingIndexCandidates β
+        let lefts ← lefts.mapM fun i =>
+          mkAppOptM ``Sum.inl #[some α, some β, some i]
+        let rights ← rights.mapM fun i =>
+          mkAppOptM ``Sum.inr #[some α, some β, some i]
+        pure (lefts ++ rights)
+    | (``Prod, #[α, β]) =>
+        let lefts ← gameHoppingIndexCandidates α
+        let rights ← gameHoppingIndexCandidates β
+        let mut candidates := #[]
+        for i in lefts do
+          for j in rights do
+            candidates := candidates.push <| ←
+              mkAppOptM ``Prod.mk #[some α, some β, some i, some j]
+        pure candidates
+    | _ =>
+        pure #[]
+  pure (defaultCandidate ++ structuralCandidates)
+
+private def closeGameHoppingAssumptionGoal : TacticM Unit := do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  let proof ← goal.withContext <| runTermElab do
+    let target ← whnf target
+    unless target.getAppFn.constName? == some ``IndistinguishableI do
+      throwError "game_hopping_reduce_assumption expected an IndistinguishableI goal"
+    let args := target.getAppArgs
+    if h : 2 < args.size then
+      let Assumptions := args[0]
+      let κ := args[1]
+      let q_b := args[2]
+      let idxType ← withTransparency .all <|
+        whnf (← mkAppM ``IndistinguishabilityAssumptions.Idx #[Assumptions])
+      for idx in ← gameHoppingIndexCandidates idxType do
+        let proof ← withTransparency .all <|
+          mkAppOptM ``IndistinguishableI.assumption #[some Assumptions, some κ, some q_b, some idx]
+        if ← withTransparency .all <| isDefEq (← inferType proof) target then
+          return proof
+      throwError "game_hopping_reduce_assumption could not find a matching assumption index"
+    else
+      throwError "game_hopping_reduce_assumption expected an IndistinguishableI goal"
+  goal.assign proof
+  replaceMainGoal []
+
+/--
+Discharge goals of the form `r ◇ ro₁ ≈ r ◇ ro₂` when `ro₁` and `ro₂`
+are an available indistinguishability assumption, in either direction.
+-/
+elab "game_hopping_reduce_assumption" : tactic => do
+  let s ← saveState
+  try
+    evalTactic (← `(tactic| refine IndistinguishableI.complexInitReduction _ _ ?_))
+    closeGameHoppingAssumptionGoal
+  catch _ =>
+    restoreState s
+    evalTactic (← `(tactic| refine IndistinguishableI.complexInitReduction _ _ ?_))
+    evalTactic (← `(tactic| apply IndistinguishableI.symm))
+    closeGameHoppingAssumptionGoal
+
+private def checkGameHoppingEndpoints (first last : TSyntax `term) : TacticM Unit := do
+  let goal ← getMainGoal
+  let target ← instantiateMVars (← goal.getType)
+  goal.withContext <| runTermElab do
+    let target ← whnf target
+    unless target.getAppFn.constName? == some ``IndistinguishableI do
+      throwError "game_hopping expected an IndistinguishableI goal"
+    let args := target.getAppArgs
+    if h : 6 < args.size then
+      let roStart := args[5]
+      let roEnd := args[6]
+      let firstExpr ← Term.elabTermEnsuringType first (← inferType roStart)
+      unless ← withTransparency .all <| isDefEq firstExpr roStart do
+        throwError "game_hopping first oracle does not match the current goal"
+      let lastExpr ← Term.elabTermEnsuringType last (← inferType roEnd)
+      unless ← withTransparency .all <| isDefEq lastExpr roEnd do
+        throwError "game_hopping final oracle does not match the current goal"
+    else
+      throwError "game_hopping expected an IndistinguishableI goal"
+
+/--
+`game_hopping [G₀, H₁, ..., Gₙ]` proves an `IndistinguishableI` goal by repeated
+transitivity through the listed chain. The first and final oracles must match the
+current goal, and the tactic creates one goal for each adjacent pair:
+`G₀ ≈ H₁`, `H₁ ≈ H₂`, ..., `Hₖ ≈ Gₙ`.
+-/
+syntax "game_hopping" " [" term,* "]" : tactic
+
+elab_rules : tactic
+  | `(tactic| game_hopping [$chain,*]) => do
+      let elems := chain.getElems
+      if elems.size < 2 then
+        throwError "game_hopping expected at least a start and final oracle"
+      checkGameHoppingEndpoints elems[0]! elems[elems.size - 1]!
+      let mids := elems.extract 1 (elems.size - 1)
+      let mut goals := #[]
+      for mid in mids do
+        match (← getGoals) with
+        | current :: rest =>
+            setGoals [current]
+            evalTactic (← `(tactic|
+              refine IndistinguishableI.trans ($mid) _ ?_ ?_))
+            match (← getGoals) with
+            | left :: right :: [] =>
+                goals := goals.push left
+                setGoals (right :: rest)
+            | _ =>
+                throwError "game_hopping internal error: transitivity did not create two goals"
+        | [] =>
+            throwError "game_hopping failed: no goals"
+      match (← getGoals) with
+      | current :: rest =>
+          setGoals (goals.toList ++ current :: rest)
+      | [] =>
+          setGoals goals.toList
+      evalTactic (← `(tactic| all_goals try game_hopping_reduce_assumption))
+      evalTactic (← `(tactic| all_goals try (obs_eq; solve_obs_eq)))

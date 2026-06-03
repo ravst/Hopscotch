@@ -1,5 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.SymEnc
+import GameHoppingInLean.Misc.SimpAttrs
 
 /-- IND-CPA "real vs random ciphertext" oracle spec.
 The query indexed by `n` takes a single `n`-bit message and returns an `n`-bit ciphertext. -/
@@ -16,6 +17,7 @@ def IndCpaRandSpec (C : ℕ → Type) : OracleSpec IndCpaRandDomain :=
   (IndCpaRandSpec C).query ⟨n, m⟩
 
 /-- IND-CPA "real ciphertext" oracle for the `ctxt(m)` interface. Returns `Enc_k(m)`. -/
+@[game_hopping_unfold]
 noncomputable def IndCpaRandReal {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     RStateOracle (IndCpaRandSpec C) where
   stateType := K
@@ -27,6 +29,7 @@ noncomputable def IndCpaRandReal {K : Type} {C : ℕ → Type} (scheme : SymEncS
 
 /-- IND-CPA "random ciphertext" oracle for the `ctxt(m)` interface.
 Ignores the message and returns a uniformly random `n`-bit ciphertext. -/
+@[game_hopping_unfold]
 noncomputable def IndCpaRandRand {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (_scheme : SymEncScheme K C) :
     RStateOracle (IndCpaRandSpec C) where

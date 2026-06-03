@@ -103,6 +103,9 @@ noncomputable def apply {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : Orac
   queries := fun i =>
     simulateQ (liftWithPMFAndState oracle.queries reduction.stateType) (reduction.queries i)
 
+/-- Infix notation for applying an oracle reduction to an oracle. -/
+scoped infixl:70 " ◇ " => OracleReduction.apply
+
 /- ## Syntax sugars for reductions operations -/
 
 /-- Query the underlying source oracle from initialization code. -/

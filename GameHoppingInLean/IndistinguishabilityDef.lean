@@ -136,7 +136,6 @@ scoped notation:50 x " ≈ᵢ[" Assumptions ", " ", " κ ", " q_b ", " O "] " y 
 
 end IndistinguishableI
 
-
 def Indistinguishable (Assumptions : IndistinguishabilityAssumptions)
     {I : Type} {O : OracleSpec I} (r1 r2 : RStateOracle O) :=
     forall κ, IndistinguishableI Assumptions κ none O r1 r2
@@ -319,29 +318,3 @@ mutual
               assumption
             )) i)
 end
-
--- namespace Indistinguishable
-
--- def of_ObsEq
---     {Assumptions : IndistinguishabilityAssumptions}
---
---     {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
---     (H : ObsEq ro₁ ro₂) →
---     Indistinguishable Assumptions O ro₁ ro₂ :=
---   by
---     intro H κ
---     apply IndistinguishableI.obsEq _ H
-
-
--- def transitive
---     {Assumptions : IndistinguishabilityAssumptions}
---
---     {κ :  ℕ} {q_b : ENat}
---     {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O}:
---     (Indistinguishable Assumptions O ro₁ ro₂) ->
---     (Indistinguishable Assumptions O ro₂ ro₃) ->
---     (Indistinguishable Assumptions O ro₁ ro₃) :=
---   fun Ha Hb => IndistinguishableI.trans q_b Ha Hb
-
-
--- end Indistinguishable

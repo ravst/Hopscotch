@@ -1,5 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.SymEnc
+import GameHoppingInLean.Misc.SimpAttrs
 
 /-- IND-CPA eavesdropping oracle spec.
 The query indexed by `n` takes a pair of `n`-bit messages and returns an `n`-bit ciphertext. -/
@@ -15,6 +16,7 @@ def IndCpaSpec (C : ℕ → Type) : OracleSpec IndCpaDomain :=
   (IndCpaSpec C).query ⟨n, (m₀, m₁)⟩
 
 /-- Left IND-CPA oracle: encrypts the left message `m₀`. -/
+@[game_hopping_unfold]
 noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     RStateOracle (IndCpaSpec C) where
   stateType := K
@@ -24,6 +26,7 @@ noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
           scheme.encrypt key m₀
 
 /-- Right IND-CPA oracle: encrypts the right message `m₁`. -/
+@[game_hopping_unfold]
 noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     RStateOracle (IndCpaSpec C) where
   stateType := K
