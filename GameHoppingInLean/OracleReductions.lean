@@ -47,6 +47,13 @@ structure OracleReduction {I₁ I₂ : Type} (O₁ : OracleSpec I₁) (O₂ : Or
   initialState : OracleComp (withPMFSpec O₁) stateType
   queries : QueryImpl O₂ (OracleComp (withPMFAndStateSpec stateType O₁))
 
+noncomputable def addPMFtoImpl {I : Type} {O : OracleSpec I} {stateType : Type}
+  (impl : QueryImpl O (RState stateType)) :
+  QueryImpl (withPMFSpec O) (RState stateType) := fun
+    | withPMFI.oracle t => impl t
+    | withPMFI.sample p =>
+        (liftM (m := PMF) (n := RState stateType) p)
+
 namespace OracleReduction
 
 /-- Computations available to a stateful randomized reduction over source oracle spec `O`. -/
@@ -200,6 +207,13 @@ def defaultImpl {I : Type} {O : OracleSpec I} {state : Type}
       let _ <- StateT.set a
       return ()
 
+def addPMFtoImpl2 {stateType : Type}
+  (impl : QueryImpl O₂ (SRReductionComp O₁ stateType)) :
+  QueryImpl (withPMFSpec O₂) (SRReductionComp O₁ stateType) := fun
+| withPMFI.oracle t => impl t
+| withPMFI.sample p =>
+    OracleComp.lift (OracleSpec.query (withPMFAndStateI.sample p))
+
 /-- Next, we show how to apply oracle reduction, the other way around, i.e. to the adversary -/
 def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
     (reduction : OracleReduction O₁ O₂) (dist : OracleComp (withPMFSpec O₂) Output)
@@ -211,13 +225,7 @@ def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁}
         simulateQ (@defaultImpl I₁ O₁ state) comp
       let y : OracleComp (withPMFSpec O₁) (Output × state) := x init
       y <&> (fun x => x.1)
-    let addPMFtoImpl2 {stateType : Type}
-        (impl : QueryImpl O₂ (SRReductionComp O₁ stateType)) :
-        QueryImpl (withPMFSpec O₂) (SRReductionComp O₁ stateType) :=
-      fun
-        | withPMFI.oracle t => impl t
-        | withPMFI.sample p =>
-            OracleComp.lift (OracleSpec.query (withPMFAndStateI.sample p))
+
     let x : OracleComp (withPMFAndStateSpec reduction.stateType O₁) Output :=
       simulateQ (addPMFtoImpl2 reduction.queries) dist
     let y : reduction.stateType → OracleComp (withPMFSpec O₁) Output := lower x
@@ -241,3 +249,5 @@ lemma ComplexInitReduction2_compose_apply {Output I₁ I₂ I₃ : Type} {O₁ :
     applyReductionToAdversary (ComplexInitReduction2_compose r1 r2) dist =
     applyReductionToAdversary r1 (applyReductionToAdversary r2 dist)
        := by sorry
+
+end OracleReduction
