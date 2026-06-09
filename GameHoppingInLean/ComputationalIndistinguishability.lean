@@ -539,8 +539,6 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
   simulateQ (OracleReduction.liftWithPMFAndState impl (s1 ⊕ s2)) (addToStateL s2 comp) (Sum.inl st.1, st.2)
   := by
     induction comp
-
-
     case pure =>
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       sorry
@@ -550,7 +548,6 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
         rhs
         arg 2
         rw [addToStateL.eq_def]
-
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       cases query
       case oracle =>
@@ -560,33 +557,20 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       case getState =>
         sorry
       case setState =>
+        next st1 =>
         simp [StateT.run, PMF.pure_bind]
-        simp only [GameHoppingSimplifyPMF]
-        simp [PMF.pure_bind_do]
-        -- simp
-
-        -- conv =>
-        --   lhs
-        --   arg 2
-        --   simp only [gameHoppingSimplifyPMF]
-        --   rw [PMF.pure_bind]
-
+        simp [withPMFAndStateSpec]
         conv =>
           rhs
           arg 1
           dsimp [OracleReduction.liftWithPMFAndState]
         simp [OracleReduction.SRReductionComp]
-        -- unfold OracleReduction.liftWithPMFAndState
-        -- unfold PFunctor.FreeM.mapM
         simp [bind, OracleComp.instMonad._aux_13]
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift,
           OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
-
-        simp [OracleReduction.liftWithPMFAndState, PFunctor.FreeM.mapM, StateT.bind]
-        -- rw [<-Hind]
-        sorry
-
-
+        simp [withPMFAndStateSpec, StateT.bind, withPMFAndStateI.setState, OracleReduction.liftWithPMFAndState]
+        simp [simulateQ] at Hind
+        rw [<-Hind]
 
 noncomputable def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
   (s2 : Type) [Ns1 : Nonempty s1]
