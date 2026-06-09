@@ -314,22 +314,19 @@ lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x =
   simp [distancePMF, distance] at H
   injection H with H
   simp [eq_of_dist_eq_zero] at H
-  ext1 a
-  have Ttrue : x true =  y true := by
-    rw [<-pmf_non_inf]
-    rw [<-pmf_non_inf]
-    simp [H]
-  have S : forall x : PMF Bool, x true + x false = 1 := by
-    sorry
-  cases a
-  case h.true =>
-    assumption
-  case h.false =>
-    have L1 := S x
-    have L2 := S y
-    rw [<-L1] at L2
-    rw [Ttrue] at L2
-    sorry
+  have htrue : x true = y true := by
+    rw [← pmf_non_inf, ← pmf_non_inf]
+    exact congrArg (fun z : NNReal => (z : ENNReal)) H
+  apply PMF.ext
+  intro b
+  cases b
+  case true => exact htrue
+  case false =>
+    have hx := x.tsum_coe
+    have hy := y.tsum_coe
+    simp only [tsum_fintype, Fintype.sum_bool] at hx hy
+    rw [htrue] at hx
+    exact (ENNReal.add_right_inj (PMF.apply_ne_top y true)).mp (hx.trans hy.symm)
 
 lemma obseEq_from_2_steps {A : Type _}
   (init : PMF A)
@@ -540,8 +537,10 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
   := by
     induction comp
     case pure =>
-      simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
-      sorry
+      intro st
+      rw [addToStateL.eq_def]
+      simp [simulateQ, PFunctor.FreeM.mapM]
+      rfl
     case queryBind query cont Hind =>
       intro st
       conv =>
@@ -551,14 +550,69 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       cases query
       case oracle =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.query, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
+          OracleReduction.liftWithPMFAndState, PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        rfl
       case sample =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.sample, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState,
+          PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        rfl
       case getState =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.get, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState,
+          PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        have hleft :
+            ((fun x : s1 × impl_state => x.1) <$>
+              (StateT.get : RState (s1 × impl_state) (s1 × impl_state))) st =
+              PMF.pure (st.1, st) := by
+          exact RState.map_get_apply (fun x : s1 × impl_state => x.1) st
+        have hright :
+            ((fun x : (s1 ⊕ s2) × impl_state => x.1) <$>
+              (StateT.get : RState ((s1 ⊕ s2) × impl_state) ((s1 ⊕ s2) × impl_state)))
+                (Sum.inl st.1, st.2) =
+              PMF.pure (Sum.inl st.1, (Sum.inl st.1, st.2)) := by
+          exact RState.map_get_apply
+            (fun x : (s1 ⊕ s2) × impl_state => x.1) (Sum.inl st.1, st.2)
+        rw [hleft, hright]
+        simp
       case setState =>
         next st1 =>
-        simp [StateT.run, PMF.pure_bind]
+        simp [StateT.run]
         simp [withPMFAndStateSpec]
         conv =>
           rhs
@@ -568,7 +622,7 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
         simp [bind, OracleComp.instMonad._aux_13]
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift,
           OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
-        simp [withPMFAndStateSpec, StateT.bind, withPMFAndStateI.setState, OracleReduction.liftWithPMFAndState]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState]
         simp [simulateQ] at Hind
         rw [<-Hind]
 
