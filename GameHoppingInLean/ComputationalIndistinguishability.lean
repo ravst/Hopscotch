@@ -828,7 +828,7 @@ lemma reductionStateInclusionMini_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 :
   (x1 x2 : (OracleReduction O1 O2)) (T : Type)
   [Nonempty x2.stateType] [Nonempty x1.stateType]
   (impl : RStateOracle O1) :
-  ObsEq (x1.apply impl) ((reductionCombinerMiniL_nontrivial x1 x2 T).apply impl) := by
+  ObsEq (x1.apply impl) ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) := by
   sorry
 
 noncomputable def reductionCombinerMiniR_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
