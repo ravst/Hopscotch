@@ -2,6 +2,14 @@ import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 import GameHoppingInLean.IndistinguishabilityTactics
 
+-- the proof that 'indCpaRand' definition imply 'indCpa'.
+
+-- files:
+-- * GameHoppingInLean.Examples.Schemes.SymEnc -- definition of Symetric encryption
+-- * GameHoppingInLean.Examples.SecurityDefinitions.IndCpa -- definition 'IndCpa'
+-- * GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand -- definition 'IndCpaRand'
+-- * here - the proof of the implication.
+
 open scoped OracleReduction
 
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
@@ -26,7 +34,7 @@ def IndCpaRand_to_IndCpaR {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C
 via the two simple reductions. -/
 noncomputable def indCpaRandImpliesIndCpa (schemeFam : SymEncSchemeFamily)
     [∀ κ n, Fintype (schemeFam.C κ n)] [∀ κ n, Nonempty (schemeFam.C κ n)]
-     :
+    :
     IndCpaIFam (IndCpaRandAssumption' schemeFam) schemeFam := by
   intro κ
   -- TODO: line below breaks proof :-(

@@ -53,7 +53,8 @@ def ObsEq (ro₁ ro₂ : RStateOracle O) : Prop :=
 
 /-- A version of observational equivalence with an bound on how many queries are we allowed to ask -/
 def ObsEqBounded (ro₁ ro₂ : RStateOracle O) (q_b : ENat): Prop :=
-  ∀ queriesList, queriesList.length <= q_b  -> runQueriesOnlyOut ro₁ queriesList = runQueriesOnlyOut ro₂ queriesList
+  ∀ queriesList, queriesList.length <= q_b  ->
+    runQueriesOnlyOut ro₁ queriesList = runQueriesOnlyOut ro₂ queriesList
 
 lemma ObsEq_from_none (ro₁ ro₂ : RStateOracle O):
   ObsEq ro₁ ro₂ <-> ObsEqBounded ro₁ ro₂ none := by
