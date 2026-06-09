@@ -259,7 +259,63 @@ def sumJoinerCorrect {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1 
   (joiner : {J : Univ} -> XJ J -> XJ J -> XJ J)
   (f : {J : Univ} -> XJ J -> NNReal)
   (Hjoiner : forall J (x1 : XJ J) (x2 : XJ J), f x1 + f x2 = f (joiner x1 x2))
-  : sumJoining XJ D1 D2 val1 val2 f (sumJoiner XJ val1 val2 joiner) := sorry
+  : sumJoining XJ D1 D2 val1 val2 f (sumJoiner XJ val1 val2 joiner) := by
+  classical
+  let g1 : Univ → NNReal := fun j =>
+    if h : j ∈ D1 then f (val1 ⟨j, h⟩) else 0
+  let g2 : Univ → NNReal := fun j =>
+    if h : j ∈ D2 then f (val2 ⟨j, h⟩) else 0
+  let g3 : Univ → NNReal := fun j =>
+    if h : j ∈ finsetSum D1 D2 then
+      f (sumJoiner XJ val1 val2 joiner ⟨j, h⟩)
+    else 0
+  have hval1 :
+      (∑ j : D1, f (val1 j)) = ∑ j ∈ finsetSum D1 D2, g1 j := by
+    calc
+      (∑ j : D1, f (val1 j)) = ∑ j : D1, g1 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g1]
+      _ = ∑ j ∈ D1, g1 j := (Finset.sum_subtype D1 (by simp) g1).symm
+      _ = ∑ j ∈ finsetSum D1 D2, g1 j := by
+        apply Finset.sum_subset
+        · simp [finsetSum]
+        · intro j _ hj
+          simp [g1, hj]
+  have hval2 :
+      (∑ j : D2, f (val2 j)) = ∑ j ∈ finsetSum D1 D2, g2 j := by
+    calc
+      (∑ j : D2, f (val2 j)) = ∑ j : D2, g2 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g2]
+      _ = ∑ j ∈ D2, g2 j := (Finset.sum_subtype D2 (by simp) g2).symm
+      _ = ∑ j ∈ finsetSum D1 D2, g2 j := by
+        apply Finset.sum_subset
+        · simp [finsetSum]
+        · intro j _ hj
+          simp [g2, hj]
+  have hval3 :
+      (∑ j : finsetSum D1 D2, f (sumJoiner XJ val1 val2 joiner j)) =
+        ∑ j ∈ finsetSum D1 D2, g3 j := by
+    calc
+      (∑ j : finsetSum D1 D2, f (sumJoiner XJ val1 val2 joiner j)) =
+          ∑ j : finsetSum D1 D2, g3 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g3]
+      _ = ∑ j ∈ finsetSum D1 D2, g3 j :=
+        (Finset.sum_subtype (finsetSum D1 D2) (by simp) g3).symm
+  simp only [sumJoining]
+  rw [hval1, hval2, hval3, ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro j hj
+  by_cases h1 : j ∈ D1 <;> by_cases h2 : j ∈ D2
+  · simpa [g1, g2, g3, sumJoiner, h1, h2, hj] using
+      Hjoiner j (val1 ⟨j, h1⟩) (val2 ⟨j, h2⟩)
+  · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
+  · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
+  · simp [finsetSum, h1, h2] at hj
 
 
 def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
@@ -314,22 +370,19 @@ lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x =
   simp [distancePMF, distance] at H
   injection H with H
   simp [eq_of_dist_eq_zero] at H
-  ext1 a
-  have Ttrue : x true =  y true := by
-    rw [<-pmf_non_inf]
-    rw [<-pmf_non_inf]
-    simp [H]
-  have S : forall x : PMF Bool, x true + x false = 1 := by
-    sorry
-  cases a
-  case h.true =>
-    assumption
-  case h.false =>
-    have L1 := S x
-    have L2 := S y
-    rw [<-L1] at L2
-    rw [Ttrue] at L2
-    sorry
+  have htrue : x true = y true := by
+    rw [← pmf_non_inf, ← pmf_non_inf]
+    exact congrArg (fun z : NNReal => (z : ENNReal)) H
+  apply PMF.ext
+  intro b
+  cases b
+  case true => exact htrue
+  case false =>
+    have hx := x.tsum_coe
+    have hy := y.tsum_coe
+    simp only [tsum_fintype, Fintype.sum_bool] at hx hy
+    rw [htrue] at hx
+    exact (ENNReal.add_right_inj (PMF.apply_ne_top y true)).mp (hx.trans hy.symm)
 
 lemma obseEq_from_2_steps {A : Type _}
   (init : PMF A)
@@ -540,8 +593,10 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
   := by
     induction comp
     case pure =>
-      simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
-      sorry
+      intro st
+      rw [addToStateL.eq_def]
+      simp [simulateQ, PFunctor.FreeM.mapM]
+      rfl
     case queryBind query cont Hind =>
       intro st
       conv =>
@@ -551,14 +606,69 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       cases query
       case oracle =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.query, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
+          OracleReduction.liftWithPMFAndState, PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        rfl
       case sample =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.sample, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState,
+          PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        rfl
       case getState =>
-        sorry
+        simp [StateT.run]
+        simp [withPMFAndStateSpec]
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.get, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState,
+          PMF.map_bind]
+        simp [simulateQ] at Hind
+        simp_rw [Hind]
+        have hleft :
+            ((fun x : s1 × impl_state => x.1) <$>
+              (StateT.get : RState (s1 × impl_state) (s1 × impl_state))) st =
+              PMF.pure (st.1, st) := by
+          exact RState.map_get_apply (fun x : s1 × impl_state => x.1) st
+        have hright :
+            ((fun x : (s1 ⊕ s2) × impl_state => x.1) <$>
+              (StateT.get : RState ((s1 ⊕ s2) × impl_state) ((s1 ⊕ s2) × impl_state)))
+                (Sum.inl st.1, st.2) =
+              PMF.pure (Sum.inl st.1, (Sum.inl st.1, st.2)) := by
+          exact RState.map_get_apply
+            (fun x : (s1 ⊕ s2) × impl_state => x.1) (Sum.inl st.1, st.2)
+        rw [hleft, hright]
+        simp
       case setState =>
         next st1 =>
-        simp [StateT.run, PMF.pure_bind]
+        simp [StateT.run]
         simp [withPMFAndStateSpec]
         conv =>
           rhs
@@ -568,7 +678,7 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
         simp [bind, OracleComp.instMonad._aux_13]
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift,
           OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
-        simp [withPMFAndStateSpec, StateT.bind, withPMFAndStateI.setState, OracleReduction.liftWithPMFAndState]
+        simp [withPMFAndStateSpec, StateT.bind, OracleReduction.liftWithPMFAndState]
         simp [simulateQ] at Hind
         rw [<-Hind]
 
