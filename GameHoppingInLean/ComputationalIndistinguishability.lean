@@ -691,6 +691,57 @@ lemma reductionStateInclusion_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Ora
     simp [mapInputState, mapOutputState, mapSecond, PMF.map, StateT.run, Function.comp, PMF.pure]
     apply addToStateL_spec
 
+
+noncomputable def reductionCombinerMiniL_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : (OracleReduction O1 O2))
+  [Nonempty x2.stateType] [Nonempty x1.stateType]
+  : (OracleReduction O1 O2)
+  :=
+  {
+    stateType := (x1.stateType ⊕ x2.stateType)
+    initialState := (do
+     let init <- x1.initialState
+      return Sum.inl init
+    )
+    queries := fun q => (do
+        let x <- orGet!
+        match x with
+        | Sum.inl s =>
+          addToStateL _ (x1.queries q)
+        | Sum.inr s =>
+          addToStateR _ (x2.queries q)
+      )
+  }
+
+
+lemma reductionStateInclusionMini_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : (OracleReduction O1 O2)) (T : Type)
+  [Nonempty x2.stateType] [Nonempty x1.stateType]
+  (impl : RStateOracle O1) :
+  ObsEq (x1.apply impl) ((reductionCombinerMiniL_nontrivial x1 x2 T).apply impl) := by
+  sorry
+
+noncomputable def reductionCombinerMiniR_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : ℕ × (OracleReduction O1 O2))
+  [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
+  : ℕ × (OracleReduction O1 O2)
+  :=
+  (x1.1+x2.1, {
+    stateType := (x1.2.stateType ⊕ x2.2.stateType)
+    initialState := (do
+     let init <- x2.2.initialState
+      return Sum.inr init
+    )
+    queries := fun q => (do
+        let x <- orGet!
+        match x with
+        | Sum.inl s =>
+          addToStateL _ (x1.2.queries q)
+        | Sum.inr s =>
+          addToStateR _ (x2.2.queries q)
+      )
+  })
+
 noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
@@ -780,7 +831,6 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
     have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x1.2.initialState
     have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x2.2.initialState
     apply reductionCombinerCorrect_nontrivial
-
 
 noncomputable def obse_eq_step
   {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
