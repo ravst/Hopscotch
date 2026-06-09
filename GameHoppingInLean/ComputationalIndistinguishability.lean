@@ -11,6 +11,7 @@ import Mathlib.Data.Multiset.UnionInter
 import Mathlib.Data.Finset.Empty
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Data.ENat.Lattice
+import GameHoppingInLean.Misc.SimpAttrLemmas
 
 -- generic intro. move.
 
@@ -528,14 +529,64 @@ noncomputable def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
   | .pure val =>
     pure val
 
-lemma addToStateL_spec {I : Type u} {O : OracleSpec I} {s1 t : Type}
-  (s2 : Type) [Ns1 : Nonempty s1]
-  (x : OracleReduction.SRReductionComp O s1 t) (impl_state : Type _)
-  (impl : QueryImpl (withPMFAndStateSpec s1 O) (RState impl_state)) :
-  simulateQ impl x =
-  simulateQ sorry (addToStateL s2 x)
+lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
+  [Ns1 : Nonempty s1] (output : Type)
+  (comp: OracleComp (withPMFAndStateSpec s1 O) output)
+  (impl_state : Type _) (impl : QueryImpl O (RState impl_state)) :
+  forall (st: s1 × impl_state),
+  (simulateQ (OracleReduction.liftWithPMFAndState impl s1) comp st).map
+    (mapSecond fun x ↦ (Sum.inl x.1, x.2)) =
+  simulateQ (OracleReduction.liftWithPMFAndState impl (s1 ⊕ s2)) (addToStateL s2 comp) (Sum.inl st.1, st.2)
+  := by
+    induction comp
 
-  := by sorry
+
+    case pure =>
+      simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
+      sorry
+    case queryBind query cont Hind =>
+      intro st
+      conv =>
+        rhs
+        arg 2
+        rw [addToStateL.eq_def]
+
+      simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
+      cases query
+      case oracle =>
+        sorry
+      case sample =>
+        sorry
+      case getState =>
+        sorry
+      case setState =>
+        simp [StateT.run, PMF.pure_bind]
+        simp only [GameHoppingSimplifyPMF]
+        simp [PMF.pure_bind_do]
+        -- simp
+
+        -- conv =>
+        --   lhs
+        --   arg 2
+        --   simp only [gameHoppingSimplifyPMF]
+        --   rw [PMF.pure_bind]
+
+        conv =>
+          rhs
+          arg 1
+          dsimp [OracleReduction.liftWithPMFAndState]
+        simp [OracleReduction.SRReductionComp]
+        -- unfold OracleReduction.liftWithPMFAndState
+        -- unfold PFunctor.FreeM.mapM
+        simp [bind, OracleComp.instMonad._aux_13]
+        simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift,
+          OracleComp.instMonadLiftOracleQuery._aux_1, PFunctor.FreeM.lift]
+
+        simp [OracleReduction.liftWithPMFAndState, PFunctor.FreeM.mapM, StateT.bind]
+        -- rw [<-Hind]
+        sorry
+
+
 
 noncomputable def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
   (s2 : Type) [Ns1 : Nonempty s1]
@@ -626,6 +677,35 @@ lemma oracleCompToObject {Z : Type l2} {I : Type l1} (O : OracleSpec.{l1, l2} I)
   constructor
   exact l
 
+noncomputable def reductionStateInclusion {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (r : OracleReduction O1 O2) (T : Type)
+  [Nonempty r.stateType]
+  : OracleReduction O1 O2 :=
+  {
+    stateType := r.stateType ⊕ T
+    initialState := do
+      let init <- r.initialState
+      return Sum.inl init
+    queries := fun q => (do
+      addToStateL _ (r.queries q)
+    )
+  }
+
+lemma reductionStateInclusion_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (r : OracleReduction O1 O2) (T : Type)
+  [Nonempty r.stateType]
+  (impl : RStateOracle O1) :
+  ObsEq (r.apply impl) ((reductionStateInclusion r T).apply impl) := by
+  simp [OracleReduction.apply]
+  simp [reductionStateInclusion]
+  apply correctAbstractionImpliesObsEq _ _ (fun x => by exact ((Sum.inl x.1), x.2))
+  constructor
+  · simp [PMF.map, Functor.map]
+  · intro query
+    simp []
+    ext1 st
+    simp [mapInputState, mapOutputState, mapSecond, PMF.map, StateT.run, Function.comp, PMF.pure]
+    apply addToStateL_spec
 
 noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
@@ -669,6 +749,11 @@ lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner_nontrivial x1 x2) :=
   by
+    simp [ascToReal]
+    nth_rw 1 [reductionCombiner_nontrivial]
+    simp []
+    simp [advantage]
+    repeat rw [<-goodDoubleAction]
 
     sorry
 
