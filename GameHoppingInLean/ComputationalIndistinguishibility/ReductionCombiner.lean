@@ -2,6 +2,7 @@ import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 
 
 noncomputable def addToStateL {I : Type u} {O : OracleSpec I} {s1 t : Type}
@@ -310,6 +311,33 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
   })
 
 
+-- TODO: fomrulate lemma, that reductionCombiner_nontrivial.2 is eqivalnet to running 'do
+
+
+lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
+  (dist : OracleComp (withPMFSpec O) Bool)
+  (impl : RStateOracle O1)
+  (x1 x2 : ℕ × (OracleReduction O1 O))
+  [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
+  runDinstinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =
+  (do
+    let x : Bool <- (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
+        by
+          have H : x1.1 <= x1.1 + x2.1 :=  by
+            exact Nat.le_add_right x1.1 x2.1
+          refine NNReal.div_le_of_le_mul ?_
+          simp
+          )
+        )
+    if x then
+      runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl)
+    else
+      runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl)
+  )
+  := by
+
+    sorry
+
 lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)
@@ -323,8 +351,13 @@ lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
     simp []
     simp [advantage]
     repeat rw [<-goodDoubleAction]
+    conv =>
+      rhs
+      simp [reductionCombinerCorrect_nontrivial_helper]
+    repeat rw [<-advantage.eq_def]
 
     sorry
+
 
 
 noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
