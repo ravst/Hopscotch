@@ -15,4 +15,8 @@ import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 -- import GameHoppingInLean.Examples.Proofs.GGMSecurePRF
 -- import GameHoppingInLean.Examples.Proofs.EncryptThenMacIndCca
 -- import GameHoppingInLean.Examples.Proofs.DDHImpliesElGamalOTUCPub
-import GameHoppingInLean.ComputationalIndistinguishability
+
+import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
+import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
+import GameHoppingInLean.ComputationalIndistinguishibility.Defs

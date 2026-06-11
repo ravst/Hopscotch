@@ -14,6 +14,21 @@ allowed to use randomness, access its own internal state, and query the underlyi
 
 -/
 
+protected def OracleSpec.query {ι : Type u} {spec : OracleSpec.{u, v} ι}
+  (t : spec.Domain) : OracleQuery spec (spec.Range t) :=
+  OracleQuery.mk t id
+
+protected lemma OracleSpec.query_def {ι : Type u} {spec : OracleSpec.{u, v} ι}
+  (t : spec.Domain) :
+    OracleSpec.query t = ⟨t, id⟩ := rfl
+
+@[match_pattern, reducible]
+def OracleComp.queryBind {α} {ι : Type u} {spec : OracleSpec.{u, v} ι}
+  (t : spec.Domain) (k : spec.Range t → OracleComp spec α) :
+    OracleComp spec α :=
+  PFunctor.FreeM.roll t k
+
+
 /-- ## Definition -/
 /- The list of allowed operations for a reduction -/
 inductive withPMFAndStateI (I : Type u) (S : Type) : Type (max u 1)
@@ -236,7 +251,7 @@ def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁}
       let sample : reduction.stateType <- reduction.initialState
       y sample
 
-lemma applyComplexInitReduction2_identity  {Output I : Type} {O : OracleSpec I}
+lemma applyComplexInitReduction2_identity {Output I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Output)
   : applyReductionToAdversary (OracleReduction.identity O) dist = dist := by sorry
 

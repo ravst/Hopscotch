@@ -10,7 +10,7 @@ attribute [GameHoppingSimplifyPMF]
 
 attribute [OracleReductionSimps]
   OracleReduction.apply
-  OracleComp.instMonadLiftOracleQuery._aux_1
+  -- OracleComp.instMonadLiftOracleQuery._aux_1
   simulateQ
   OracleReduction.query
   PFunctor.FreeM.mapM
