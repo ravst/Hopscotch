@@ -44,11 +44,9 @@ lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
   simp [runDinstinguisher, runDinstinguisher_inner]
 
 -- testing aritotle
-set_option allowUnsafeReducibility true in
-attribute [local reducible] OracleReduction.statefulOracleComp
 private lemma liftM_self {m : Type u → Type v} [Monad m] {α} (x : m α) :
     (liftM x : m α) = x := rfl
-private lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
+lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
     [Monad m] [LawfulMonad m] (impl : QueryImpl spec m)
     (k : spec.Range t → OracleComp spec β) :
     simulateQ impl (PFunctor.FreeM.roll t k) = impl t >>= fun u => simulateQ impl (k u) := by
@@ -104,9 +102,9 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
             OracleComp.queryBind, addPMFtoImpl, StateT.run_bind, stateT_run_get, stateT_run_map_get,
             StateT.run_lift, StateT.run_pure, RState.run_liftM, stateT_run_set, simulateQ_bind,
             simulateQ_roll, simulateQ_pure, pure_bind, bind_pure, PMF.pure_bind, Function.comp,
-            Prod.mk.eta, h] <;>
+            Prod.mk.eta, h]
           simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-            Function.comp_def, h] <;>
+            Function.comp_def, h]
           rfl
       | sample p =>
           simp (config := { maxSteps := 4000000 }) only [liftM_self, OracleQuery.query,
@@ -114,10 +112,9 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
             OracleComp.queryBind, addPMFtoImpl, StateT.run_bind, stateT_run_get, stateT_run_map_get,
             StateT.run_lift, StateT.run_pure, RState.run_liftM, stateT_run_set, simulateQ_bind,
             simulateQ_roll, simulateQ_pure, pure_bind, bind_pure, PMF.pure_bind, Function.comp,
-            Prod.mk.eta, h] <;>
+            Prod.mk.eta, h]
           simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-            Function.comp_def, h] <;>
-          rfl
+            Function.comp_def, h]
       | getState =>
           simp (config := { maxSteps := 4000000 }) only [liftM_self, OracleQuery.query,
             OracleQuery.mk, id_eq, OracleQuery.cont, liftWithPMFAndState, defaultImpl,

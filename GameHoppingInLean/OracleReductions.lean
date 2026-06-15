@@ -199,6 +199,7 @@ noncomputable def identity {I : Type} (O : OracleSpec I) : OracleReduction O O w
   initialState := pure ()
   queries := fun i => query i
 
+@[reducible]
 def statefulOracleComp {I : Type _} (O : OracleSpec I) (state : Type) : Type _ -> Type _ := StateT state (OracleComp O)
 instance {I : Type _} (O : OracleSpec I) (state : Type) [Monad (OracleComp O)] : Monad (statefulOracleComp O state) := StateT.instMonad
 
