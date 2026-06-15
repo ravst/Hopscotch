@@ -203,6 +203,16 @@ noncomputable def identity {I : Type} (O : OracleSpec I) : OracleReduction O O w
 def statefulOracleComp {I : Type _} (O : OracleSpec I) (state : Type) : Type _ -> Type _ := StateT state (OracleComp O)
 instance {I : Type _} (O : OracleSpec I) (state : Type) [Monad (OracleComp O)] : Monad (statefulOracleComp O state) := StateT.instMonad
 
+def statefulOracleComp_pure {I : Type _} (O : OracleSpec I)
+  (x : α) : (pure x : statefulOracleComp O I α) = (fun s ↦ PFunctor.FreeM.pure (x, s)) := by
+    rfl
+
+def statefulOracleComp_bind {S β α : Type _} {I : Type _} (O : OracleSpec I)
+  (x : statefulOracleComp O S β) (f : β -> statefulOracleComp O S α) (s : S) :
+  (x >>= f) s = (x s) >>= (fun (a, b) => f a b) := by
+    rfl
+
+
 
 def defaultImpl {I : Type} {O : OracleSpec I} {state : Type}
   : QueryImpl (withPMFAndStateSpec state O) (statefulOracleComp (withPMFSpec O) state) := fun

@@ -363,9 +363,11 @@ def runOnSnd (m : RState s₂ α) : RState (s₁ × s₂) α :=
       StateT.run (modify (fun st : s₁ × s₂ => (st.1, f st.2))) st
   rw [run_modify, run_modify, PMF.pure_map]
 
-@[simp] lemma stateT_run_rstate_modify {f : α → α} {st : α} :
-  StateT.run (RState.modify f) st = pure ((), f st) := by
-    simp [pure]
+@[RStateSimplifier] lemma stateT_run_rstate_modify {f : α → α} :
+  (RState.modify f) = fun st => pure ((), f st) := by
+    ext1 st
+    simp [pure, StateT.run]
+
 
 @[simp] lemma mapStateBij_pure {α s₁ s₂}
     (f : s₁ ≃ s₂) (a : α) :

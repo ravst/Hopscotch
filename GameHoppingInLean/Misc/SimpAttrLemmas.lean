@@ -5,15 +5,58 @@ import Lean
 
 open Lean Elab Tactic
 
+
+/-! ### Reduction lemmas for the `goodDoubleAction` state-commutation step
+
+These small lemmas push `simulateQ`/`StateT.run` through the various query heads while
+keeping `simulateQ` itself folded, so that the induction hypotheses of
+`goodDoubleAction_step`/`goodDoubleAction_core` still match.  They are bundled into the
+`goodDoubleActionSimps` simp set together with the relevant unfolding lemmas. -/
+
+/-- `liftM` into the same monad is the identity. -/
+@[goodDoubleActionSimps] lemma liftM_self {m : Type u → Type v} [Monad m] {α} (x : m α) :
+    (liftM x : m α) = x := rfl
+
+/-- Push `simulateQ` through a `FreeM.roll` node. -/
+lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
+    [Monad m] [LawfulMonad m] (impl : QueryImpl spec m)
+    (k : spec.Range t → OracleComp spec β) :
+    simulateQ impl (PFunctor.FreeM.roll t k) = impl t >>= fun u => simulateQ impl (k u) := by
+  unfold simulateQ
+  rw [PFunctor.FreeM.mapM.eq_def]; rfl
+
+
+/-- Running `StateT.get`. -/
+@[goodDoubleActionSimps] lemma stateT_run_get {m} [Monad m] {σ} (s : σ) :
+    (StateT.get s : m (σ × σ)) = pure (s, s) := rfl
+
+/-- Running `f <$> StateT.get`. -/
+@[goodDoubleActionSimps] lemma stateT_run_map_get {σ α} (f : σ → α) (s : σ) :
+    ((f <$> StateT.get) s : PMF (α × σ)) = pure (f s, s) := by
+  simp [StateT.run, StateT.get, StateT.map, map_eq_pure_bind]
+
+/-- Running `StateT.set`. -/
+@[goodDoubleActionSimps] lemma stateT_run_set {m} [Monad m] {σ} (st s : σ) :
+    (StateT.set st) s = (pure (PUnit.unit, st) : m (PUnit × σ)) := rfl
+
+@[simp]
+lemma simulateQ_pure2 (x : α) {ι} {spec : OracleSpec ι} {r : Type u → Type*}
+    [Monad r] (impl : QueryImpl spec r) :
+    simulateQ impl (PFunctor.FreeM.pure x : OracleComp spec α) = pure x := rfl
+
+
 attribute [GameHoppingSimplifyPMF]
   PMF.map_id
 
 attribute [OracleReductionSimps]
   OracleReduction.apply
   -- OracleComp.instMonadLiftOracleQuery._aux_1
-  simulateQ
+  simulateQ_roll
+  simulateQ_bind
+  simulateQ_pure
+  simulateQ_pure2
   OracleReduction.query
-  PFunctor.FreeM.mapM
+  -- PFunctor.FreeM.mapM
   liftM
   monadLift
   MonadLift.monadLift
@@ -25,9 +68,38 @@ attribute [correctAbstractionDiagSimps]
 
 attribute [StateTSimps]
   StateT.lift
+  StateT.pure
   StateT.run
   StateT.get
   _root_.modify
+  StateT.run_bind
+  StateT.run_lift
+  StateT.run_pure
+  RState.run_liftM
+  pure_bind
+  bind_pure
+  PMF.pure_bind
+  PMF.map_bind
+  PMF.bind_map
+  PMF.bind_bind
+  OracleReduction.statefulOracleComp_pure
+  OracleReduction.statefulOracleComp_bind
+  -- RState.modify
+  -- MonadState.get
+  -- getThe
+  -- MonadStateOf.get
+
+attribute [goodDoubleActionSimps]
+  OracleReduction.liftWithPMFAndState
+  OracleReduction.defaultImpl
+  addPMFtoImpl
+  OracleComp.queryBind
+  OracleQuery.query
+  OracleQuery.cont
+  id_eq
+  Function.comp_def
+  Prod.mk.eta
+
 
 /-- Solve a correct-abstraction query diagram by extensionality and standard unfolding. -/
 syntax "solveCorrectAbstractionDiag" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic

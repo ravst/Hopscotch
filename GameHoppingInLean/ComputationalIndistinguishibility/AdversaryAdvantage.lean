@@ -2,6 +2,7 @@ import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.IndistinguishabilityAssumption
+import GameHoppingInLean.Misc.SimpAttrLemmas
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)
 def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
@@ -43,22 +44,6 @@ lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
 := by
   simp [runDinstinguisher, runDinstinguisher_inner]
 
--- testing aritotle
-private lemma liftM_self {m : Type u → Type v} [Monad m] {α} (x : m α) :
-    (liftM x : m α) = x := rfl
-lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
-    [Monad m] [LawfulMonad m] (impl : QueryImpl spec m)
-    (k : spec.Range t → OracleComp spec β) :
-    simulateQ impl (PFunctor.FreeM.roll t k) = impl t >>= fun u => simulateQ impl (k u) := by
-  unfold simulateQ
-  rw [PFunctor.FreeM.mapM.eq_def]; rfl
-private lemma stateT_run_get {m} [Monad m] {σ} (s : σ) :
-    (StateT.get.run s : m (σ × σ)) = pure (s, s) := rfl
-private lemma stateT_run_map_get {σ α} (f : σ → α) (s : σ) :
-    (StateT.run (f <$> StateT.get) s : PMF (α × σ)) = pure (f s, s) := by
-  simp [StateT.run, StateT.get, StateT.map, map_eq_pure_bind]
-private lemma stateT_run_set {m} [Monad m] {σ} (st s : σ) :
-    (StateT.set st).run s = (pure (PUnit.unit, st) : m (PUnit × σ)) := rfl
 /-- Equation lemma for the queries of an applied reduction, phrased so that it only
 rewrites the *applied* form `(apply r o).queries i` (leaving the partially-applied
 `(apply r o).queries` used as a simulation oracle intact, so the induction hypothesis
@@ -67,7 +52,6 @@ private lemma apply_queries_apply {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Orac
     (r : OracleReduction O1 O2) (o : RStateOracle O1) (i : I2) :
     (OracleReduction.apply r o).queries i =
       simulateQ (OracleReduction.liftWithPMFAndState o.queries r.stateType) (r.queries i) := rfl
-set_option maxHeartbeats 4000000 in
 open OracleReduction in
 /-- Core state-commutation step: simulating a single `withPMFAndStateSpec` computation `c`
   against `o` with the joint reduction/oracle state (left) equals first threading the
@@ -76,61 +60,28 @@ open OracleReduction in
 lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
     (o : RStateOracle O1)
     (c : OracleComp (withPMFAndStateSpec s O1) X) (sr : s) (so : o.stateType) :
-    StateT.run (simulateQ (liftWithPMFAndState o.queries s) c) (sr, so)
+    (simulateQ (liftWithPMFAndState o.queries s) c) (sr, so)
     =
-    (StateT.run (simulateQ (addPMFtoImpl o.queries)
-        (StateT.run (simulateQ defaultImpl c) sr)) so).map
+    ((simulateQ (addPMFtoImpl o.queries)
+        ((simulateQ defaultImpl c) sr)) so).map
       (fun p => (p.1.1, (p.1.2, p.2))) := by
   induction c using OracleComp.inductionOn generalizing sr so with
   | pure x =>
-      show _ = PMF.map _ (StateT.run (simulateQ (addPMFtoImpl o.queries)
-          (StateT.run (Pure.pure x : StateT s (OracleComp (withPMFSpec O1)) X) sr)) so)
-      simp only [simulateQ_pure, StateT.run_pure]
-      change pure (x, sr, so) = PMF.map (fun p => (p.1.1, p.1.2, p.2)) (PMF.pure ((x, sr), so))
-      rw [PMF.map_pure_eq_pure]
-      rfl
+    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps]
+    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, pure]
+
   | query_bind t mx h =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
-      -- For the `oracle`, `sample`, `getState` heads, reduce with the simulation and
-      -- state-threading lemmas and apply the induction hypothesis `h` to the tails.
-      -- The `setState` head needs an explicit `RState.modify` rewrite that `simp`
-      -- refuses to perform on its own.
+      -- All four heads reduce by unfolding the simulation/state-threading plumbing with
+      -- the `goodDoubleActionSimps` set and applying the induction hypothesis `h` to the
+      -- tails.  The `setState` head additionally needs the `RState.modify` rewrite, which
+      -- `simp` does not perform on its own here.
       cases t with
-      | oracle i =>
-          simp (config := { maxSteps := 4000000 }) only [liftM_self, OracleQuery.query,
-            OracleQuery.mk, id_eq, OracleQuery.cont, liftWithPMFAndState, defaultImpl,
-            OracleComp.queryBind, addPMFtoImpl, StateT.run_bind, stateT_run_get, stateT_run_map_get,
-            StateT.run_lift, StateT.run_pure, RState.run_liftM, stateT_run_set, simulateQ_bind,
-            simulateQ_roll, simulateQ_pure, pure_bind, bind_pure, PMF.pure_bind, Function.comp,
-            Prod.mk.eta, h]
-          simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-            Function.comp_def, h]
-          rfl
-      | sample p =>
-          simp (config := { maxSteps := 4000000 }) only [liftM_self, OracleQuery.query,
-            OracleQuery.mk, id_eq, OracleQuery.cont, liftWithPMFAndState, defaultImpl,
-            OracleComp.queryBind, addPMFtoImpl, StateT.run_bind, stateT_run_get, stateT_run_map_get,
-            StateT.run_lift, StateT.run_pure, RState.run_liftM, stateT_run_set, simulateQ_bind,
-            simulateQ_roll, simulateQ_pure, pure_bind, bind_pure, PMF.pure_bind, Function.comp,
-            Prod.mk.eta, h]
-          simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-            Function.comp_def, h]
-      | getState =>
-          simp (config := { maxSteps := 4000000 }) only [liftM_self, OracleQuery.query,
-            OracleQuery.mk, id_eq, OracleQuery.cont, liftWithPMFAndState, defaultImpl,
-            OracleComp.queryBind, addPMFtoImpl, StateT.run_bind, stateT_run_get, stateT_run_map_get,
-            StateT.run_lift, StateT.run_pure, RState.run_liftM, stateT_run_set, simulateQ_bind,
-            simulateQ_roll, simulateQ_pure, pure_bind, bind_pure, PMF.pure_bind, Function.comp,
-            Prod.mk.eta, h] <;>
-          simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-            Function.comp_def, h] <;>
-          rfl
       | setState st =>
-          simp only [liftM_self, OracleQuery.query, OracleQuery.mk, id_eq, OracleQuery.cont,
-            liftWithPMFAndState, defaultImpl, OracleComp.queryBind, addPMFtoImpl,
-            StateT.run_bind, stateT_run_set, StateT.run_pure, RState.run_liftM, simulateQ_pure]
-          rw [RState.stateT_run_rstate_modify]
-          simp [pure_bind, PMF.map_bind, PMF.bind_map, PMF.bind_bind, Function.comp_def, h]
+          simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure]
+      | _ =>
+        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure] <;> try rfl
+
 
 set_option maxHeartbeats 4000000 in
 open OracleReduction in
@@ -157,25 +108,28 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
     cases t with
     | oracle tt =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
-      simp only [liftM_self, OracleQuery.query, OracleQuery.mk, id_eq, OracleQuery.cont,
-        addPMFtoImpl, addPMFtoImpl2, apply_queries_apply, defaultImpl, OracleComp.queryBind,
-        StateT.run_bind, RState.run_liftM, simulateQ_bind, simulateQ_roll, simulateQ_pure,
-        pure_bind, bind_pure, PMF.pure_bind, Function.comp, Prod.mk.eta]
-      rw [goodDoubleAction_step]
-      simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-        Function.comp_def, h]
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+        goodDoubleAction_step, addPMFtoImpl2]
+      congr
+      ext1 st
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+       addPMFtoImpl2] at h
+      apply h
     | sample p =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
-      simp only [liftM_self, OracleQuery.query, OracleSpec.query, OracleQuery.mk, id_eq,
-        OracleQuery.cont, addPMFtoImpl, addPMFtoImpl2, apply_queries_apply, defaultImpl,
-        OracleComp.queryBind, OracleComp.lift, StateT.run_bind, StateT.run_lift,
-        RState.run_liftM, simulateQ_bind, simulateQ_roll, simulateQ_query, simulateQ_pure,
-        pure_bind, bind_pure, PMF.pure_bind, Function.comp, Prod.mk.eta, h] <;>
-      simp (config := { maxSteps := 4000000 }) [PMF.map_bind, PMF.bind_map, PMF.bind_bind,
-        Function.comp_def, h] <;>
-      rw [simulateQ_roll]
-      simp [StateT.run]
-      simp [addPMFtoImpl, Functor.map]
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+        goodDoubleAction_step]
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+       addPMFtoImpl2] at h
+      conv =>
+        lhs
+        arg 2
+        intro a
+        rw [h]
+      simp [addPMFtoImpl2]
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
+      simp [OracleQuery.input, OracleSpec.query]
+      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
       rfl
 
 open OracleReduction in
@@ -189,15 +143,6 @@ lemma goodDoubleAction_core2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpe
       (fun p => (p.1.1, (p.1.2, p.2))) :=
     by
       apply goodDoubleAction_core
-
--- lemma simulateQ_on_liftWithPMFI {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
---  (r : OracleReduction O1 O2) (o : RStateOracle O1) (init : o.stateType) :
---  simulateQ (OracleReduction.liftWithPMFI o.queries) r.initialState init =
---  simulateQ (addPMFtoImpl o.queries) r.initialState init
---  := by
---   unfold OracleReduction.liftWithPMFI
-
---   rfl
 
 /-  probably could be proven by induction over dist -/
 lemma goodDoubleAction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
