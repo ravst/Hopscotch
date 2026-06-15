@@ -36,10 +36,20 @@ namespace PMF
     PMF.map f (PMF.pure a) = PMF.pure (f a) := by
   simpa using (PMF.pure_map (f := f) a)
 
+
+@[simp] lemma map_pure_eq_pure2 {α β : Type} (f : α → β) (a : α) :
+    PMF.map f (pure a) = PMF.pure (f a) := by
+  simpa using (PMF.pure_map (f := f) a)
+
+
 @[simp] lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
     f <$> (PMF.pure a) = PMF.pure (f a) := by
   simp [PMF.monad_map_eq_map]
 
+--  lemma monad_map_into_map {α β : Type} (f : α → β) (a : PMF α) :
+--     f <$> (a) = PMF.map f a :=
+--   by
+--     exact monad_map_eq_map f a
 
 /-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
 @[simp] lemma uniformOfFintype_prod_bind
@@ -100,7 +110,8 @@ def modify (f : σ → σ ) : RState σ Unit := do
 
 @[simp] lemma run_modify {σ} (f : σ → σ) (s : σ) :
     StateT.run (modify f : RState σ Unit) s = PMF.pure ((), f s) := by
-  simp [modify, StateT.run_bind]
+  simp only [modify, StateT.run_bind]
+  simp []
   rfl
 
 @[simp, RStateSimplifier] lemma modify_apply {σ} (f : σ → σ) (s : σ) :

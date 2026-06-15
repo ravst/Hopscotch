@@ -96,12 +96,6 @@ noncomputable def liftWithPMFAndState {I : Type} {O : OracleSpec I} {stateType :
   | withPMFAndStateI.setState sᵣ' =>
       RState.modify (fun x => ⟨sᵣ', x.2⟩)
 
-/-- Next we define the same thing but for the limited initialization operations -/
-noncomputable def liftWithPMFI {I : Type} {O : OracleSpec I} {stateType : Type}
-    (impl : QueryImpl O (RState stateType)) :
-    QueryImpl (withPMFSpec O) (RState stateType) := fun
-  | withPMFI.oracle i => impl i
-  | withPMFI.sample p => liftM p
 
 /-- Apply an oracle reduction to an underlying stateful oracle implementation. -/
 noncomputable def apply {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
@@ -112,7 +106,7 @@ noncomputable def apply {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : Orac
     let sₒ ← oracle.initialState
     /- The local state of the reduction is computed using the reduction's initialization function -/
     let (sᵣ, sₒ') ←
-      liftM (StateT.run (simulateQ (liftWithPMFI oracle.queries) reduction.initialState) sₒ)
+      liftM (StateT.run (simulateQ (addPMFtoImpl oracle.queries) reduction.initialState) sₒ)
     /- The two states are combined -/
     pure (sᵣ, sₒ')
   queries := fun i =>
