@@ -69,7 +69,6 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
   | pure x =>
     simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps]
     simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, pure]
-
   | query_bind t mx h =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
       -- All four heads reduce by unfolding the simulation/state-threading plumbing with
@@ -83,7 +82,6 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
         simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure] <;> try rfl
 
 
-set_option maxHeartbeats 4000000 in
 open OracleReduction in
 /-- The distinguisher-level analogue of `goodDoubleAction_step`: simulating `dist`
 against the combined oracle `apply r o` (threading the joint reduction/oracle state)

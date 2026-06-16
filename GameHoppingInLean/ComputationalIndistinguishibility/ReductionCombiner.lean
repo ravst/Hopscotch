@@ -277,6 +277,16 @@ lemma reductionStateInclusionMiniR_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 
     rw [addToStateR_spec]
     simp [simulateQ]
 
+noncomputable def bernulli_ratio (a b : ℕ) : PMF Bool :=
+  PMF.bernoulli (a/(a+b)) (
+        by
+          have H : a <= a + b :=  by
+            exact Nat.le_add_right a b
+          refine NNReal.div_le_of_le_mul ?_
+          simp
+          )
+
+
 noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
@@ -285,14 +295,7 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
   (x1.1+x2.1, {
     stateType := (x1.2.stateType ⊕ x2.2.stateType)
     initialState := (do
-      let x : Bool <- OracleReduction.initSample (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
-        by
-          have H : x1.1 <= x1.1 + x2.1 :=  by
-            exact Nat.le_add_right x1.1 x2.1
-          refine NNReal.div_le_of_le_mul ?_
-          simp
-          )
-        )
+      let x : Bool <- OracleReduction.initSample (bernulli_ratio x1.1 x2.1)
       if x then
         let init <- x1.2.initialState
         return Sum.inl init
@@ -314,6 +317,7 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
 -- TODO: fomrulate lemma, that reductionCombiner_nontrivial.2 is eqivalnet to running 'do
 
 
+
 lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
   (dist : OracleComp (withPMFSpec O) Bool)
   (impl : RStateOracle O1)
@@ -321,14 +325,7 @@ lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
   runDinstinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =
   (do
-    let x : Bool <- (PMF.bernoulli (x1.1/(x1.1+x2.1)) (
-        by
-          have H : x1.1 <= x1.1 + x2.1 :=  by
-            exact Nat.le_add_right x1.1 x2.1
-          refine NNReal.div_le_of_le_mul ?_
-          simp
-          )
-        )
+    let x : Bool <- (bernulli_ratio x1.1 x2.1)
     if x then
       runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl)
     else
@@ -337,6 +334,8 @@ lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {
   := by
 
     sorry
+
+lemma distanceBoolAveredge (l r : Bool -> PMF Bool) (n1 n2 : ℕ) : true := sorry
 
 lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
