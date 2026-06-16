@@ -256,21 +256,4 @@ def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁}
       let sample : reduction.stateType <- reduction.initialState
       y sample
 
-lemma applyComplexInitReduction2_identity {Output I : Type} {O : OracleSpec I}
-  (dist : OracleComp (withPMFSpec O) Output)
-  : applyReductionToAdversary (OracleReduction.identity O) dist = dist := by sorry
-
-
-/-- Apply a reduction whose initialization may query the underlying oracle. -/
-def ComplexInitReduction2_compose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
-    (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃) : OracleReduction O₁ O₃ := by sorry
-
-/-- Apply a reduction whose initialization may query the underlying oracle. -/
-lemma ComplexInitReduction2_compose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
-    (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
-    (dist : OracleComp (withPMFSpec O₃) Output) :
-    applyReductionToAdversary (ComplexInitReduction2_compose r1 r2) dist =
-    applyReductionToAdversary r1 (applyReductionToAdversary r2 dist)
-       := by sorry
-
 end OracleReduction

@@ -1,5 +1,6 @@
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.OracleReductionsLemmas
 import GameHoppingInLean.ObservationalEquvialence
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.SimSemantics.SimulateQ
@@ -200,7 +201,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
     by
       simp [advBound]
       intro dist Hdist
-      rw [OracleReduction.applyComplexInitReduction2_identity]
+      rw [applyComplexInitReduction2_identity]
   ⟩
 | IndistinguishableI.obsEqB a b =>
   obse_eq_step o₁ o₂ b
@@ -209,7 +210,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
     exact
       ⟨{
         subset := asc.subset
-        values := fun x => ((asc.values x).1, OracleReduction.ComplexInitReduction2_compose (asc.values x).2 r)
+        values := fun x => ((asc.values x).1, ComplexInitReduction2_compose (asc.values x).2 r)
       },
       by
         simp [advBound]
@@ -221,7 +222,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
         apply le_of_eq
         congr
         ext j
-        rw [OracleReduction.ComplexInitReduction2_compose_apply]
+        rw [ComplexInitReduction2_compose_apply]
       ⟩
 | IndistinguishableI.symm q_b ind  =>
     let re := symbolicSoundness ind

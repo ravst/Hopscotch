@@ -335,8 +335,6 @@ lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {
 
     sorry
 
-lemma distanceBoolAveredge (l r : Bool -> PMF Bool) (n1 n2 : ℕ) : true := sorry
-
 lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)

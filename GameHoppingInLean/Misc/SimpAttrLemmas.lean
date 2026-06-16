@@ -50,17 +50,18 @@ attribute [GameHoppingSimplifyPMF]
 
 attribute [OracleReductionSimps]
   OracleReduction.apply
-  -- OracleComp.instMonadLiftOracleQuery._aux_1
   simulateQ_roll
   simulateQ_bind
   simulateQ_pure
   simulateQ_pure2
   OracleReduction.query
-  -- PFunctor.FreeM.mapM
   liftM
   monadLift
   MonadLift.monadLift
   OracleReduction.liftWithPMFAndState
+-- OracleComp.instMonadLiftOracleQuery._aux_1
+-- PFunctor.FreeM.mapM
+
 
 attribute [correctAbstractionDiagSimps]
   mapInputState
