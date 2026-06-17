@@ -142,6 +142,7 @@ noncomputable def transitive_step
           intro j x1 x2
           simp []
           apply reductionCombinerCorrect
+          sorry
         )
       simp [sumJoining] at HHx
       rw [<-HHx]

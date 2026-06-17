@@ -91,7 +91,7 @@ noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC
 
 lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
-    advantage dist ro₁ ro₂ = 0 :=
+    runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
 by
   -- have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
   -- have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
@@ -109,3 +109,11 @@ by
     -- sorry
   -- calc??
   sorry
+
+lemma obsEq_distinquishing_ub (ro₁ ro₂ : RStateOracle O) (obs_eq : ObsEq ro₁ ro₂)
+  (dist : adversaryT O) :
+    runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
+by
+  apply obsEq_distinquishing (q_b := none)
+  · exact (ObsEq_from_none ro₁ ro₂).mp obs_eq
+  · exact le_of_sup_eq' rfl

@@ -277,6 +277,34 @@ lemma reductionStateInclusionMiniR_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 
     rw [addToStateR_spec]
     simp [simulateQ]
 
+def reductionStateInclusionMiniR_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : (OracleReduction O1 O2))
+  [Nonempty x2.stateType] [Nonempty x1.stateType]
+  (impl : RStateOracle O1) :
+  forall dist,
+  runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1 x2).apply impl) =
+  runDinstinguisher dist (x2.apply impl)
+:=
+by
+  intro dist
+  apply obsEq_distinquishing_ub
+  apply ObsEqSymm
+  apply reductionStateInclusionMiniR_spec
+
+def reductionStateInclusionMiniL_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (x1 x2 : (OracleReduction O1 O2))
+  [Nonempty x2.stateType] [Nonempty x1.stateType]
+  (impl : RStateOracle O1) :
+  forall dist,
+  runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) =
+  runDinstinguisher dist (x1.apply impl)
+:= by
+  intro dist
+  apply obsEq_distinquishing_ub
+  apply ObsEqSymm
+  apply reductionStateInclusionMiniL_spec
+
+
 noncomputable def bernulli_ratio (a b : ℕ) : PMF Bool :=
   PMF.bernoulli (a/(a+b)) (
         by
@@ -315,42 +343,74 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
 
 -- TODO: fomrulate lemma, that reductionCombiner_nontrivial.2 is eqivalnet to running 'do
 
+
+noncomputable def weightedCases (r : PMF Bool) (x1 x2 : PMF X) : PMF X :=
+  (do
+    let z : Bool <- r
+    if z then x1 else x2
+  )
+
 lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
   (dist : OracleComp (withPMFSpec O) Bool)
   (impl : RStateOracle O1)
   (x1 x2 : ℕ × (OracleReduction O1 O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
   runDinstinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =
-  (do
-    let x : Bool <- (bernulli_ratio x1.1 x2.1)
-    if x then
-      runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl)
-    else
-      runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl)
+  (weightedCases (bernulli_ratio x1.1 x2.1)
+    (runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl))
+    (runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl))
   )
 := by
   sorry
+
+lemma reductionOfIf {X : Type _} (r : PMF Bool) (x1 x2 : PMF X) (t : X) :
+  getPMF (weightedCases r x1 x2) t = (getPMF r true) * getPMF x1 t + ((getPMF r false))*getPMF x2 t := by sorry
+
+lemma getBernulli (x : NNReal) (Hx : x <=1) : getPMF (PMF.bernoulli x Hx) true = x := by sorry
+lemma getBernullif (x : NNReal) (Hx : x <=1) : getPMF (PMF.bernoulli x Hx) false = 1-x := by sorry
+
+lemma getBernullir (x1 x2 : ℕ) : getPMF (bernulli_ratio x1 x2) true = x1/(x1+x2) := by
+  simp [bernulli_ratio, getBernulli]
+lemma getBernullir2 (x1 x2 : ℕ) (H :x1 + x2 >=1) : getPMF (bernulli_ratio x1 x2) false = x2/(x1+x2) := by
+  simp [bernulli_ratio, getBernullif]
+  rw [<-mul_left_inj' (c:=(x1+x2:NNReal))]
+  ·
+    sorry
+    -- grind
+  · sorry
+
+
 
 lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
+  (Hneq : x1.1 >= 1 ∧ x2.1 >= 1)
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner_nontrivial x1 x2) :=
-  by
-    simp [ascToReal]
-    nth_rw 1 [reductionCombiner_nontrivial]
-    simp []
-    simp [advantage]
-    repeat rw [<-goodDoubleAction]
-    conv =>
-      rhs
-      simp [reductionCombinerCorrect_nontrivial_helper]
-    repeat rw [<-advantage.eq_def]
-    sorry
-
-
+by
+  simp [ascToReal]
+  nth_rw 1 [reductionCombiner_nontrivial]
+  simp []
+  simp [advantage]
+  repeat rw [<-goodDoubleAction]
+  conv =>
+    rhs
+    simp [reductionCombinerCorrect_nontrivial_helper]
+  simp [pdistancePMF]
+  simp [reductionOfIf _ _ _ true]
+  simp [getBernullir, getBernullir2 x1.1 x2.1 (by
+    refine Nat.le_add_right_of_le ?_
+    · apply Hneq.1
+    )]
+  simp [reductionStateInclusionMiniR_spec2]
+  simp [reductionStateInclusionMiniL_spec2]
+  generalize (getPMF (runDinstinguisher dist (x1.2.apply assumption.i.1)) true).toReal = l1
+  generalize (getPMF (runDinstinguisher dist (x1.2.apply assumption.i.2)) true).toReal = l2
+  generalize (getPMF (runDinstinguisher dist (x2.2.apply assumption.i.1)) true).toReal = z1
+  generalize (getPMF (runDinstinguisher dist (x2.2.apply assumption.i.2)) true).toReal = z2
+  grind
 
 noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
@@ -381,6 +441,7 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
+  (Hneq : x1.1 >= 1 ∧ x2.1 >= 1)
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner x1 x2) :=
   by
@@ -390,3 +451,4 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
     have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x1.2.initialState
     have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x2.2.initialState
     apply reductionCombinerCorrect_nontrivial
+    apply Hneq
