@@ -186,34 +186,41 @@ def PolyFamOracleCompPred : Type 1 :=
 
 noncomputable
 def advantage {I : Type} {O : OracleSpec I}
-  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) : NNReal :=
-  distancePMF (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
+  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) : Real :=
+  pdistancePMF (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
+
+lemma advantageReverse {I : Type} {O : OracleSpec I}
+  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) :
+  advantage distinguisher o1 o2 = - advantage distinguisher o2 o1 :=
+by simp [advantage, pdistancePMF]
 
 noncomputable
 def advantageFam {I : Type} {Spec : ℕ -> OracleSpec I}
-  (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 : famOracle Spec) (κ : ℕ) : NNReal :=
+  (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 : famOracle Spec) (κ : ℕ) : Real :=
   advantage (distinguisher κ) (o1 κ) (o2 κ)
 
 
 lemma advatangeTriangle {I : Type} {O : OracleSpec I}
   {distinguisher : adversaryT O} (o1 o2 o3 : RStateOracle O) :
-  advantage distinguisher o1 o3 <= advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
+  advantage distinguisher o1 o3 = advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
 by
-  apply distTriangle
+  simp [advantage]
+  apply pdistancePMFTriangle
+
 
 lemma advantageRefl {I : Type} {O : OracleSpec I}
   {distinguisher : adversaryT O} (o : RStateOracle O) :
     advantage distinguisher o o = 0 :=
 by
-  simp [advantage, distancePMF, distSelf]
+  simp [advantage, pdistancePMF]
 
 
 lemma advatangeTriangleFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 o3 : famOracle Spec) :
-  forall κ, advantageFam distinguisher o1 o3 κ <= advantageFam distinguisher o1 o2 κ + advantageFam distinguisher o2 o3 κ :=
+  forall κ, advantageFam distinguisher o1 o3 κ = advantageFam distinguisher o1 o2 κ + advantageFam distinguisher o2 o3 κ :=
 by
   intro κ
-  apply distTriangle
+  apply advatangeTriangle
 
 
 noncomputable
@@ -227,17 +234,26 @@ def CompIndistinguishabilitySeededOracle
     -- ... that run in polynomial time ...
     (IsPolyTime distinguisher) ->
     -- ... only achieve negligible advantage.
-    negl (advantageFam distinguisher o1 o2)
+    pnegl (advantageFam distinguisher o1 o2)
 
 
 noncomputable def ascToReal {I : Type} {O : OracleSpec I}
   (distinguisher : OracleComp (withPMFSpec O) Bool)
-  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) : NNReal :=
+  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) : Real :=
   (x).1 *
     advantage
       (OracleReduction.applyReductionToAdversary (x).2 distinguisher)
       assumption.i.1 assumption.i.2
 
+lemma ascReverse {I : Type} {O : OracleSpec I}
+  (distinguisher : OracleComp (withPMFSpec O) Bool)
+  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) :
+  ascToReal distinguisher assumption x =
+  - ascToReal distinguisher assumption.reverse x :=
+by
+  simp [ascToReal, SingleAssumption.reverse]
+  rw [advantageReverse]
+  simp []
 
 def advantage_reduction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (dist : adversaryT O2) (o1 o2 : RStateOracle O1)

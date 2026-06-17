@@ -2,9 +2,13 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 
 
+def absn (x : Real) : NNReal := ⟨abs x, abs_nonneg x⟩
+
 def negl (f : ℕ -> NNReal) : Prop :=
   ∀ k, ∃ (B : ℝ), ∀ i, (f i) * (i^k) <= B
 
+def pnegl (f : ℕ -> Real) : Prop :=
+  negl (fun x => absn (f x))
 
 def getPMF (r : PMF X) (x : X) : NNReal := (r x).toNNReal -- toNNReal map +inf to zero. Lemma below show that this is never happens here.
 lemma pmf_non_inf (r : PMF X) (x : X) : getPMF r x = r x :=
@@ -20,8 +24,17 @@ noncomputable
 def distancePMF (x y : PMF (Bool)) : NNReal :=
     distance (getPMF x (True)) (getPMF y (True))
 
+noncomputable
+def pdistancePMF (x y : PMF Bool) : Real :=
+    (getPMF x (True)) - (getPMF y (True))
+
 
 -- lemmas
+
+lemma pdistancePMFTriangle {x : PMF Bool} (y : PMF Bool) {z : PMF Bool} :
+  pdistancePMF x z = pdistancePMF x y + pdistancePMF y z := by
+  simp [pdistancePMF]
+
 
 -- This file proves basic properties of indistinguishability, such as transitivity and symmetry. It also includes the lemma `IndistinguishabilityByReduction`, which shows how to use reductions to prove indistinguishability.
 
@@ -41,6 +54,10 @@ lemma distSelf (x : NNReal) : distance x x = 0 := by
   simp [distance]
   -- rfl
 
+-- lemma pdistancePMFSelf (x : PMF Bool) : pdistancePMF x x = 0 := by
+--   simp [pdistancePMF]
+
+
 lemma neglSum (f1 f2 : (κ : ℕ) -> NNReal) : negl f1 -> negl f2 -> negl (fun κ => f1 κ + f2 κ) := by
   intro H1 H2
   simp [negl]
@@ -51,6 +68,10 @@ lemma neglSum (f1 f2 : (κ : ℕ) -> NNReal) : negl f1 -> negl f2 -> negl (fun �
   intro i
   rw [add_mul]
   apply add_le_add (H1' i) (H2' i)
+
+lemma pneglSum (f1 f2 : (κ : ℕ) -> Real) : pnegl f1 -> pnegl f2 -> pnegl (fun κ => f1 κ + f2 κ) :=
+by sorry
+
 
 lemma neglMonotone (f1 f2 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i) : negl f2 -> negl f1 := by
   intro Hn
@@ -65,12 +86,17 @@ lemma neglMonotone (f1 f2 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i) :
     exact mul_le_mul_left (H i) (↑i ^ k)
   · apply Hn3
 
+
+
 lemma neglTriangle (f1 f2 f3 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i + f3 i) : negl f2 -> negl f3 -> negl f1 :=
   by
    intro H1 H2
    apply (neglMonotone f1 (fun i => f2 i + f3 i))
    · exact fun i ↦ H i
    apply neglSum <;> assumption
+
+lemma pneglTriangle (f1 f2 f3 : (κ : ℕ) -> Real) (H : forall i, |f1 i| <= |f2 i + f3 i|) : pnegl f2 -> pnegl f3 -> pnegl f1 :=
+by sorry
 
 lemma neglTriangle2 (f1 f2 f3 : ℕ -> NNReal)
   (H1 : negl (fun i => distance (f1 i) (f2 i)))
@@ -82,13 +108,18 @@ lemma neglTriangle2 (f1 f2 f3 : ℕ -> NNReal)
     apply distTriangle
 
 
-lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x = y := by
-  simp [distancePMF, distance] at H
-  injection H with H
-  simp [eq_of_dist_eq_zero] at H
+lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : pdistancePMF x y = 0) : x = y := by
+  simp [pdistancePMF] at H
+  -- injection H with H
+  -- simp [eq_of_dist_eq_zero] at H
   have htrue : x true = y true := by
     rw [← pmf_non_inf, ← pmf_non_inf]
-    exact congrArg (fun z : NNReal => (z : ENNReal)) H
+    have H : (getPMF x true).toReal - ↑(getPMF y true) + ↑(getPMF y true) = ↑(getPMF y true) :=
+      by
+        rw [H]
+        simp []
+    simp at H
+    rw [H]
   apply PMF.ext
   intro b
   cases b
@@ -103,12 +134,12 @@ lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : distancePMF x y = 0) : x =
 lemma obseEq_from_2_steps {A : Type _}
   (init : PMF A)
   (f g : A -> PMF Bool)
-  (H : forall a : A, distancePMF (f a) (g a) = 0)
+  (H : forall a : A, pdistancePMF (f a) (g a) = 0)
   :
-  distancePMF (init.bind f) (init.bind g) = 0 := by
+  pdistancePMF (init.bind f) (init.bind g) = 0 := by
     have H : f=g := by
       ext1 c
       apply distanceOnBoolIrreflexive
       apply H
     rw [H]
-    apply distSelf
+    simp [pdistancePMF]

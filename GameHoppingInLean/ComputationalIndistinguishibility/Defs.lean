@@ -56,45 +56,60 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
 
 
 def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
-    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
-    (asc : AssumptionsUseT Assumptions O)
-    [Fintype (Assumptions.Idx)]
-    : Prop :=
-    forall distinguisher,
-      FreeM.depth distinguisher ≤ q_b ->
-      (advantage distinguisher ro1 ro2) <= ∑ j,
-        (asc.values j).1 *
-        advantage
-          (OracleReduction.applyReductionToAdversary (asc.values j).2 distinguisher)
-          (Assumptions.assumptions j).i.1 (Assumptions.assumptions j).i.2
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+  (asc : AssumptionsUseT Assumptions O)
+  [Fintype (Assumptions.Idx)]
+  (distinguisher : adversaryT O)
+  : Prop :=
+  -- forall distinguisher : adversaryT O,
+  FreeM.depth distinguisher ≤ q_b ->
+    (advantage distinguisher ro1 ro2) =
+    ∑ j, (asc.values j).1 *
+    advantage
+      (OracleReduction.applyReductionToAdversary (asc.values j).2 distinguisher)
+      (Assumptions.assumptions j).i.1 (Assumptions.assumptions j).i.2
 
 
 def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
-    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
-    (asc : AssumptionsUseT Assumptions O)
-    [Fintype (Assumptions.Idx)]
-    : Prop :=
-    forall distinguisher,
-      FreeM.depth distinguisher ≤ q_b ->
-      (advantage distinguisher ro1 ro2) <= ∑ j : { x // x ∈ asc.subset },
-        ascToReal distinguisher (Assumptions.assumptions j) (asc.values j)
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+  (asc : AssumptionsUseT Assumptions O)
+  -- (ascr : AssumptionsUseT Assumptions O)
+  [Fintype (Assumptions.Idx)]
+  (distinguisher : adversaryT O)
+  : Prop :=
+  -- forall distinguisher : adversaryT O,
+  FreeM.depth distinguisher ≤ q_b ->
+    (advantage distinguisher ro1 ro2) =
+    ∑ j : { x // x ∈ asc.subset },
+      ascToReal distinguisher (Assumptions.assumptions j) (asc.values j)
+    -- + ∑ j : { x // x ∈ ascr.subset },
+    --   ascToReal distinguisher ((Assumptions.assumptions j).reverse) (ascr.values j)
 
 lemma advBoundEq (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
-    {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
-    (asc : AssumptionsUseT Assumptions O)
-    [Fintype (Assumptions.Idx)] :
-    advBound Assumptions q_b O ro1 ro2 asc = advBound2 Assumptions q_b O ro1 ro2 asc :=
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+  (asc : AssumptionsUseT Assumptions O)
+  [Fintype (Assumptions.Idx)]
+  (distinguisher : adversaryT O)
+  :
+  advBound Assumptions q_b O ro1 ro2 asc distinguisher =
+  advBound2 Assumptions q_b O ro1 ro2 asc distinguisher :=
 by
   simp [advBound2 , advBound, ascToReal]
 
-
+def advBoundQ (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+  [Fintype (Assumptions.Idx)]
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
+  (asc : AssumptionsUseT Assumptions O)
+  : Prop :=
+  forall (distinguisher : adversaryT O),
+  advBound2 Assumptions q_b O ro1 ro2 asc distinguisher
 
 noncomputable def obse_eq_step
   {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : RStateOracle O)
   (Hb : ObsEqBounded o₁ o₂ a)
-  : { asc // advBound Assumptions a O o₁ o₂ asc } :=
+  : { asc // advBoundQ Assumptions a O o₁ o₂ asc } :=
   ⟨AssumptionsUseT.empty _ _, by
       simp [advBound, AssumptionsUseT.empty]
       intro dist
@@ -106,36 +121,38 @@ noncomputable def transitive_step
   {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
   {o₁ o₂ : RStateOracle O} (rm : RStateOracle O)
-  (as1 : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ rm asc})
-  (as2 : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O rm o₂ asc})
-  : {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc} :=
-    let ⟨asc1, Hasc1⟩ := as1
-    let ⟨asc2, Hasc2⟩ := as2
-    let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
-    ⟨joint,
-      (by
-        rw [advBoundEq]
-        simp [advBound2]
-        intro dist Hdepth
-        simp [joint, assumptionJoiner]
-        have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
-          asc1.values asc2.values (fun a b => reductionCombiner a b)
-          (fun x => ascToReal dist _ x) (by
-            intro j x1 x2
-            simp []
-            apply reductionCombinerCorrect
-          )
-        simp [sumJoining] at HHx
-        rw [<-HHx]
-        clear HHx
-        apply le_trans (advatangeTriangle _ rm _)
-        -- apply advatangeTriangle _ rm _
-        rw [advBoundEq] at Hasc1 Hasc2
-        simp [advBound2] at Hasc1 Hasc2
-        have L1 := add_le_add (Hasc1 dist Hdepth) (Hasc2 dist Hdepth)
-        apply L1
-      )
-    ⟩
+  (as1 : {asc : AssumptionsUseT Assumptions O // advBoundQ Assumptions q_b O o₁ rm asc})
+  (as2 : {asc : AssumptionsUseT Assumptions O // advBoundQ Assumptions q_b O rm o₂ asc}) :
+  {asc : AssumptionsUseT Assumptions O // advBoundQ Assumptions q_b O o₁ o₂ asc}
+:=
+  let ⟨asc1, Hasc1⟩ := as1
+  let ⟨asc2, Hasc2⟩ := as2
+  let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1 asc2 (fun a b => reductionCombiner a b)
+  ⟨joint,
+    (by
+      simp [advBoundQ]
+      intro dist
+      simp [advBound2]
+      intro Hdepth
+      simp [joint, assumptionJoiner]
+      have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
+        asc1.values asc2.values (fun a b => reductionCombiner a b)
+        (fun x => ascToReal dist _ x) (by
+          intro j x1 x2
+          simp []
+          apply reductionCombinerCorrect
+        )
+      simp [sumJoining] at HHx
+      rw [<-HHx]
+      clear HHx
+      rw [(advatangeTriangle _ rm _)]
+      -- rw [advBoundEq] at Hasc1 Hasc2
+      -- simp [advBound2] at Hasc1 Hasc2
+      rw [(Hasc1 dist Hdepth)]
+      rw [(Hasc2 dist Hdepth)]
+      simp []
+    )
+  ⟩
 
 lemma nextInRange {n : ℕ} {x : ℕ} (H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
 by
@@ -189,7 +206,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
-      {asc : AssumptionsUseT Assumptions O // advBound Assumptions q_b O o₁ o₂ asc}
+      {asc : AssumptionsUseT Assumptions O // advBoundQ Assumptions q_b O o₁ o₂ asc}
 | IndistinguishableI.assumption idx =>
   ⟨{ subset := {idx}, values := fun xp => by
       cases xp
@@ -199,8 +216,11 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       rw [Hxp]
       exact (1, OracleReduction.identity (Assumptions.assumptions idx).O) },
     by
-      simp [advBound]
-      intro dist Hdist
+      simp [advBoundQ]
+      intro dist
+      simp [advBound2]
+      intro Hdist
+      simp [ascToReal]
       rw [applyComplexInitReduction2_identity]
   ⟩
 | IndistinguishableI.obsEqB a b =>
@@ -213,25 +233,27 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
         values := fun x => ((asc.values x).1, ComplexInitReduction2_compose (asc.values x).2 r)
       },
       by
-        simp [advBound]
+        simp [advBoundQ]
         intro dist Hdist
         rw [advantage_reduction]
-        simp [advBound] at Hasc
-        apply le_trans (Hasc (OracleReduction.applyReductionToAdversary r dist) (by
-          exact sup_eq_left.mp rfl))
-        apply le_of_eq
+        simp [advBoundQ, advBound2] at Hasc
+        rw [(Hasc (OracleReduction.applyReductionToAdversary r dist) (by
+          exact sup_eq_left.mp rfl))]
         congr
         ext j
+        simp [ascToReal]
         rw [ComplexInitReduction2_compose_apply]
+        simp []
       ⟩
 | IndistinguishableI.symm q_b ind  =>
     let re := symbolicSoundness ind
     ⟨re.val, by
-      simp [advBound]
+      simp [advBoundQ, advBound2]
       intro dist
       simp [advantage]
-      rw [disPMFSymm]
-      apply re.2
+      sorry
+      -- rw [disPMFSymm]
+      -- apply re.2
       ⟩
 | IndistinguishableI.trans rm q_b ind1 ind2 =>
     transitive_step rm (symbolicSoundness ind1) (symbolicSoundness ind2)
@@ -240,7 +262,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
     symbolicSoundness (Hseq i Hi)
   have HMain : forall (i : ℕ) (Hi : i < a+1),
     {asc : AssumptionsUseT Assumptions O //
-      advBound Assumptions q_b O (ro ⟨0, zero_in_range _⟩) (ro ⟨i, Finset.mem_range.mpr Hi⟩) asc}
+      advBoundQ Assumptions q_b O (ro ⟨0, zero_in_range _⟩) (ro ⟨i, Finset.mem_range.mpr Hi⟩) asc}
   := (by
     intro i Hi
     induction i

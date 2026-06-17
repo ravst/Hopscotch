@@ -12,7 +12,7 @@ def finsetSum {X : Type} [DecidableEq X] (s1 s2 : Finset X) : Finset X :=
 def sumJoining {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] (D1 D2 : Finset Univ)
   (val1 : (J : D1) -> XJ J)
   (val2 : (J : D2) -> XJ J)
-  (f : {J : Univ} -> XJ J -> NNReal)
+  (f : {J : Univ} -> XJ J -> Real)
   (val3 : (J : finsetSum D1 D2) -> XJ J) : Prop :=
     (∑ j1, f (val1 j1)) + (∑ j2, f (val2 j2)) =
     (∑ j3, f (val3 j3))
@@ -44,15 +44,15 @@ def sumJoinerCorrect {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1 
   (val1 : (J : D1) -> XJ J)
   (val2 : (J : D2) -> XJ J)
   (joiner : {J : Univ} -> XJ J -> XJ J -> XJ J)
-  (f : {J : Univ} -> XJ J -> NNReal)
+  (f : {J : Univ} -> XJ J -> Real)
   (Hjoiner : forall J (x1 : XJ J) (x2 : XJ J), f x1 + f x2 = f (joiner x1 x2))
   : sumJoining XJ D1 D2 val1 val2 f (sumJoiner XJ val1 val2 joiner) := by
   classical
-  let g1 : Univ → NNReal := fun j =>
+  let g1 : Univ → Real := fun j =>
     if h : j ∈ D1 then f (val1 ⟨j, h⟩) else 0
-  let g2 : Univ → NNReal := fun j =>
+  let g2 : Univ → Real := fun j =>
     if h : j ∈ D2 then f (val2 ⟨j, h⟩) else 0
-  let g3 : Univ → NNReal := fun j =>
+  let g3 : Univ → Real := fun j =>
     if h : j ∈ finsetSum D1 D2 then
       f (sumJoiner XJ val1 val2 joiner ⟨j, h⟩)
     else 0

@@ -11,7 +11,7 @@ lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁
       bindOutputState f (ro₁ query) =
       bindInputState f (ro₂ query)) :
   forall (init : stateType₁),
-  distancePMF
+  pdistancePMF
     (runDinstinguisher_inner dist ro₁ init)
     (do
       let init_v <- f init
@@ -20,7 +20,7 @@ lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁
   induction dist
   case pure v =>
     simp [advantage, runDinstinguisher_inner, simulateQ]
-    simp [distancePMF, distSelf]
+    simp [pdistancePMF, distSelf]
   case roll β cont Hind =>
     intro init
     simp [runDinstinguisher_inner_bind]

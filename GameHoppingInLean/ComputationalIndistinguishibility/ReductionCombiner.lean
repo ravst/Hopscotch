@@ -313,10 +313,7 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
       )
   })
 
-
 -- TODO: fomrulate lemma, that reductionCombiner_nontrivial.2 is eqivalnet to running 'do
-
-
 
 lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
   (dist : OracleComp (withPMFSpec O) Bool)
@@ -331,9 +328,8 @@ lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {
     else
       runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl)
   )
-  := by
-
-    sorry
+:= by
+  sorry
 
 lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
@@ -352,7 +348,6 @@ lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
       rhs
       simp [reductionCombinerCorrect_nontrivial_helper]
     repeat rw [<-advantage.eq_def]
-
     sorry
 
 

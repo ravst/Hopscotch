@@ -11,6 +11,9 @@ structure SingleAssumption where
   O : OracleSpec I
   i : RStateOracle O × RStateOracle O
 
+def SingleAssumption.reverse (x : SingleAssumption) : SingleAssumption :=
+  {x with i := (x.i.2, x.i.1)}
+
 /- Indistinguishability Assumptions are modeled as an indexed family of single assumptions.
 The index type is arbitrary, but we require it to be decidable, so that it is easier to
 count how many times each assumption is used in a proof. -/
