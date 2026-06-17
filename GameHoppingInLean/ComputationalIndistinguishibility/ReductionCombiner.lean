@@ -306,9 +306,9 @@ noncomputable def reductionCombiner_nontrivial {I1 I2 : Type} {O1 : OracleSpec I
     queries := fun q => (do
         let x <- orGet!
         match x with
-        | Sum.inl s =>
+        | Sum.inl _s =>
           addToStateL _ (x1.2.queries q)
-        | Sum.inr s =>
+        | Sum.inr _s =>
           addToStateR _ (x2.2.queries q)
       )
   })

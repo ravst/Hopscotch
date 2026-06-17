@@ -7,7 +7,7 @@ open Lean Meta
 
 namespace PMF
 
- /-- Rewrite a raw `PMF.bind` into monadic `do` notation. -/
+/-- Rewrite a raw `PMF.bind` into monadic `do` notation. -/
 @[GameHoppingSimplifyPMF]
 theorem bind_eq_do {α β : Type} (A : PMF α) (X : α → PMF β) :
     A.bind (fun a => X a) = (do

@@ -8,7 +8,7 @@ inductive IndCpaRandDomain : Type
 | ctxt (n : ℕ) (msg : BitVec n)
 
 def IndCpaRandSpec (C : ℕ → Type) : OracleSpec IndCpaRandDomain :=
-  fun ⟨n, q⟩ =>
+  fun ⟨n, _q⟩ =>
     C n
 
 /-- Convenience query constructor for the `ctxt(m)` oracle query. -/

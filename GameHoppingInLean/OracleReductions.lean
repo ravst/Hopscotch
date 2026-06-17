@@ -248,7 +248,6 @@ def applyReductionToAdversary {Output I₁ I₂ : Type} {O₁ : OracleSpec I₁}
         simulateQ (@defaultImpl I₁ O₁ state) comp
       let y : OracleComp (withPMFSpec O₁) (Output × state) := x init
       y <&> (fun x => x.1)
-
     let x : OracleComp (withPMFAndStateSpec reduction.stateType O₁) Output :=
       simulateQ (addPMFtoImpl2 reduction.queries) dist
     let y : reduction.stateType → OracleComp (withPMFSpec O₁) Output := lower x

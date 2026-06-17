@@ -5,7 +5,7 @@ import GameHoppingInLean.IndistinguishabilityAssumption
 
 /- # Indistinguishability Definition-/
 
-/-- In this file, we define the type called IndistinguisabilityI, which represents a proof
+/- In this file, we define the type called IndistinguisabilityI, which represents a proof
 of indistinguishability between two stateful random oracles. It is in Type and not in Prop,
 because we might want to inspect it to see how the indistinguishability is established,
 e.g. in order to estabilsh a concrete bound on the advantage of an adversary or to
@@ -19,7 +19,7 @@ def mk (I : Type) (O : OracleSpec I) (p : RStateOracle O × RStateOracle O)
   : (I : Type) × (O : OracleSpec I) × (RStateOracle O × RStateOracle O)
   := ⟨I, O, p⟩
 
-/-- Inductively generated indistinguishability relation for a fixed oracle spec.
+/- Inductively generated indistinguishability relation for a fixed oracle spec.
 
 Indexed by:
 * `Assumptions`: assumption pairs, per oracle spec.
@@ -31,7 +31,7 @@ The relation is homogeneous in `O`, but reduction steps may move to a different 
 by changing the index parameter of the conclusion. -/
 
 def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
-    (ro : Finset.range (l+1) -> RStateOracle O) (i : ℕ) (H : i <= l) : RStateOracle O :=
+    (ro : Finset.range (l + 1) -> RStateOracle O) (i : ℕ) (H : i <= l) : RStateOracle O :=
     ro ⟨i, by
       simp [Finset.range];
       exact Nat.eq_or_lt_of_le H
@@ -110,21 +110,21 @@ namespace Indistinguishable
 
 def of_ObsEq
     {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q_b : ENat}
+    {κ : ℕ} {q_b : ENat}
     {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
     (H : ObsEq ro₁ ro₂) :
     IndistinguishableI Assumptions κ q_b O ro₁ ro₂ :=
   IndistinguishableI.obsEqB q_b (by
     rw [ObsEq_from_none] at H
     apply ObsEqBounded_monotone
-    apply H
+    · apply H
     exact sup_eq_left.mp rfl
     )
 
 def transitive
     {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q_b : ENat}
-    {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O}:
+    {κ : ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {ro₁ ro₂ ro₃ : RStateOracle O} :
     (IndistinguishableI Assumptions κ q_b O ro₁ ro₂) ->
     (IndistinguishableI Assumptions κ q_b O ro₂ ro₃) ->
     (IndistinguishableI Assumptions κ q_b O ro₁ ro₃) :=
@@ -132,8 +132,8 @@ def transitive
 
 def symmetric
     {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q_b : ENat}
-    {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}:
+    {κ : ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O} :
     (IndistinguishableI Assumptions κ q_b O ro₁ ro₂) ->
     (IndistinguishableI Assumptions κ q_b O ro₂ ro₁) :=
   fun Ha => IndistinguishableI.symm q_b Ha
@@ -141,8 +141,8 @@ def symmetric
 @[refl]
 def reflexive
     {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q_b : ENat}
-    {I : Type} {O : OracleSpec I} {ro : RStateOracle O}:
+    {κ : ℕ} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {ro : RStateOracle O} :
     (IndistinguishableI Assumptions κ q_b O ro ro) :=
   by
     apply of_ObsEq
@@ -150,9 +150,9 @@ def reflexive
 
 def long_step
   {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q_b : ENat}
+    {κ : ℕ} {q_b : ENat}
     {I : Type} {O : OracleSpec I}
-    (l : ℕ) (ro : Finset.range (l+1) -> RStateOracle O)
+    (l : ℕ) (ro : Finset.range (l + 1) -> RStateOracle O)
     (ro_start : RStateOracle O) (ro_end :  RStateOracle O )
     (Hstart : IndistinguishableI Assumptions κ q_b O ro_start (ro ⟨0, zero_in_range _⟩))
     (Hend : IndistinguishableI Assumptions κ q_b O ro_end (ro ⟨l, n_in_range _⟩))
@@ -169,7 +169,7 @@ def long_step
     )
 
 noncomputable def indistinguishabilityI_mono {Assumptions : IndistinguishabilityAssumptions}
-    {κ :  ℕ} {q₁ q₂ : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    {κ : ℕ} {q₁ q₂ : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
     (hle : q₁ ≤ q₂) :
     IndistinguishableI Assumptions κ q₂ O ro₁ ro₂ →
     IndistinguishableI Assumptions κ q₁ O ro₁ ro₂ := by
@@ -191,9 +191,8 @@ noncomputable def indistinguishabilityI_mono {Assumptions : Indistinguishability
         (fun i Hi => ihStep i Hi hle)
 
 noncomputable def indistinguishabilityIUnboundedToBounded {Assumptions : IndistinguishabilityAssumptions}
-
-    {κ :  ℕ} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
-    (q_b : ℕ):
+    {κ : ℕ} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    (q_b : ℕ) :
     (IndistinguishableI Assumptions κ none O ro₁ ro₂) ->
     (IndistinguishableI Assumptions κ (some q_b) O ro₁ ro₂) :=
   indistinguishabilityI_mono (sup_eq_left.mp rfl)
@@ -204,7 +203,6 @@ namespace IndistinguishableI
 
 noncomputable instance instTransLeftUnbounded
     {Assumptions : IndistinguishabilityAssumptions}
-
     {κ : ℕ} {q_b : ENat} {I : Type} {O : OracleSpec I} :
     Trans
       (IndistinguishableI Assumptions κ none O)
@@ -217,7 +215,6 @@ noncomputable instance instTransLeftUnbounded
 
 noncomputable instance instTransRightUnbounded
     {Assumptions : IndistinguishabilityAssumptions}
-
     {κ : ℕ} {q_b : ENat} {I : Type} {O : OracleSpec I} :
     Trans
       (IndistinguishableI Assumptions κ q_b O)
@@ -236,7 +233,7 @@ def singleton (a : X) : X -> ℕ :=
 
 def AssumptionCounting (A : IndistinguishabilityAssumptions):= A.Idx -> ℕ
 
-def funAdd (f g : AssumptionCounting A ) : AssumptionCounting A := fun x => f x + g x
+def funAdd (f g : AssumptionCounting A) : AssumptionCounting A := fun x => f x + g x
 
 
 mutual
@@ -260,7 +257,7 @@ mutual
   def assumptionsUse
       {Assumptions : IndistinguishabilityAssumptions}
 
-      {κ :  ℕ} {q_b : ENat}
+      {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
       (ind : IndistinguishableI Assumptions κ q_b O ro₁ ro₂) : AssumptionCounting Assumptions :=
       match ind with

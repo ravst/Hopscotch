@@ -1,5 +1,3 @@
-
-
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
@@ -39,7 +37,7 @@ namespace PMF
 
 @[simp] lemma map_pure_eq_pure2 {α β : Type} (f : α → β) (a : α) :
     PMF.map f (pure a) = PMF.pure (f a) := by
-  simpa using (PMF.pure_map (f := f) a)
+  simp [(PMF.pure_map (f := f) a)]
 
 
 @[simp] lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
@@ -104,7 +102,7 @@ namespace RState
     (pure x : RState σ α) s = PMF.pure (x, s) := rfl
 
 noncomputable
-def modify (f : σ → σ ) : RState σ Unit := do
+def modify (f : σ → σ) : RState σ Unit := do
   let s ← get
   set (f s)
 
