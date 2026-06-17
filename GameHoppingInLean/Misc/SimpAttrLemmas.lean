@@ -59,6 +59,7 @@ attribute [OracleReductionSimps]
   monadLift
   MonadLift.monadLift
   OracleReduction.liftWithPMFAndState
+  OracleSpec.query
 -- OracleComp.instMonadLiftOracleQuery._aux_1
 -- PFunctor.FreeM.mapM
 
