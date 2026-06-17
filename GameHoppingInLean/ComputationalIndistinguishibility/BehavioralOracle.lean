@@ -36,6 +36,7 @@ noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : RStateOra
 end BehavioralOracle
 
 -- hard, we need to do conditional probabilities.
+-- the intuition is that when processing a list L of List (QueryWithResult O), we should run x.process on the list of inputs (ignoring outputs) and then condiiton on the fact that we previous queries (without last one) got outputs as specified in the list L. In the result we will get distribution on the outputs of last query asked.
 def behavioralOracle1to2 {I : Type u} {O : OracleSpec I} {q_b : ENat} (x : BehavioralOracle O q_b) : BehavioralOracle2 O q_b :=
   {
     process := sorry
