@@ -129,6 +129,116 @@ noncomputable def obse_eq_step
     · simp [AssumptionsUseT.empty, positiveP, positive]
   ⟩
 
+/-- A variant of `sumJoinerCorrect` whose joiner-correctness hypothesis only needs to
+hold for the actual values `val1`/`val2` at indices lying in both `D1` and `D2`
+(rather than for all elements of the fibers `XJ J`). This is what is needed when the
+joiner is only known to be correct under side conditions satisfied by the stored
+values (e.g. positivity). -/
+def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1 D2 : Finset Univ}
+  (val1 : (J : D1) -> XJ J)
+  (val2 : (J : D2) -> XJ J)
+  (joiner : {J : Univ} -> XJ J -> XJ J -> XJ J)
+  (f : {J : Univ} -> XJ J -> Real)
+  (Hjoiner : forall (j : Univ) (h1 : j ∈ D1) (h2 : j ∈ D2),
+    f (val1 ⟨j, h1⟩) + f (val2 ⟨j, h2⟩) = f (joiner (val1 ⟨j, h1⟩) (val2 ⟨j, h2⟩)))
+  : sumJoining XJ D1 D2 val1 val2 f (sumJoiner XJ val1 val2 joiner) := by
+  classical
+  let g1 : Univ → Real := fun j =>
+    if h : j ∈ D1 then f (val1 ⟨j, h⟩) else 0
+  let g2 : Univ → Real := fun j =>
+    if h : j ∈ D2 then f (val2 ⟨j, h⟩) else 0
+  let g3 : Univ → Real := fun j =>
+    if h : j ∈ finsetSum D1 D2 then
+      f (sumJoiner XJ val1 val2 joiner ⟨j, h⟩)
+    else 0
+  have hval1 :
+      (∑ j : D1, f (val1 j)) = ∑ j ∈ finsetSum D1 D2, g1 j := by
+    calc
+      (∑ j : D1, f (val1 j)) = ∑ j : D1, g1 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g1]
+      _ = ∑ j ∈ D1, g1 j := (Finset.sum_subtype D1 (by simp) g1).symm
+      _ = ∑ j ∈ finsetSum D1 D2, g1 j := by
+        apply Finset.sum_subset
+        · simp [finsetSum]
+        · intro j _ hj
+          simp [g1, hj]
+  have hval2 :
+      (∑ j : D2, f (val2 j)) = ∑ j ∈ finsetSum D1 D2, g2 j := by
+    calc
+      (∑ j : D2, f (val2 j)) = ∑ j : D2, g2 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g2]
+      _ = ∑ j ∈ D2, g2 j := (Finset.sum_subtype D2 (by simp) g2).symm
+      _ = ∑ j ∈ finsetSum D1 D2, g2 j := by
+        apply Finset.sum_subset
+        · simp [finsetSum]
+        · intro j _ hj
+          simp [g2, hj]
+  have hval3 :
+      (∑ j : finsetSum D1 D2, f (sumJoiner XJ val1 val2 joiner j)) =
+        ∑ j ∈ finsetSum D1 D2, g3 j := by
+    calc
+      (∑ j : finsetSum D1 D2, f (sumJoiner XJ val1 val2 joiner j)) =
+          ∑ j : finsetSum D1 D2, g3 j := by
+        apply Fintype.sum_congr
+        intro j
+        simp [g3]
+      _ = ∑ j ∈ finsetSum D1 D2, g3 j :=
+        (Finset.sum_subtype (finsetSum D1 D2) (by simp) g3).symm
+  simp only [sumJoining]
+  rw [hval1, hval2, hval3, ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro j hj
+  by_cases h1 : j ∈ D1 <;> by_cases h2 : j ∈ D2
+  · simpa [g1, g2, g3, sumJoiner, h1, h2, hj] using
+      Hjoiner j h1 h2
+  · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
+  · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
+  · simp [finsetSum, h1, h2] at hj
+
+/-- The combined number of uses produced by `reductionCombiner` is at least one,
+provided both inputs use their assumption at least once. -/
+lemma reductionCombiner_fst_ge {I : Type} {O : OracleSpec I} (assumption : SingleAssumption)
+  (x1 x2 : ℕ × (OracleReduction assumption.O O))
+  (h1 : x1.1 ≥ 1) (h2 : x2.1 ≥ 1) :
+  (reductionCombiner x1 x2).1 ≥ 1 := by
+  have H : ∀ x : assumption.I, Nonempty (assumption.O x) := non_trivial_spec assumption.i.1
+  rw [reductionCombiner, dif_pos H, reductionCombiner_nontrivial]
+  omega
+
+/-- `assumptionJoiner` preserves positivity, provided the joiner does. -/
+lemma assumptionJoiner_positive {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (val1 val2 : AssumptionsUseT Assumptions O)
+  (joiner : {J : Assumptions.Idx} ->
+    asUseType Assumptions O J -> asUseType Assumptions O J -> asUseType Assumptions O J)
+  (H1 : positive val1) (H2 : positive val2)
+  (Hjoiner : forall (J : Assumptions.Idx) (x1 x2 : asUseType Assumptions O J),
+    x1.1 ≥ 1 -> x2.1 ≥ 1 -> (joiner x1 x2).1 ≥ 1)
+  : positive (assumptionJoiner val1 val2 joiner) := by
+  intro i
+  obtain ⟨j, hj⟩ := i
+  simp only [assumptionJoiner, sumJoiner]
+  split_ifs with hd1 hd2 <;>
+    first
+    | exact H1 _
+    | exact H2 _
+    | exact Hjoiner j _ _ (H1 _) (H2 _)
+
+/-- The joint assumption-use built in `transitive_step` is positive. -/
+lemma transitive_step_positive {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (asc1 asc2 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+  (H1 : positiveP asc1) (H2 : positiveP asc2) :
+  positiveP (assumptionJoiner asc1.1 asc2.1 (fun a b => reductionCombiner a b),
+             assumptionJoiner asc1.2 asc2.2 (fun a b => reductionCombiner a b)) := by
+  refine ⟨?_, ?_⟩
+  · exact assumptionJoiner_positive _ _ _ H1.1 H2.1
+      (fun J x1 x2 hx1 hx2 => reductionCombiner_fst_ge _ x1 x2 hx1 hx2)
+  · exact assumptionJoiner_positive _ _ _ H1.2 H2.2
+      (fun J x1 x2 hx1 hx2 => reductionCombiner_fst_ge _ x1 x2 hx1 hx2)
+
 noncomputable def transitive_step
   {Assumptions : IndistinguishabilityAssumptions} [Fintype (Assumptions.Idx)]
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
@@ -149,29 +259,26 @@ noncomputable def transitive_step
       simp [advBound2]
       intro Hdepth
       simp [joint, jointr, assumptionJoiner]
-      have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
+      have HHx := sumJoinerCorrect' (fun J => asUseType Assumptions O J)
         asc1.1.values asc2.1.values (fun a b => reductionCombiner a b)
         (fun x => ascToReal dist _ x) (by
-          intro j x1 x2
-          simp []
+          intro j h1 h2
           apply reductionCombinerCorrect
-          sorry
+          exact ⟨Hasc1.2.1 ⟨j, h1⟩, Hasc2.2.1 ⟨j, h2⟩⟩
         )
       simp [sumJoining] at HHx
       rw [<-HHx]
       clear HHx
-      have HHx := sumJoinerCorrect (fun J => asUseType Assumptions O J)
+      have HHx := sumJoinerCorrect' (fun J => asUseType Assumptions O J)
         asc1.2.values asc2.2.values (fun a b => reductionCombiner a b)
         (fun x => ascToReal dist _ x) (by
-          intro j x1 x2
-          simp []
+          intro j h1 h2
           apply reductionCombinerCorrect
-          sorry
+          exact ⟨Hasc1.2.2 ⟨j, h1⟩, Hasc2.2.2 ⟨j, h2⟩⟩
         )
       simp [sumJoining] at HHx
       rw [<-HHx]
       clear HHx
-
       rw [(advatangeTriangle _ rm _)]
       -- rw [advBoundEq] at Hasc1 Hasc2
       -- simp [advBound2] at Hasc1 Hasc2
@@ -179,7 +286,7 @@ noncomputable def transitive_step
       rw [(Hasc2.1 dist Hdepth)]
       simp []
       apply sub_add_sub_comm
-    · sorry
+    · exact transitive_step_positive asc1 asc2 Hasc1.2 Hasc2.2
     )
   ⟩
 
@@ -230,6 +337,23 @@ by
   apply sum_ge_entry
   assumption
 
+/-- Composing the stored reductions with a fixed reduction `r` (as done in the
+`complexInitReduction` case of `symbolicSoundness`) preserves positivity, since the
+number-of-uses components are left untouched. -/
+lemma complexInit_positive {Assumptions : IndistinguishabilityAssumptions}
+  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (asc : AssumptionsUseT Assumptions O1 × AssumptionsUseT Assumptions O1)
+  (r : OracleReduction O1 O2)
+  (Hasc : positiveP asc) :
+  positiveP
+    (({ subset := asc.1.subset,
+        values := fun x ↦ ((asc.1.values x).1, ComplexInitReduction2_compose (asc.1.values x).2 r) }
+          : AssumptionsUseT Assumptions O2),
+     ({ subset := asc.2.subset,
+        values := fun x ↦ ((asc.2.values x).1, ComplexInitReduction2_compose (asc.2.values x).2 r) }
+          : AssumptionsUseT Assumptions O2)) := by
+  exact ⟨Hasc.1, Hasc.2⟩
+
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       [Fintype (Assumptions.Idx)]
       {κ : ℕ} {q_b : ENat}
@@ -238,13 +362,11 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       {asc // advBoundQ Assumptions q_b O o₁ o₂ asc ∧ positiveP asc}
 | IndistinguishableI.assumption idx =>
   ⟨(
-    {subset := {idx}, values := fun xp => by
-      cases xp
-      case mk xp' Hxp =>
-      simp []
-      simp at Hxp
-      rw [Hxp]
-      exact (1, OracleReduction.identity (Assumptions.assumptions idx).O)
+    {subset := {idx}, values := fun xp =>
+      (1, by
+        have hxp1 : xp.1 = idx := Finset.mem_singleton.mp xp.2
+        rw [hxp1]
+        exact OracleReduction.identity (Assumptions.assumptions idx).O)
     }, AssumptionsUseT.empty _ _),
     by
     constructor
@@ -255,11 +377,10 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       simp [ascToReal]
       rw [applyComplexInitReduction2_identity]
       simp [AssumptionsUseT.empty]
-    · simp [positiveP, positive, AssumptionsUseT.empty]
-      intro a Ha
-      apply Nat.le_of_eq
-      sorry
-
+    · refine ⟨?_, ?_⟩
+      · intro i
+        exact le_refl 1
+      · simp [positive, AssumptionsUseT.empty]
   ⟩
 | IndistinguishableI.obsEqB a b =>
   obse_eq_step o₁ o₂ b
@@ -291,7 +412,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
           simp [ascToReal]
           rw [ComplexInitReduction2_compose_apply]
           simp []
-      · sorry
+      · exact complexInit_positive asc r Hasc.2
       ⟩
 | IndistinguishableI.symm q_b ind  =>
     let re := symbolicSoundness ind
