@@ -63,7 +63,8 @@ namespace PMF
     simpa using (ENNReal.tsum_prod' (f := fun p : A × B => (f p) x))
   simp [PMF.bind_apply, Fintype.card_prod, ENNReal.mul_inv, ENNReal.tsum_mul_left,
     mul_assoc, mul_left_comm, mul_comm, hprod]
-  sorry
+  simp [<-Finset.mul_sum]
+  rw [Fintype.sum_prod_type fun x_1 ↦ (f x_1) x]
 
 end PMF
 
@@ -680,11 +681,8 @@ lemma mapStateContra_bind {α β s₁ s₂} [Nonempty s₁]
       (get : RState σ σ) >>= fun st => rest x st) : RState σ β) s =
       StateT.run (((get : RState σ σ) >>= fun st =>
         (liftM X : RState σ α) >>= fun x => rest x st) : RState σ β) s
-  sorry
-  -- simp [StateT.run_bind, get, StateT.run_lift, StateT.get, PMF.bind_bind]
-  -- simpa using
-  --   (PMF.bind_comm (p := X) (q := StateT.get.run s)
-  --     (f := fun a st => StateT.run (rest a st.1) st.2))
+  simp [StateT.run]
+  rfl
 
 /-- Collapse two consecutive `get`s into one. -/
 @[simp] lemma do_get_get {σ α}
