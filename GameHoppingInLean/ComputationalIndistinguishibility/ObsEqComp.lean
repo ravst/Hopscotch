@@ -1,4 +1,5 @@
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishibility.BehavioralOracle
 import GameHoppingInLean.ObservationalEquvialence
 import Mathlib.Data.ENat.Lattice
 
@@ -77,38 +78,42 @@ lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
     apply Habs.2
 
 
--- lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O) (Hdist : FreeMonad.depth dist <= q_b):
---   advantage dist o (rState2Rstate q_b o) = 0 := by sorry
-
--- lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
---   BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by sorry
-
 noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
 | PFunctor.FreeM.pure _ => 0
 | PFunctor.FreeM.roll _input cont =>
   1 + iSup (fun u => depth (cont u))
+
+lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O)
+  (Hdist : FreeM.depth dist <= q_b):
+  runDinstinguisher dist o = runDinstinguisher dist (rState2Rstate q_b o) := by sorry
+
+lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
+  BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by sorry
+
 
 
 lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
     runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
 by
-  -- have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
-  -- have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
-  -- have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
-  -- have H3 : advantage dist (rState2Rstate q_b ro₁) (rState2Rstate q_b ro₂) = 0 := by
-  --   simp [rState2Rstate]
-  --   rw [H3p]
-  --   apply advantageRefl
-  -- rw [<-nonpos_iff_eq_zero]
+  have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
+  have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
+  have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
+  have H3 : runDinstinguisher dist (rState2Rstate q_b ro₁) = runDinstinguisher dist (rState2Rstate q_b ro₂)
+  := by
+    simp [rState2Rstate]
+    rw [H3p]
+  rw [H1, H2, H3]
 
-  -- calc
-  --   advantage dist ro₁ ro₂ <=
-  -- have F : advantage dist ro₁ ro₂ <= 0 := by
-    -- apply distancePMFtriangle
-    -- sorry
-  -- calc??
-  sorry
+lemma obsEq_distinquishing_adv (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+  (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
+    advantage dist ro₁ ro₂ = 0 :=
+by
+  simp [advantage, pdistancePMF]
+  rw [obsEq_distinquishing ro₁ ro₂ q_b]
+  ·  simp []
+  · assumption
+  · assumption
 
 lemma obsEq_distinquishing_ub (ro₁ ro₂ : RStateOracle O) (obs_eq : ObsEq ro₁ ro₂)
   (dist : adversaryT O) :
