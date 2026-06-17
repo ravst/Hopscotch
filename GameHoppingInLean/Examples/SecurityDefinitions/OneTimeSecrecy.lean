@@ -9,7 +9,7 @@ structure OneTimeSecrecyState (PubK : Type) where
 /-- One-time secrecy oracle spec:
 * `getPk`: no arguments, returns the public key
 * `eavesdrop`: input `(m₀, m₁)` and output a ciphertext -/
-abbrev OneTimeSecrecySpec (PubK M C : Type) : OracleSpec IndCpaPubQ :=
+abbrev OneTimeSecrecySpec (PubK M C : Type) : OracleSpec (IndCpaPubQ M) :=
   IndCpaPubSpec PubK M C
 
 /-- Convenience query constructor for requesting the public key. -/
@@ -33,19 +33,17 @@ noncomputable def OneTimeSecrecyL {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure { pk := pk, eavesdropCount := 0 }
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun input => match input with
+      | .getPk => do
           let st <- get
           pure st.pk
-      | .eavesdrop, (m₀, _m₁) => do
+      | .eavesdrop (m₀, _m₁) => do
           let st <- get
           set { st with eavesdropCount := st.eavesdropCount + 1 }
           if st.eavesdropCount = 0 then
             scheme.encrypt st.pk m₀
           else
             pure (default : C)
-  }
 
 /-- Right one-time secrecy oracle:
 * `getPk` returns the public key
@@ -58,19 +56,17 @@ noncomputable def OneTimeSecrecyR {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure { pk := pk, eavesdropCount := 0 }
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun input => match input with
+      | .getPk => do
           let st <- get
           pure st.pk
-      | .eavesdrop, (_m₀, m₁) => do
+      | .eavesdrop (_m₀, m₁) => do
           let st <- get
           set { st with eavesdropCount := st.eavesdropCount + 1 }
           if st.eavesdropCount = 0 then
             scheme.encrypt st.pk m₁
           else
             pure (default : C)
-  }
 
 /-- The oracle pair corresponding to the one-time secrecy assumption, for use in an
 `Assumptions` set. -/
@@ -81,8 +77,8 @@ noncomputable def OneTimeSecrecyAssumption {PubK SecK M C : Type}
 
 noncomputable def OneTimeSecrecyAssumptionFull {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    SingleAssumption where
-  I := IndCpaPubQ
+  SingleAssumption where
+  I := IndCpaPubQ M
   O := OneTimeSecrecySpec PubK M C
   i := OneTimeSecrecyAssumption scheme
 
@@ -95,8 +91,7 @@ noncomputable def OneTimeSecrecyAssumption' {PubK SecK M C : Type}
 /-- One-time secrecy security definition as an instance of `Indistinguishable`. -/
 def OneTimeSecrecyDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (OneTimeSecrecyL scheme)
     (OneTimeSecrecyR scheme)

@@ -47,5 +47,3 @@ noncomputable def indCpaRandImpliesIndCpa (schemeFam : SymEncSchemeFamily)
     (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandReal (schemeFam.scheme κ)),
     IndCpaR (schemeFam.scheme κ)
   ]
-  · sorry
-  · sorry
