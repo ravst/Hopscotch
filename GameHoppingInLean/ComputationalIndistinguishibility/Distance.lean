@@ -46,6 +46,10 @@ lemma distSymm (x y : NNReal) : distance x y = distance y x := by
 lemma disPMFSymm (x y) : distancePMF x y = distancePMF y x := by
   simp [distancePMF, distSymm]
 
+lemma pdisPMFSymm (x y) : pdistancePMF x y = - pdistancePMF y x := by
+  simp [pdistancePMF]
+
+
 lemma distTriangle {x : NNReal} (y : NNReal) {z : NNReal} : distance x z ≤ distance x y + distance y z := by
   simp [distance]
   apply dist_triangle
