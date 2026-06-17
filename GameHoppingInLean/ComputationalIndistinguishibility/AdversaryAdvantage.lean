@@ -126,8 +126,6 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
         rw [h]
       simp [addPMFtoImpl2]
       simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
-      simp [OracleQuery.input, OracleSpec.query]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
       rfl
 
 open OracleReduction in
@@ -234,7 +232,7 @@ def CompIndistinguishabilitySeededOracle
     -- ... that run in polynomial time ...
     (IsPolyTime distinguisher) ->
     -- ... only achieve negligible advantage.
-    pnegl (advantageFam distinguisher o1 o2)
+    negl (advantageFam distinguisher o1 o2)
 
 
 noncomputable def ascToReal {I : Type} {O : OracleSpec I}
