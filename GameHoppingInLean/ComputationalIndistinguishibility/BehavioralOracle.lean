@@ -1,7 +1,7 @@
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 
-structure BehavioralOracle {I : Type u} (O : OracleSpec  I) (q_b : ENat): Type _ where
+structure BehavioralOracle {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type _ where
   process : (l : List (O.Domain)) -> (l.length <= q_b) -> PMF (List (QueryWithResult O))
   no_look_ahead : forall (ql : List (O.Domain)) (H : ql.length+1 <= q_b) (x1 x2 : O.Domain),
     (process (List.cons x1 ql) H).map (List.tail) =
@@ -18,7 +18,7 @@ structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type 
 
 namespace BehavioralOracle
 
-lemma BehavioralOracleLengthPreserving {I : Type} {O : OracleSpec  I} {q_b} (x : BehavioralOracle O q_b) :
+lemma BehavioralOracleLengthPreserving {I : Type} {O : OracleSpec I} {q_b} (x : BehavioralOracle O q_b) :
   forall (ql : List (O.Domain)) (H : ql.length <= q_b), pure ql.length = (x.process ql H).map List.length :=
 by
   sorry
@@ -36,7 +36,7 @@ noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : RStateOra
 end BehavioralOracle
 
 -- hard, we need to do conditional probabilities.
-def behavioralOracle1to2 {I : Type u} {O : OracleSpec  I} {q_b : ENat} (x : BehavioralOracle O q_b) : BehavioralOracle2 O q_b :=
+def behavioralOracle1to2 {I : Type u} {O : OracleSpec I} {q_b : ENat} (x : BehavioralOracle O q_b) : BehavioralOracle2 O q_b :=
   {
     process := sorry
     good_spec := x.good_spec
@@ -58,9 +58,9 @@ noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b :
           let out : O.Range q := Classical.choice (x.good_spec q)
           pure out
 
-noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec  I} {q_b : ENat}
+noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec I} {q_b : ENat}
   (x : BehavioralOracle O q_b) : RStateOracle O :=
   behavioralOracle2toRstate (behavioralOracle1to2 x)
 
-noncomputable def rState2Rstate {I : Type} {O : OracleSpec  I} (q_b : ENat) (x : RStateOracle O) : RStateOracle O :=
+noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : RStateOracle O) : RStateOracle O :=
   behavioralOracle1toRstate (BehavioralOracle.into q_b x)
