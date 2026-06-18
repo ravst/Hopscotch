@@ -126,8 +126,6 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
         rw [h]
       simp [addPMFtoImpl2]
       simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
-      simp [OracleQuery.input, OracleSpec.query]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
       rfl
 
 open OracleReduction in

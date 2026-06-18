@@ -46,7 +46,8 @@ noncomputable def IndCpaAssumptionFull {K : Type} {C : ℕ → Type} (scheme : S
     SingleAssumption :=
   ⟨IndCpaDomain, IndCpaSpec C, IndCpaAssumption scheme⟩
 
-noncomputable def IndCpaAssumption' (schemeFam : SymEncSchemeFamily) (κ : ℕ) :
+noncomputable def IndCpaAssumption' {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C) (κ : ℕ) :
     IndistinguishabilityAssumptions where
   Idx := Unit
   assumptions := fun _ => IndCpaAssumptionFull (schemeFam.scheme κ)
@@ -62,7 +63,7 @@ def IndCpaDef
 /-- IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaIFam
     (Assumptions : (κ : ℕ) -> IndistinguishabilityAssumptions)
-    (schemeFam : SymEncSchemeFamily) : Type 1 :=
+    {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
   forall κ,
   IndistinguishableI (Assumptions κ) κ none _
     (IndCpaL (schemeFam.scheme κ)) (IndCpaR (schemeFam.scheme κ))
