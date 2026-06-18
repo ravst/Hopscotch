@@ -1,0 +1,19 @@
+# Summary of changes for run e3d13779-e4ec-4e37-aeb8-be3833593266
+I filled both `sorry`s in `GameHoppingInLean/ComputationalIndistinguishibility/ObsEqComp.lean`, so that file (and the whole project) now builds with **no `sorry`**, and the affected theorems depend only on the standard axioms `propext`, `Classical.choice`, `Quot.sound`.
+
+The two originally-unproven lemmas were:
+
+1. `behavioral_eq_from_obsEq` — bounded observational equivalence of two oracles implies their behavioural oracles (`BehavioralOracle.into`) are equal. Short proof: reduce to equality of the `process` fields and apply the hypothesis to the reversed query list.
+
+2. `rState2Rstate_non_dist` — the hard one (the original authors marked it "quite hard" and left it open): passing an adversary through the behavioural-oracle round-trip `rState2Rstate q_b o` does not change its output distribution, provided the adversary asks at most `q_b` queries. With it, the downstream lemmas `obsEq_distinquishing`, `obsEq_distinquishing_adv`, and `obsEq_distinquishing_ub` are now fully proven too.
+
+To prove (2) I added a new, self-contained, Mathlib-only file `GameHoppingInLean/ComputationalIndistinguishibility/PMFDisintegration.lean` containing the probability-theoretic core (all fully proven):
+- `PMF.condOn` (defaulted conditioning) and the disintegration law `PMF.map_bind_condOn_fiber`;
+- conditioning algebra: `PMF.condOn_eq_self`, `PMF.condOn_map`, `PMF.condOn_condOn`, `PMF.condOn_bind_of_upstream`, `PMF.condOn_congr_on_support`, `PMF.map_congr_on_support`, `PMF.bindCongrOnSupport`;
+- a generic adaptive-computation model `GTree` with evaluator `geval`/`GTree.depth`, and the key induction `geval_reconstruct`: if a reconstructed oracle and a conditional-state map satisfy a one-step compatibility square (within budget, on reachable states), then any bounded-depth computation has the same output distribution against the original kernel and against the reconstruction.
+
+In `ObsEqComp.lean` I then built the bridge from the concrete VCVio constructions to this generic lemma: `toGTree` (free-monad → `GTree`), the `geval`/`simulateQ` correspondence, depth agreement, the conditional-state `condState`, the reconstructed-oracle query equation `rState2Rstate_queries_eq`, the joint-distribution append lemma, a reachability predicate with its preservation (`reachT`, `Hstep_reach`), and the central conditional-probability identities (`condState_bind_query_eq`, `behavioral_process_eq`, `hstep`) which discharge the compatibility square via the disintegration engine.
+
+Note on tooling: the automated prover could not load this project directly because a VCVio dependency (`ToMathlib.PFunctor.*`) is compiled with Lean's experimental `module` system, whose split data files its loader could not find (reported separately). I worked around this by isolating all reusable, dependency-free probability lemmas into the new Mathlib-only file (where automation does work) and assembling the VCVio-typed remainder by hand.
+
+Verification: `lake build` completes successfully for the whole project; `GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp` and `...PMFDisintegration` contain no `sorry`/`axiom`/`@[implemented_by]`; and `#print axioms` for `rState2Rstate_non_dist`, `behavioral_eq_from_obsEq`, and `obsEq_distinquishing_ub` lists only `[propext, Classical.choice, Quot.sound]`.
