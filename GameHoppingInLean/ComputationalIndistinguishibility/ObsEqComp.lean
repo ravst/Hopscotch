@@ -6,6 +6,38 @@ import GameHoppingInLean.Misc.SimpAttrLemmas
 import Mathlib.Data.ENat.Lattice
 
 
+
+noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
+| PFunctor.FreeM.pure _ => 0
+| PFunctor.FreeM.roll _input cont =>
+  1 + iSup (fun u => depth (cont u))
+
+lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Type}
+    (q_b : ℕ∞)
+    (okernel : (i : I) → S → PMF (O i × S))
+    (ostep : (i : I) → T → PMF (O i × T))
+    (cs : T → PMF S)
+    (lvl : T → ℕ∞)
+    (reach : T → Prop)
+    (Hstep_reach : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
+      ∀ p ∈ (ostep i τ).support, lvl p.2 = lvl τ + 1 ∧ reach p.2)
+    (HSTEP : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
+      (cs τ).bind (okernel i) =
+        (ostep i τ).bind (fun p => (cs p.2).map (fun s' => (p.1, s'))))
+    : ∀ (c : OracleComp (withPMFSpec O) X) (τ : T), reach τ → lvl τ + FreeM.depth c ≤ q_b →
+        (cs τ).bind (fun s => (simulateQ (addPMFtoImpl okernel) c s).map Prod.fst) =
+        (simulateQ (addPMFtoImpl ostep) c τ).map Prod.fst := by
+  intro c
+  induction c
+  case pure val =>
+    sorry
+  case roll q cont Hind =>
+    cases q
+    case oracle l =>
+      sorry
+    case sample l =>
+      sorry
+
 lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
   (ro₁ : QueryImpl O (RState stateType₁))
   (ro₂ : QueryImpl O (RState stateType₂))
@@ -80,10 +112,6 @@ lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
     apply Habs.2
 
 
-noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
-| PFunctor.FreeM.pure _ => 0
-| PFunctor.FreeM.roll _input cont =>
-  1 + iSup (fun u => depth (cont u))
 
 lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
   BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by
@@ -96,49 +124,49 @@ lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_
     exact H
   rw [this]
 
-/-- Convert an adaptive oracle computation (a free monad over `withPMFSpec O`) into the generic
-`GTree` of `PMFDisintegration`, separating real oracle queries from sampling nodes. -/
-noncomputable def toGTree {I : Type} {O : OracleSpec I} {X : Type} :
-    OracleComp (withPMFSpec O) X → GTree I O.Range X
-  | .pure x => .pure x
-  | .roll (withPMFI.oracle i) cont => .oracle i (fun r => toGTree (cont r))
-  | .roll (withPMFI.sample d) cont => .sample d (fun r => toGTree (cont r))
+-- /-- Convert an adaptive oracle computation (a free monad over `withPMFSpec O`) into the generic
+-- `GTree` of `PMFDisintegration`, separating real oracle queries from sampling nodes. -/
+-- noncomputable def toGTree {I : Type} {O : OracleSpec I} {X : Type} :
+--     OracleComp (withPMFSpec O) X → GTree I O.Range X
+--   | .pure x => .pure x
+--   | .roll (withPMFI.oracle i) cont => .oracle i (fun r => toGTree (cont r))
+--   | .roll (withPMFI.sample d) cont => .sample d (fun r => toGTree (cont r))
 
-/-- Running the simulation of `c` against `o` equals the generic `geval` of its `GTree`. -/
-theorem geval_simulate_corr {I : Type} {O : OracleSpec I} {X : Type} (o : RStateOracle O) :
-    ∀ (c : OracleComp (withPMFSpec O) X) (s : o.stateType),
-    StateT.run (simulateQ (addPMFtoImpl o.queries) c) s
-      = geval (fun i s => (o.queries i) s) (toGTree c) s := by
-  intro c
-  induction c with
-  | pure x => intro s; simp [toGTree, simulateQ, geval]
-  | roll a cont ih =>
-      intro s
-      cases a with
-      | oracle i =>
-          rw [simulateQ_roll, StateT.run_bind]
-          simp only [toGTree, geval, addPMFtoImpl]
-          congr 1; funext p; exact ih p.1 p.2
-      | sample d =>
-          rw [simulateQ_roll, StateT.run_bind]
-          simp only [toGTree, geval, addPMFtoImpl]
-          have h1 : (StateT.run (liftM d) s : PMF _) = d >>= fun a => Pure.pure (a, s) := rfl
-          rw [h1, bind_assoc]
-          change d.bind _ = d.bind _
-          congr 1; funext a
-          change (PMF.pure (a, s)).bind _ = _
-          rw [PMF.pure_bind]
-          exact ih a s
+-- /-- Running the simulation of `c` against `o` equals the generic `geval` of its `GTree`. -/
+-- theorem geval_simulate_corr {I : Type} {O : OracleSpec I} {X : Type} (o : RStateOracle O) :
+--     ∀ (c : OracleComp (withPMFSpec O) X) (s : o.stateType),
+--     StateT.run (simulateQ (addPMFtoImpl o.queries) c) s
+--       = geval (fun i s => (o.queries i) s) (toGTree c) s := by
+--   intro c
+--   induction c with
+--   | pure x => intro s; simp [toGTree, simulateQ, geval]
+--   | roll a cont ih =>
+--       intro s
+--       cases a with
+--       | oracle i =>
+--           rw [simulateQ_roll, StateT.run_bind]
+--           simp only [toGTree, geval, addPMFtoImpl]
+--           congr 1; funext p; exact ih p.1 p.2
+--       | sample d =>
+--           rw [simulateQ_roll, StateT.run_bind]
+--           simp only [toGTree, geval, addPMFtoImpl]
+--           have h1 : (StateT.run (liftM d) s : PMF _) = d >>= fun a => Pure.pure (a, s) := rfl
+--           rw [h1, bind_assoc]
+--           change d.bind _ = d.bind _
+--           congr 1; funext a
+--           change (PMF.pure (a, s)).bind _ = _
+--           rw [PMF.pure_bind]
+--           exact ih a s
 
-/-- The generic `GTree` depth agrees with `FreeM.depth`. -/
-theorem toGTree_depth {I : Type} {O : OracleSpec I} {X : Type} (c : OracleComp (withPMFSpec O) X) :
-    GTree.depth (toGTree c) = FreeM.depth c := by
-  induction c with
-  | pure x => simp [toGTree, GTree.depth, FreeM.depth]
-  | roll a cont ih =>
-      cases a with
-      | oracle i => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
-      | sample d => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
+-- /-- The generic `GTree` depth agrees with `FreeM.depth`. -/
+-- theorem toGTree_depth {I : Type} {O : OracleSpec I} {X : Type} (c : OracleComp (withPMFSpec O) X) :
+--     GTree.depth (toGTree c) = FreeM.depth c := by
+--   induction c with
+--   | pure x => simp [toGTree, GTree.depth, FreeM.depth]
+--   | roll a cont ih =>
+--       cases a with
+--       | oracle i => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
+--       | sample d => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
 
 /-- The conditional distribution of `o`'s internal state given that the observable transcript so
 far equals `τ` (recorded newest-first).  We replay the chronological queries `(τ.reverse).map input`
@@ -249,7 +277,7 @@ lemma condState_bind_query_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O)
   unfold condState
   rw [runQueries2_append_single o ((τ.reverse).map QueryWithResult.input) i]
   rw [PMF.condOn_bind_of_upstream (runQueries2 o ((τ.reverse).map QueryWithResult.input))
-        (fun p => ((o.queries i) p.2).map (fun q => (p.1 ++ [(⟨i, q.1⟩ : QueryWithResult O)], q.2)))
+        (fun p => ((o.queries i) p.2).map (fun r => (p.1 ++ [(⟨i, r.1⟩ : QueryWithResult O)], r.2)))
         {p | p.1.dropLast = τ.reverse} {p | p.1 = τ.reverse} ?compat]
   · rw [PMF.map_bind, PMF.bind_map]
     congr 1
@@ -499,14 +527,21 @@ lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat
     rw [heq2]; exact hpw_mem0.2
   · rw [hpw1]; simp [List.reverse_cons]
 
+-- /-- `runDinstinguisher` expressed through the generic `geval`. -/
+-- lemma runDinstinguisher_geval {I : Type} {O : OracleSpec I} (o : RStateOracle O) (dist : adversaryT O) :
+--     runDinstinguisher dist o =
+--       o.initialState.bind (fun s => (geval (fun i s => (o.queries i) s) (toGTree dist) s).map Prod.fst) := by
+--   simp only [runDinstinguisher]
+--   congr 1; funext init
+--   rw [← geval_simulate_corr o dist init]
+--   rfl
+
 /-- `runDinstinguisher` expressed through the generic `geval`. -/
-lemma runDinstinguisher_geval {I : Type} {O : OracleSpec I} (o : RStateOracle O) (dist : adversaryT O) :
+lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : RStateOracle O) (dist : adversaryT O) :
     runDinstinguisher dist o =
-      o.initialState.bind (fun s => (geval (fun i s => (o.queries i) s) (toGTree dist) s).map Prod.fst) := by
+      o.initialState.bind (fun s => (simulateQ (addPMFtoImpl (o.queries)) (dist) s).map Prod.fst) := by
   simp only [runDinstinguisher]
-  congr 1; funext init
-  rw [← geval_simulate_corr o dist init]
-  rfl
+  congr 1
 
 /- This lemma states that passing an adversary through the behavioural-oracle round trip
 `rState2Rstate` does not change its output distribution, provided the adversary asks at most `q_b`
@@ -515,13 +550,15 @@ queries.  It is reduced (via the generic `geval_reconstruct`) to the conditional
 lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O)
   (Hdist : FreeM.depth dist <= q_b) :
   runDinstinguisher dist o = runDinstinguisher dist (rState2Rstate q_b o) := by
-  have key := geval_reconstruct q_b (fun i s => (o.queries i) s)
+  have key2 := abstraction_with_levels_and_reach q_b (fun i s => (o.queries i) s)
       (fun i τ => ((rState2Rstate q_b o).queries i) τ) (condState o) (fun τ => (τ.length : ℕ∞))
-      (reachT o) (Hstep_reach o q_b) (hstep o q_b) (toGTree dist) [] (reachT_nil o)
-      (by simpa [toGTree_depth] using Hdist)
-  rw [condState_nil] at key
-  rw [runDinstinguisher_geval o dist, key, runDinstinguisher_geval (rState2Rstate q_b o) dist,
-      show (rState2Rstate q_b o).initialState = PMF.pure [] from rfl, PMF.pure_bind]
+      (reachT o) (Hstep_reach o q_b) (hstep o q_b) (dist) [] (reachT_nil o)
+      (by simpa [] using Hdist)
+  rw [condState_nil] at key2
+  rw [runDinstinguisher_unfold o dist]
+  rw [runDinstinguisher_unfold (rState2Rstate q_b o) dist]
+  rw [key2]
+  rw [show (rState2Rstate q_b o).initialState = PMF.pure [] from rfl, PMF.pure_bind]
 
 
 
