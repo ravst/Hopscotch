@@ -32,13 +32,12 @@ def IndCpaRand_to_IndCpaR {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C
 
 /-- IND-CPA left/right indistinguishability derived from IND-CPA-rand indistinguishability,
 via the two simple reductions. -/
-noncomputable def indCpaRandImpliesIndCpa (schemeFam : SymEncSchemeFamily)
-    [∀ κ n, Fintype (schemeFam.C κ n)] [∀ κ n, Nonempty (schemeFam.C κ n)]
+noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
     :
     IndCpaIFam (IndCpaRandAssumption' schemeFam) schemeFam := by
   intro κ
-  -- TODO: line below breaks proof :-(
-  -- generalize (schemeFam.scheme κ) = scheme
   game_hopping [
     IndCpaL (schemeFam.scheme κ),
     (IndCpaRand_to_IndCpaL) ◇ (IndCpaRandReal (schemeFam.scheme κ)),

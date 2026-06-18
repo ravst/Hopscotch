@@ -28,8 +28,7 @@ lemma identity_roundtrip {Output I : Type} {O : OracleSpec I}
         simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
           addPMFtoImpl2]
         simp [ih]
-        simp [PFunctor.FreeM.lift]
-        rfl
+        simp [bind, pure]
 
 lemma applyComplexInitReduction2_identity {Output I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Output)

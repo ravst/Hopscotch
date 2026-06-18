@@ -50,8 +50,9 @@ noncomputable def IndCpaRandAssumptionFull {K : Type} {C : ℕ → Type}
     SingleAssumption :=
   ⟨IndCpaRandDomain, IndCpaRandSpec C, IndCpaRandAssumption scheme⟩
 
-noncomputable def IndCpaRandAssumption' (schemeFam : SymEncSchemeFamily)
-    [∀ κ n, Fintype (schemeFam.C κ n)] [∀ κ n, Nonempty (schemeFam.C κ n)]
+noncomputable def IndCpaRandAssumption' {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
     (κ : ℕ) :
     IndistinguishabilityAssumptions where
     Idx := Unit

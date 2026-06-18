@@ -59,3 +59,19 @@ def OTUCDef
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   Indistinguishable Assumptions
      (OTUC_Real scheme) (OTUC_Rand scheme)
+
+/-- Pointwise OTUC assumptions for a symmetric-encryption scheme family. -/
+noncomputable def OTUCAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
+    (κ : ℕ) : IndistinguishabilityAssumptions :=
+  OTUCAssumption' (schemeFam.scheme κ)
+
+/-- OTUC security for a symmetric-encryption scheme family. -/
+def OTUCIFam
+    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] : Type 1 :=
+  ∀ κ,
+    IndistinguishableI (Assumptions κ) κ none _
+      (OTUC_Real (schemeFam.scheme κ)) (OTUC_Rand (schemeFam.scheme κ))

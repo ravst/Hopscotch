@@ -2,115 +2,62 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OTUC
 import GameHoppingInLean.Examples.Constructions.DoubleSymEnc
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.PMFLiftOrder
+import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Misc.PMFLemmas
 
+open scoped OracleReduction
+
+attribute [local game_hopping_unfold] doubleSymEnc doubleSymEncFamily
+
+@[local simp, local OracleReductionSimps]
+theorem OTUCSpec_range_ctxt {C : ℕ → Type} {n : ℕ} (m : BitVec n) :
+    (OTUCSpec C).Range (OTUCDomain.ctxt n m) = C n := rfl
+
+@[local simp, local OracleReductionSimps]
+theorem OTUCDomain_ctxt_fst {n : ℕ} (m : BitVec n) :
+    (OTUCDomain.ctxt n m).1 = n := rfl
 
 /-- `R1`: reduction from inner-OTUC (`T`) to outer-OTUC (`Double(S,T)`).
 On query `m`, sample an `S` key, encrypt with `S`, then delegate to the input OTUC oracle. -/
+@[game_hopping_unfold]
 noncomputable def OUTCInner_to_OUTCDouble_R1 {K₁ : Type} {C : ℕ → Type}
-    (S : SymEncScheme K₁ BitVec) : RReduction (OTUCSpec C) (OTUCSpec C) where
-  impl n m := do
-        let ks ← RReduction.sample S.keyGen
-        let m' ← RReduction.sample (S.encrypt ks m)
-        RReduction.query n m'
+    (S : SymEncScheme K₁ BitVec) : OracleReduction (OTUCSpec C) (OTUCSpec C) where
+  stateType := Unit
+  initialState := pure ()
+  queries := fun ⟨n, m⟩ => do
+    let ks ← OracleReduction.sample S.keyGen
+    let m' ← OracleReduction.sample (S.encrypt ks m)
+    OracleReduction.query (OTUCDomain.ctxt n m')
 
 /-- Explicit intermediate game `G1`:
 sample an `S` key, encrypt the message with `S`, ignore that result, and output random ciphertext. -/
+@[game_hopping_unfold]
 noncomputable def OUTC_G1 {K₁ K₂ : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
     (S : SymEncScheme K₁ BitVec) (_T : SymEncScheme K₂ C) :
     RStateOracle (OTUCSpec C) where
   stateType := Unit
   initialState := pure ()
-  queries := {
-    impl := fun n m => do
-          let ks ← S.keyGen
-          let _m' ← S.encrypt ks m
-          let c ← PMF.uniformOfFintype (C n)
-          pure c
-  }
-
-/-- `OTUC_Real(Double(S,T))` is observationally equivalent to `OTUC_Real(T)` composed with `R1`. -/
-theorem obsEq_outcRealDouble_applyR1_realT
-    {K₁ K₂ : Type} {C : ℕ → Type} (S : SymEncScheme K₁ BitVec) (T : SymEncScheme K₂ C) :
-    ObsEq (OTUC_Real (doubleSymEnc S T))
-      (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Real T)) := by
-  apply obsEqReflexive
-  simp [OTUC_Real, applyRReduction]
-  ext1 α; ext1 q;
-  cases q
-  -- case query i msg =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift,
-    doubleSymEnc]
-  rfl
+  queries := fun ⟨n, m⟩ => do
+    let ks ← liftM S.keyGen
+    let _m' ← liftM (S.encrypt ks m)
+    PMF.uniformOfFintype (C n)
 
 
-/-- `OTUC_Rand(T)` composed with `R1` is observationally equivalent to explicit game `G1`. -/
-theorem obsEq_applyR1_randT_G1
-    {K₁ K₂ : Type} {C : ℕ → Type} [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
-    (S : SymEncScheme K₁ BitVec) (T : SymEncScheme K₂ C) :
-    ObsEq (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Rand T)) (OUTC_G1 S T) := by
-  apply obsEqReflexive
-  simp [OUTCInner_to_OUTCDouble_R1, OUTC_G1, applyRReduction, OTUC_Rand]
-  ext1 α; ext1 q
-  cases q
-  -- case query i msg =>
-  simp [OracleComp.simulateQ, FreeMonad.mapM, OUTCInner_to_OUTCDouble_R1, FreeMonad.lift, doubleSymEnc, addPMFtoImpl]
-
-/-- `G1` is observationally equivalent to `OTUC_Rand(Double(S,T))`. -/
-theorem obsEq_G1_outcRandDouble
-    {K₁ K₂ : Type} {C : ℕ → Type} [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
-    (S : SymEncScheme K₁ BitVec) (T : SymEncScheme K₂ C) :
-    ObsEq (OUTC_G1 S T) (OTUC_Rand (doubleSymEnc S T)) := by
-  apply obsEqReflexive
-  simp [OUTCInner_to_OUTCDouble_R1, OUTC_G1, applyRReduction, OTUC_Rand]
 
 /-- OUTC/OTUC of inner scheme `T` implies OUTC/OTUC of `Double(S,T)`, via reduction `R1`. -/
 noncomputable def outcInnerImpliesOutcDouble
-    {Reductions : IndistinguishabilityReductions}
-    {K₁ K₂ : Type} {C : ℕ → Type} [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
-    (S : SymEncScheme K₁ BitVec) (T : SymEncScheme K₂ C)
-    (hR1 : OUTCInner_to_OUTCDouble_R1 S ∈
-      Reductions.randomReductions (OTUCSpec C) (OTUCSpec C))
-    : OTUCDef (OTUCAssumption' T) Reductions (doubleSymEnc S T) := by
+    {K₁ K₂ : ℕ → Type} {C₂ : ℕ → ℕ → Type}
+    (outerFam : SymEncSchemeFamily K₁ (fun _ => BitVec)) (innerFam : SymEncSchemeFamily K₂ C₂)
+    [∀ κ n, Fintype (C₂ κ n)] [∀ κ n, Nonempty (C₂ κ n)] :
+    OTUCIFam (OTUCAssumptionFam innerFam) (doubleSymEncFamily outerFam innerFam) := by
   intro κ
-  have hRealRandT :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C) (OTUC_Real T) (OTUC_Rand T) := by
-    simpa [OTUCAssumption', OTUCAssumptionFull, OTUCAssumption] using
-      (IndistinguishableI.assumption
-        (Assumptions := OTUCAssumption' T)
-        (Reductions := Reductions) (κ := κ) (q_b := none) ())
-
-  have h1 :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C) (OTUC_Real (doubleSymEnc S T))
-          (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Real T)) :=
-    Indistinguishable.of_ObsEq (obsEq_outcRealDouble_applyR1_realT S T)
-
-  have h2 :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C)
-          (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Real T))
-          (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Rand T)) :=
-    IndistinguishableI.randReduction (r := OUTCInner_to_OUTCDouble_R1 S) none hRealRandT hR1
-
-  have h3 :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C)
-          (applyRReduction (OUTCInner_to_OUTCDouble_R1 S) (OTUC_Rand T))
-          (OUTC_G1 S T) :=
-    Indistinguishable.of_ObsEq (obsEq_applyR1_randT_G1 S T)
-
-  have h4 :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C) (OUTC_G1 S T) (OTUC_Rand (doubleSymEnc S T)) :=
-    Indistinguishable.of_ObsEq (obsEq_G1_outcRandDouble S T)
-
-  have h :
-      IndistinguishableI (OTUCAssumption' T) Reductions κ none
-        (OTUCSpec C) (OTUC_Real (doubleSymEnc S T)) (OTUC_Rand (doubleSymEnc S T)) :=
-    Indistinguishable.transitive h1 <|
-      Indistinguishable.transitive h2 <|
-        Indistinguishable.transitive h3 h4
-
-  simpa [OTUCDef] using h
+  let S := outerFam.scheme κ
+  let T := innerFam.scheme κ
+  game_hopping [
+    OTUC_Real (doubleSymEnc S T),
+    (OUTCInner_to_OUTCDouble_R1 S) ◇ (OTUC_Real T),
+    (OUTCInner_to_OUTCDouble_R1 S) ◇ (OTUC_Rand T),
+    OUTC_G1 S T,
+    OTUC_Rand (doubleSymEnc S T)
+  ]

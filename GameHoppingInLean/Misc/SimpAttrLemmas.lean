@@ -1,6 +1,8 @@
 import GameHoppingInLean.Misc.SimpAttrs
 import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.Misc.PMFLemmas
 import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.PMFLiftOrder
 import Lean
 
 open Lean Elab Tactic
@@ -47,6 +49,7 @@ lemma simulateQ_pure2 (x : α) {ι} {spec : OracleSpec ι} {r : Type u → Type*
 
 attribute [GameHoppingSimplifyPMF]
   PMF.map_id
+  PMF.bind_const
 
 attribute [OracleReductionSimps]
   OracleReduction.apply
@@ -60,6 +63,9 @@ attribute [OracleReductionSimps]
   MonadLift.monadLift
   OracleReduction.liftWithPMFAndState
   OracleSpec.query
+  OracleQuery.input_query
+  OracleQuery.cont_query
+  id_map
 -- OracleComp.instMonadLiftOracleQuery._aux_1
 -- PFunctor.FreeM.mapM
 
@@ -114,8 +120,10 @@ macro_rules
        try simp [OracleReductionSimps]
        try simp [correctAbstractionDiagSimps]
        try simp [StateTSimps]
+       try simp [OracleReductionSimps]
        try simp only [GameHoppingSimplifyPMF]
        try simp
+       try simp only [GameHoppingSimplifyPMF]
        try rfl))
 
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
@@ -143,6 +151,20 @@ macro_rules
          (intro query
           cases query <;> try solveCorrectAbstractionDiag [$defs,*])))
 
+/--
+Strict version used by tactic search: unlike `solveCorrectAbstraction`, it must close both
+branches, so failed attempts can be reliably backtracked.
+-/
+syntax "solveCorrectAbstraction!" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules
+  | `(tactic| solveCorrectAbstraction! [$defs,*]) =>
+    `(tactic|
+      (constructor
+       · solveCorrectAbstractionInit [$defs,*]
+       · intro query
+         cases query <;> solveCorrectAbstractionDiag [$defs,*]))
+
 private def tryCloseCurrentGoal (tac : TSyntax `tactic) : TacticM Bool := do
   let s ← saveState
   try
@@ -167,14 +189,24 @@ elab_rules : tactic
       let attempts ← pure #[
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
-           solveCorrectAbstraction [])),
+           solveCorrectAbstraction! [])),
+        ← `(tactic|
+          (apply correctAbstractionImpliesObsEq _ _ (fun x => (x, ()))
+           solveCorrectAbstraction! [])),
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun x => x)
-           solveCorrectAbstraction [])),
+           solveCorrectAbstraction! [])),
+        ← `(tactic|
+          (apply correctAbstractionImpliesObsEq _ _ (fun _ => ())
+           solveCorrectAbstraction! [])),
         ← `(tactic|
           (symm
            apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
-           solveCorrectAbstraction []))
+           solveCorrectAbstraction! [])),
+        ← `(tactic|
+          (symm
+           apply correctAbstractionImpliesObsEq _ _ (fun x => (x, ()))
+           solveCorrectAbstraction! []))
       ]
       for attempt in attempts do
         if ← tryCloseCurrentGoal attempt then

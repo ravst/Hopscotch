@@ -1,4 +1,5 @@
 import GameHoppingInLean.Misc.PMFSimpAttr
+import GameHoppingInLean.Misc.SimprocHelpers
 import GameHoppingInLean.MonadRandomState
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import ToMathlib.General
@@ -261,6 +262,11 @@ private def getBind? (e : Expr) : MetaM (Option (Expr × Expr × Expr × Expr ×
   | (``Bind.bind, #[m, instBind, α, β, x, f]) => return some (m, instBind, α, β, x, f)
   | _ => return none
 
+private def getRawPMFBind? (e : Expr) : Option (Expr × Expr × Expr × Expr) :=
+  match e.getAppFnArgs with
+  | (``PMF.bind, #[α, β, x, f]) => some (α, β, x, f)
+  | _ => none
+
 private def isPMF? (m : Expr) : MetaM Bool := do
   let pmfConst ← mkConstWithFreshMVarLevels ``PMF
   if m.isConstOf ``PMF then
@@ -273,7 +279,23 @@ private def mkBindConstRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) 
   unless ← isPMF? m do
     return none
   let .lam _xName _xTy body _xBi := rest | return none
-  if body.hasLooseBVar 0 then
+  let body ← SimprocHelpers.reduceCtorProjsRec body
+  if SimprocHelpers.hasLooseBVarExactlyInValue body 0 then
+    return none
+  let restConst := body.lowerLooseBVars 0 1
+  let pf ← mkAppOptM ``PMF.bind_const_do
+    #[none, none, some x, some restConst]
+  let pfTy ← inferType pf
+  let some (_ty, lhs, rhs) := pfTy.eq? | return none
+  unless (← isDefEq lhs e) do
+    return none
+  return some (rhs, pf)
+
+private def mkRawPMFBindConstRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  let some (_α, _β, x, rest) := getRawPMFBind? e | return none
+  let .lam _xName _xTy body _xBi := rest | return none
+  let body ← SimprocHelpers.reduceCtorProjsRec body
+  if SimprocHelpers.hasLooseBVarExactlyInValue body 0 then
     return none
   let restConst := body.lowerLooseBVars 0 1
   let pf ← mkAppOptM ``PMF.bind_const_do
@@ -487,6 +509,13 @@ simproc [GameHoppingSimplifyPMF] pmfBindConst
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkBindConstRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
+
+/-- Raw `PMF.bind` version of `pmfBindConst`, for goals after monad notation has unfolded. -/
+simproc [GameHoppingSimplifyPMF] pmfRawBindConst
+  (PMF.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkRawPMFBindConstRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: pull an `if` out of a `PMF` bind when using the game-hopping PMF simp set. -/
