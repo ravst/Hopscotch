@@ -232,7 +232,7 @@ def CompIndistinguishabilitySeededOracle
     -- ... that run in polynomial time ...
     (IsPolyTime distinguisher) ->
     -- ... only achieve negligible advantage.
-    pnegl (advantageFam distinguisher o1 o2)
+    negl (advantageFam distinguisher o1 o2)
 
 
 noncomputable def ascToReal {I : Type} {O : OracleSpec I}

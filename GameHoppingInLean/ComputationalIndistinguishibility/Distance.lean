@@ -2,13 +2,10 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 
 
-def absn (x : Real) : NNReal := ⟨abs x, abs_nonneg x⟩
 
-def negl (f : ℕ -> NNReal) : Prop :=
-  ∀ k, ∃ (B : ℝ), ∀ i, (f i) * (i^k) <= B
+def negl (f : ℕ -> Real) : Prop :=
+  ∀ k, ∃ (B : ℝ), ∀ i, |(f i)| * (i^k) <= B
 
-def pnegl (f : ℕ -> Real) : Prop :=
-  negl (fun x => absn (f x))
 
 def getPMF (r : PMF X) (x : X) : NNReal := (r x).toNNReal -- toNNReal map +inf to zero. Lemma below show that this is never happens here.
 lemma pmf_non_inf (r : PMF X) (x : X) : getPMF r x = r x :=
@@ -61,23 +58,7 @@ lemma distSelf (x : NNReal) : distance x x = 0 := by
 -- lemma pdistancePMFSelf (x : PMF Bool) : pdistancePMF x x = 0 := by
 --   simp [pdistancePMF]
 
-
-lemma neglSum (f1 f2 : (κ : ℕ) -> NNReal) : negl f1 -> negl f2 -> negl (fun κ => f1 κ + f2 κ) := by
-  intro H1 H2
-  simp [negl]
-  intro k
-  have ⟨w1, H1'⟩ := H1 k
-  have ⟨w2, H2'⟩ := H2 k
-  exists (w1 + w2)
-  intro i
-  rw [add_mul]
-  apply add_le_add (H1' i) (H2' i)
-
-lemma pneglSum (f1 f2 : (κ : ℕ) -> Real) : pnegl f1 -> pnegl f2 -> pnegl (fun κ => f1 κ + f2 κ) :=
-by sorry
-
-
-lemma neglMonotone (f1 f2 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i) : negl f2 -> negl f1 := by
+lemma neglMonotone (f1 f2 : (κ : ℕ) -> Real) (H : forall i, |f1 i| <= |f2 i|) : negl f2 -> negl f1 := by
   intro Hn
   simp [negl]
   intro k
@@ -85,22 +66,53 @@ lemma neglMonotone (f1 f2 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i) :
   exists w
   intro i
   have Hn3 := Hn2 i
-  trans (↑(f2 i) * ↑i ^ k)
+  trans (|(f2 i)| * ↑i ^ k)
   · have Z := H i
-    exact mul_le_mul_left (H i) (↑i ^ k)
+    apply mul_le_mul Z
+    · apply le_refl
+    · refine pow_nonneg ?_ k
+      exact Nat.cast_nonneg' i
+    exact abs_nonneg (f2 i)
   · apply Hn3
 
+lemma neglSum (f1 f2 : (κ : ℕ) -> Real) : negl f1 -> negl f2 -> negl (fun κ => f1 κ + f2 κ) := by
+  intro H1 H2
+  simp [negl]
+  intro k
+  have ⟨w1, H1'⟩ := H1 k
+  have ⟨w2, H2'⟩ := H2 k
+  exists (w1 + w2)
+  intro i
+  have X := add_le_add (H1' i) (H2' i)
+  apply le_trans _ X
+  calc
+    |f1 i + f2 i| * ↑i ^ k ≤ (|f1 i| + |f2 i|) * ↑i ^ k := by
+      apply mul_le_mul_of_nonneg
+      · exact abs_add_le (f1 i) (f2 i)
+      · apply le_of_eq
+        simp []
+      · exact abs_nonneg (f1 i + f2 i)
+      refine pow_nonneg ?_ k
+      exact Nat.cast_nonneg' i
+    _ <= _ := by
+      apply le_of_eq
+      exact RightDistribClass.right_distrib |f1 i| |f2 i| (↑i ^ k)
 
 
-lemma neglTriangle (f1 f2 f3 : (κ : ℕ) -> NNReal) (H : forall i, f1 i <= f2 i + f3 i) : negl f2 -> negl f3 -> negl f1 :=
+lemma neglTriangle (f1 f2 f3 : (κ : ℕ) -> Real) (H : forall i, |f1 i| <= |f2 i| + |f3 i|) : negl f2 -> negl f3 -> negl f1 :=
   by
    intro H1 H2
-   apply (neglMonotone f1 (fun i => f2 i + f3 i))
-   · exact fun i ↦ H i
-   apply neglSum <;> assumption
+   apply (neglMonotone f1 (fun i => |f2 i| + |f3 i|))
+   ·  intro i
+      have X := H i
+      apply le_trans X
+      apply le_of_eq
+      refine Eq.symm (abs_of_nonneg ?_)
+      refine Left.add_nonneg ?_ ?_ <;> apply abs_nonneg
+   apply neglSum <;> simp [negl] <;> assumption
 
-lemma pneglTriangle (f1 f2 f3 : (κ : ℕ) -> Real) (H : forall i, |f1 i| <= |f2 i + f3 i|) : pnegl f2 -> pnegl f3 -> pnegl f1 :=
-by sorry
+lemma norm_distance (x y : NNReal) : |(distance x y : ℝ)| = distance x y := by
+  simp []
 
 lemma neglTriangle2 (f1 f2 f3 : ℕ -> NNReal)
   (H1 : negl (fun i => distance (f1 i) (f2 i)))
@@ -109,6 +121,7 @@ lemma neglTriangle2 (f1 f2 f3 : ℕ -> NNReal)
   by
     apply neglTriangle _ (fun i => distance (f1 i) (f2 i)) (fun i => distance (f2 i) (f3 i)) <;> try assumption
     intro i
+    simp [norm_distance]
     apply distTriangle
 
 
