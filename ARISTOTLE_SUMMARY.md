@@ -1,3 +1,15 @@
+# Summary of changes for run 7a5df0c4-57af-4076-b684-09339b7f92ed
+Filled in the `sorry` in `abstraction_with_levels_and_reach` in `GameHoppingInLean/ComputationalIndistinguishibility/ObservationEquivalenceReach.lean`.
+
+The lemma is an abstraction/bisimulation statement: given a probabilistic state map `cs : T → PMF S`, a level function `lvl`, a reachability predicate `reach`, a per-step level/reachability preservation hypothesis, and a commuting-square step hypothesis (valid while the budget `q_b` is not exhausted), it shows that running any oracle computation `c` (over `withPMFSpec O`) through the two simulated implementations yields the same output distribution, as long as `lvl τ + depth c ≤ q_b`.
+
+The proof proceeds by structural induction on the computation `c`:
+- pure case: both sides reduce to `pure x`, using that `cs τ` is a probability measure (`PMF.bind_const`).
+- roll/oracle case (an actual oracle query): unfold `simulateQ` and the state-monad bind, derive `lvl τ + 1 ≤ q_b` and the per-output budget bound from the depth equation, apply the commuting-square hypothesis `HSTEP`, then close pointwise on the support via the induction hypothesis, using `Hstep_reach` for the level/reachability side conditions.
+- roll/sample case (internal sampling, state unchanged): unfold the lift, commute the sampling distribution past `cs τ` (`PMF.bind_comm`), and apply the induction hypothesis pointwise.
+
+Verified: the file builds cleanly with the module built explicitly, no `sorry` remains, the dependent file `ObsEqComp.lean` still compiles, and the lemma depends only on the standard axioms `propext`, `Classical.choice`, and `Quot.sound`.
+
 # Summary of changes for run e3d13779-e4ec-4e37-aeb8-be3833593266
 I filled both `sorry`s in `GameHoppingInLean/ComputationalIndistinguishibility/ObsEqComp.lean`, so that file (and the whole project) now builds with **no `sorry`**, and the affected theorems depend only on the standard axioms `propext`, `Classical.choice`, `Quot.sound`.
 

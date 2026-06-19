@@ -1,42 +1,9 @@
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.BehavioralOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.PMFDisintegration
+import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenceReach
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.Misc.SimpAttrLemmas
-import Mathlib.Data.ENat.Lattice
-
-
-
-noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
-| PFunctor.FreeM.pure _ => 0
-| PFunctor.FreeM.roll _input cont =>
-  1 + iSup (fun u => depth (cont u))
-
-lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Type}
-    (q_b : ℕ∞)
-    (okernel : (i : I) → S → PMF (O i × S))
-    (ostep : (i : I) → T → PMF (O i × T))
-    (cs : T → PMF S)
-    (lvl : T → ℕ∞)
-    (reach : T → Prop)
-    (Hstep_reach : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
-      ∀ p ∈ (ostep i τ).support, lvl p.2 = lvl τ + 1 ∧ reach p.2)
-    (HSTEP : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
-      (cs τ).bind (okernel i) =
-        (ostep i τ).bind (fun p => (cs p.2).map (fun s' => (p.1, s'))))
-    : ∀ (c : OracleComp (withPMFSpec O) X) (τ : T), reach τ → lvl τ + FreeM.depth c ≤ q_b →
-        (cs τ).bind (fun s => (simulateQ (addPMFtoImpl okernel) c s).map Prod.fst) =
-        (simulateQ (addPMFtoImpl ostep) c τ).map Prod.fst := by
-  intro c
-  induction c
-  case pure val =>
-    sorry
-  case roll q cont Hind =>
-    cases q
-    case oracle l =>
-      sorry
-    case sample l =>
-      sorry
 
 lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
   (ro₁ : QueryImpl O (RState stateType₁))
