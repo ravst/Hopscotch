@@ -67,3 +67,6 @@ lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Typ
         refine le_trans ?_ hb; gcongr
         exact le_trans (le_iSup (fun u => FreeM.depth (cont u)) a) le_add_self
       exact Hind a τ hreach hbound
+
+
+-- we want to reprove the following theorem:

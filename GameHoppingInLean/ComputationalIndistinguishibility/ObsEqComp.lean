@@ -5,79 +5,21 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenc
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.Misc.SimpAttrLemmas
 
-lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
-  (ro₁ : QueryImpl O (RState stateType₁))
-  (ro₂ : QueryImpl O (RState stateType₂))
-  (f : stateType₁ → PMF stateType₂)
-  (Habs : ∀ (query : O.Domain),
-      bindOutputState f (ro₁ query) =
-      bindInputState f (ro₂ query)) :
-  forall (init : stateType₁),
-  pdistancePMF
-    (runDinstinguisher_inner dist ro₁ init)
-    (do
-      let init_v <- f init
-      runDinstinguisher_inner dist ro₂ init_v)= 0
-  :=  by
-  induction dist
-  case pure v =>
-    simp [advantage, runDinstinguisher_inner, simulateQ]
-    simp [pdistancePMF, distSelf]
-  case roll β cont Hind =>
-    intro init
-    simp [runDinstinguisher_inner_bind]
-    have X := congr_fun (Habs β) init
-    simp [bindOutputState, bindInputState] at X
-    simp [StateT.run] at X
-    rw [<-PMF.bind_bind]
-    rw [<-X]
-    simp [bindSecond]
-    apply obseEq_from_2_steps
-    intro a
-    apply Hind a.1
-
-
-lemma correctAbstractionAfterwithPMFSpec {I : Type _} {stateType₁ stateType₂ : Type _} {O : OracleSpec I}
-  (ro₁ : QueryImpl O (RState stateType₁)) (ro₂ : QueryImpl O (RState stateType₂))
-  (f : stateType₁ → PMF stateType₂) (Habs : correctAbstractionBindDiag ro₁ ro₂ f)
-  : correctAbstractionBindDiag (addPMFtoImpl ro₁) (addPMFtoImpl ro₂) f := by
-  simp [correctAbstractionBindDiag] at Habs
-  simp [correctAbstractionBindDiag]
-  intro q
-  ext1 z
-  simp [bindOutputState, bindInputState]
-  simp [StateT.run, addPMFtoImpl]
-  cases q
-  case oracle x =>
-    simp []
-    have X := congr_fun (Habs x)
-    simp [bindOutputState, bindInputState, StateT.run] at X
-    apply X
-  case sample y =>
-    simp [bindSecond, Function.comp, PMF.map]
-    conv =>
-      rhs
-      rw [PMF.bind_comm]
-    congr
-
-lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
-  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
-  (Habs : correctAbstractionBind ro₁ ro₂ f) :
-  advantage dist ro₁ ro₂ = 0
-:= by
-    simp [advantage]
-    simp [runDinstinguisher2inner]
-    rw [<-Habs.1]
-    simp []
-    apply obseEq_from_2_steps
-    intro a
-    simp [adversaryT] at dist
-    have X := correctAbstraction2ind_inner (O := withPMFSpec O) dist (addPMFtoImpl ro₁.queries) (addPMFtoImpl ro₂.queries) f
-    apply X
-    -- correct abstraction after addPMFtoIMPL, todo.
-    apply correctAbstractionAfterwithPMFSpec
-    apply Habs.2
-
+/- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq)
+It is easy to proof, that varios form of correctAbstractin lead both to ObsEq and AdvEq.
+But proving that ObsEq imply AdvEq is challenging. We provie this here.
+To do that, we define behavioral oracle: an definition of oracle without internla state,
+only defines via input output relation. This definine them in BehavioralOracle.lean.
+Then we can convert back to statefull. This roundtrip is called rState2Rstate
+Then we prove three facts (a : RStateOracle O):
+1) ObsEq A B imply to BehavioralOracle.into A = BehavioralOracle.into B . That is obvious from definition.
+2) There is an form of abstraction between rState2Rstate A -> A.
+3) This form of abstraction imply AdvEq.
+We use abstration defined as abstraction_with_levels_and_reach in ObservationalEquivalenceReach.
+It allow for transition function to be define donly on reachable state. Additionally it tracks number of queries made.
+Most of this file is the prove of 2).
+This part was done by Aristotele (who generalized form of abstraction to one need here, proved 2 and 3, including generation of lemmas from PMFDisintegration). Impressive!
+-/
 
 
 lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
@@ -91,49 +33,6 @@ lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_
     exact H
   rw [this]
 
--- /-- Convert an adaptive oracle computation (a free monad over `withPMFSpec O`) into the generic
--- `GTree` of `PMFDisintegration`, separating real oracle queries from sampling nodes. -/
--- noncomputable def toGTree {I : Type} {O : OracleSpec I} {X : Type} :
---     OracleComp (withPMFSpec O) X → GTree I O.Range X
---   | .pure x => .pure x
---   | .roll (withPMFI.oracle i) cont => .oracle i (fun r => toGTree (cont r))
---   | .roll (withPMFI.sample d) cont => .sample d (fun r => toGTree (cont r))
-
--- /-- Running the simulation of `c` against `o` equals the generic `geval` of its `GTree`. -/
--- theorem geval_simulate_corr {I : Type} {O : OracleSpec I} {X : Type} (o : RStateOracle O) :
---     ∀ (c : OracleComp (withPMFSpec O) X) (s : o.stateType),
---     StateT.run (simulateQ (addPMFtoImpl o.queries) c) s
---       = geval (fun i s => (o.queries i) s) (toGTree c) s := by
---   intro c
---   induction c with
---   | pure x => intro s; simp [toGTree, simulateQ, geval]
---   | roll a cont ih =>
---       intro s
---       cases a with
---       | oracle i =>
---           rw [simulateQ_roll, StateT.run_bind]
---           simp only [toGTree, geval, addPMFtoImpl]
---           congr 1; funext p; exact ih p.1 p.2
---       | sample d =>
---           rw [simulateQ_roll, StateT.run_bind]
---           simp only [toGTree, geval, addPMFtoImpl]
---           have h1 : (StateT.run (liftM d) s : PMF _) = d >>= fun a => Pure.pure (a, s) := rfl
---           rw [h1, bind_assoc]
---           change d.bind _ = d.bind _
---           congr 1; funext a
---           change (PMF.pure (a, s)).bind _ = _
---           rw [PMF.pure_bind]
---           exact ih a s
-
--- /-- The generic `GTree` depth agrees with `FreeM.depth`. -/
--- theorem toGTree_depth {I : Type} {O : OracleSpec I} {X : Type} (c : OracleComp (withPMFSpec O) X) :
---     GTree.depth (toGTree c) = FreeM.depth c := by
---   induction c with
---   | pure x => simp [toGTree, GTree.depth, FreeM.depth]
---   | roll a cont ih =>
---       cases a with
---       | oracle i => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
---       | sample d => simp only [toGTree, GTree.depth, FreeM.depth]; congr 1; exact iSup_congr ih
 
 /-- The conditional distribution of `o`'s internal state given that the observable transcript so
 far equals `τ` (recorded newest-first).  We replay the chronological queries `(τ.reverse).map input`
@@ -560,3 +459,75 @@ by
   apply obsEq_distinquishing (q_b := none)
   · exact (ObsEq_from_none ro₁ ro₂).mp obs_eq
   · exact le_of_sup_eq' rfl
+
+
+-- lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
+--   (ro₁ : QueryImpl O (RState stateType₁))
+--   (ro₂ : QueryImpl O (RState stateType₂))
+--   (f : stateType₁ → PMF stateType₂)
+--   (Habs : ∀ (query : O.Domain),
+--       bindOutputState f (ro₁ query) =
+--       bindInputState f (ro₂ query)) :
+--   forall (init : stateType₁),
+--   pdistancePMF
+--     (runDinstinguisher_inner dist ro₁ init)
+--     (do
+--       let init_v <- f init
+--       runDinstinguisher_inner dist ro₂ init_v)= 0
+--   :=  by
+--   induction dist
+--   case pure v =>
+--     simp [advantage, runDinstinguisher_inner, simulateQ]
+--     simp [pdistancePMF, distSelf]
+--   case roll β cont Hind =>
+--     intro init
+--     simp [runDinstinguisher_inner_bind]
+--     have X := congr_fun (Habs β) init
+--     simp [bindOutputState, bindInputState] at X
+--     simp [StateT.run] at X
+--     rw [<-PMF.bind_bind]
+--     rw [<-X]
+--     simp [bindSecond]
+--     apply obseEq_from_2_steps
+--     intro a
+--     apply Hind a.1
+-- lemma correctAbstractionAfterwithPMFSpec {I : Type _} {stateType₁ stateType₂ : Type _} {O : OracleSpec I}
+--   (ro₁ : QueryImpl O (RState stateType₁)) (ro₂ : QueryImpl O (RState stateType₂))
+--   (f : stateType₁ → PMF stateType₂) (Habs : correctAbstractionBindDiag ro₁ ro₂ f)
+--   : correctAbstractionBindDiag (addPMFtoImpl ro₁) (addPMFtoImpl ro₂) f := by
+--   simp [correctAbstractionBindDiag] at Habs
+--   simp [correctAbstractionBindDiag]
+--   intro q
+--   ext1 z
+--   simp [bindOutputState, bindInputState]
+--   simp [StateT.run, addPMFtoImpl]
+--   cases q
+--   case oracle x =>
+--     simp []
+--     have X := congr_fun (Habs x)
+--     simp [bindOutputState, bindInputState, StateT.run] at X
+--     apply X
+--   case sample y =>
+--     simp [bindSecond, Function.comp, PMF.map]
+--     conv =>
+--       rhs
+--       rw [PMF.bind_comm]
+--     congr
+
+-- lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
+--   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+--   (Habs : correctAbstractionBind ro₁ ro₂ f) :
+--   advantage dist ro₁ ro₂ = 0
+-- := by
+--     simp [advantage]
+--     simp [runDinstinguisher2inner]
+--     rw [<-Habs.1]
+--     simp []
+--     apply obseEq_from_2_steps
+--     intro a
+--     simp [adversaryT] at dist
+--     have X := correctAbstraction2ind_inner (O := withPMFSpec O) dist (addPMFtoImpl ro₁.queries) (addPMFtoImpl ro₂.queries) f
+--     apply X
+--     -- correct abstraction after addPMFtoIMPL, todo.
+--     apply correctAbstractionAfterwithPMFSpec
+--     apply Habs.2
