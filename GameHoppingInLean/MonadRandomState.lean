@@ -1,6 +1,8 @@
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
+import GameHoppingInLean.Normalization.PMF.Attrs
+import GameHoppingInLean.Normalization.BitVec.Attrs
 import GameHoppingInLean.Misc.RStateSimplifierAttr
 -- import VCVio.ToMathlib.Control.MonadHom
 
@@ -971,14 +973,14 @@ def bitVecAppendEquiv (n m : ℕ) : (BitVec n × BitVec m) ≃ BitVec (n + m) wh
         (BitVec.getLsbD_eq_getElem (x := z) (i := m + (i - m)) (h := by omega))
 
 /-- The low `k` bits of `y ++ x` are exactly `x`. -/
-@[simp] lemma extractLsb'_zero_append_right {k m : ℕ}
+@[GHSimpPMFBitVec] lemma extractLsb'_zero_append_right {k m : ℕ}
     (x : BitVec k) (y : BitVec m) :
     BitVec.extractLsb' 0 k (y ++ x) = x := by
   rw [← BitVec.setWidth_eq_extractLsb' (x := y ++ x) (w := k) (h := by omega)]
   simp [BitVec.setWidth_append]
 
 /-- The high `k` bits of `x ++ y` (starting at offset `m`) are exactly `x`. -/
-@[simp] lemma extractLsb'_append_high_right {k m : ℕ}
+@[GHSimpPMFBitVec] lemma extractLsb'_append_high_right {k m : ℕ}
     (x : BitVec k) (y : BitVec m) :
     BitVec.extractLsb' m k (x ++ y) = x := by
   simpa using
@@ -993,13 +995,13 @@ lemma cast_congrArg_bitVec_eq_bitVec_cast {n m : ℕ} (h : n = m) (z : BitVec n)
   rfl
 
 /-- Specialized cast-normalization for `BitVec (k + k)` to `BitVec (2 * k)`. -/
-@[simp] lemma cast_bitVec_two_mul_eq {k : ℕ} (z : BitVec (k + k)) :
+@[GHSimpPMFBitVec] lemma cast_bitVec_two_mul_eq {k : ℕ} (z : BitVec (k + k)) :
     (cast (by simp [two_mul]) z : BitVec (2 * k)) = BitVec.cast (by simp [two_mul]) z := by
   have h : (k + k) = (2 * k) := by simp [two_mul]
   simpa [h] using (cast_congrArg_bitVec_eq_bitVec_cast (h := h) (z := z))
 
 /-- Direct `liftM` form of the append equivalence rewrite for `BitVec`. -/
-@[simp] lemma liftM_uniformOfFintype_bitVec_append
+@[GHSimpPMFBitVec] lemma liftM_uniformOfFintype_bitVec_append
     {σ : Type} {n m : ℕ}
     [Fintype (BitVec n)] [Nonempty (BitVec n)]
     [Fintype (BitVec m)] [Nonempty (BitVec m)]
@@ -1029,7 +1031,10 @@ lemma do_liftM_uniformOfFintype_bitVec_append
     (do
       let p ← (liftM (PMF.uniformOfFintype (BitVec n × BitVec m)) : RState σ (BitVec n × BitVec m))
       g (p.1 ++ p.2)) := by
-  simp [bitVecAppendEquiv, do_liftM_uniformOfFintype_equiv (σ := σ)]
+  simpa [bitVecAppendEquiv] using
+    (do_liftM_uniformOfFintype_equiv (σ := σ)
+      (X := BitVec n × BitVec m) (Y := BitVec (n + m))
+      (e := bitVecAppendEquiv n m) (g := g))
 
 /-- Bind-form variant of `do_liftM_uniformOfFintype_bitVec_append`.
 
@@ -1055,7 +1060,7 @@ def bitVecAddEquivTwoMul (k : ℕ) : BitVec (k + k) ≃ BitVec (2 * k) where
 /-- Rewriting uniform sampling on `BitVec (2 * k)` as sampling on `BitVec (k + k)`.
 
 Marked `[simp]` so terms that sample `BitVec (2 * k)` can normalize to `k + k` shape. -/
-@[simp] lemma do_liftM_uniformOfFintype_bitVec_two_mul
+@[GHSimpPMFBitVec] lemma do_liftM_uniformOfFintype_bitVec_two_mul
     {σ α : Type} {k : ℕ}
     [Fintype (BitVec (k + k))] [Nonempty (BitVec (k + k))]
     [Fintype (BitVec (2 * k))] [Nonempty (BitVec (2 * k))]
@@ -1066,12 +1071,12 @@ Marked `[simp]` so terms that sample `BitVec (2 * k)` can normalize to `k + k` s
     (do
       let x ← (liftM (PMF.uniformOfFintype (BitVec (k + k))) : RState σ (BitVec (k + k)))
       g (cast (by simp [two_mul]) x)) := by
-  simpa [bitVecAddEquivTwoMul] using
+  simpa [GHSimpPMFBitVec, bitVecAddEquivTwoMul] using
     (do_liftM_uniformOfFintype_equiv (σ := σ)
       (X := BitVec (k + k)) (Y := BitVec (2 * k))
       (e := bitVecAddEquivTwoMul k) (g := g))
 
-@[simp] lemma liftM_uniformOfFintype_bitVec_two_mul
+@[GHSimpPMFBitVec] lemma liftM_uniformOfFintype_bitVec_two_mul
     {σ : Type} {k : ℕ}
     [Fintype (BitVec (k + k))] [Nonempty (BitVec (k + k))]
     [Fintype (BitVec (2 * k))] [Nonempty (BitVec (2 * k))] :
@@ -1080,7 +1085,7 @@ Marked `[simp]` so terms that sample `BitVec (2 * k)` can normalize to `k + k` s
         (do
           let x ← PMF.uniformOfFintype (BitVec (k + k))
           pure (cast (by simp [two_mul]) x)) : RState σ (BitVec (2 * k))) := by
-  simpa [bitVecAddEquivTwoMul] using
+  simpa [GHSimpPMFBitVec, bitVecAddEquivTwoMul] using
     (liftM_uniformOfFintype_equiv (σ := σ)
       (X := BitVec (k + k)) (Y := BitVec (2 * k))
       (e := bitVecAddEquivTwoMul k))

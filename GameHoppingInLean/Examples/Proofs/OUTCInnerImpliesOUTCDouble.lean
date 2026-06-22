@@ -3,7 +3,8 @@ import GameHoppingInLean.Examples.Constructions.DoubleSymEnc
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.PMFLiftOrder
 import GameHoppingInLean.IndistinguishabilityTactics
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 open scoped OracleReduction
 

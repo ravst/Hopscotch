@@ -1,6 +1,7 @@
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 /- # Observational Equivalence -/
 
@@ -443,19 +444,22 @@ lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec
   obtain ⟨HCor, Hinit⟩ := HB
   have hRun2Aux := correctAbstractionBind_bound_ImpliesObsEqInner ro₁ ro₂ f val HCor.2.1 HCor.2.2 queriesList
   have hRun2AuxFst := fun init Hinit =>  congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init Hinit)
-  simp at hRun2AuxFst
-  simp only [GameHoppingSimplifyPMF]
-  simp only [GameHoppingSimplifyPMF] at hRun2AuxFst
-  simp at hRun2AuxFst
+  try (simp at hRun2AuxFst)
+  try (simp only [GameHoppingSimplifyPMF])
+  try (simp only [GameHoppingSimplifyPMF] at hRun2AuxFst)
+  try (simp at hRun2AuxFst)
+  simp only [GameHoppingPrettyPrintPMF]
+  simp only [GameHoppingPrettyPrintPMF] at hRun2AuxFst
   simp [← HCor.1]
   apply bindCongrOnSupport
   intro y Hy
-  apply hRun2AuxFst y
-  have X := Hinit Hy
-  simp at X
-  apply Preorder.le_trans
-  · exact ENat.coe_le_coe.mpr hq
-  · apply X
+  have hybound : ↑queriesList.length ≤ val y := by
+    have X := Hinit Hy
+    simp at X
+    apply Preorder.le_trans
+    · exact ENat.coe_le_coe.mpr hq
+    · apply X
+  simpa [PMF.bind_bind, PMF.bind_const] using hRun2AuxFst y hybound
 
 -- ## version with explicit indices
 
@@ -520,10 +524,10 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
                 have hStepDropInit := congrFun hStepDrop init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepDropInit
                 simp [runQueries2Aux, PMF.map]
-                simp only [GameHoppingSimplifyPMF, mapSecond] at hStepDropInit
-                simp [← hStepDropInit, ← ih']
-                simp only [GameHoppingSimplifyPMF]
-                simp
+                try (simp only [GameHoppingSimplifyPMF, mapSecond] at hStepDropInit)
+                simp [← hStepDropInit, ← ih', PMF.map, Function.comp, mapSecond]
+                try (simp only [GameHoppingSimplifyPMF])
+                try simp
           | inr hStepKeep =>
               obtain ⟨k', hk', ih'⟩ := ih (b + 1) HStep hq_tail_succ
               exists k'
@@ -533,10 +537,10 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
                 have hStepKeepInit := congrFun hStepKeep init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepKeepInit
                 simp [runQueries2Aux, PMF.map]
-                simp only [GameHoppingSimplifyPMF, mapSecond] at hStepKeepInit
-                simp [← hStepKeepInit, ← ih']
-                simp only [GameHoppingSimplifyPMF]
-                simp
+                try (simp only [GameHoppingSimplifyPMF, mapSecond] at hStepKeepInit)
+                simp [← hStepKeepInit, ← ih', PMF.map, Function.comp, mapSecond]
+                try (simp only [GameHoppingSimplifyPMF])
+                try simp
 
 lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : RStateOracle O) (f : ℕ → ro₁.stateType → ro₂.stateType) (b : ℕ)
@@ -554,14 +558,16 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
         (runQueries2Aux ro₂.queries queriesList (f b init)) := by
     intro init
     exact congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init)
-  simp at hRun2AuxFst
-  simp only [GameHoppingSimplifyPMF]
-  simp only [GameHoppingSimplifyPMF] at hRun2AuxFst
-  simp at hRun2AuxFst
+  try (simp at hRun2AuxFst)
+  try (simp only [GameHoppingSimplifyPMF])
+  try (simp only [GameHoppingSimplifyPMF] at hRun2AuxFst)
+  try (simp at hRun2AuxFst)
+  simp only [GameHoppingPrettyPrintPMF]
+  simp only [GameHoppingPrettyPrintPMF] at hRun2AuxFst
   simp [← HCor.1]
-  simp [hRun2AuxFst]
-  simp only [GameHoppingSimplifyPMF]
-  simp
+  apply congrArg (fun g => PMF.bind ro₁.initialState g)
+  funext a
+  simpa [PMF.bind_bind, PMF.bind_const] using hRun2AuxFst a
 
 
 

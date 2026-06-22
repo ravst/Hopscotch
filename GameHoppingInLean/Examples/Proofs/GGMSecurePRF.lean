@@ -2,7 +2,8 @@ import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRG
 import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRF
 import GameHoppingInLean.Examples.Constructions.GGM
 import GameHoppingInLean.Examples.Misc.RF_caching
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 section
 attribute [-simp] bind_pure_comp

@@ -1,6 +1,8 @@
 import GameHoppingInLean.Misc.SimpAttrs
 import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.PMF.Lemmas
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.PMFLiftOrder
 import Lean
@@ -48,6 +50,9 @@ lemma simulateQ_pure2 (x : α) {ι} {spec : OracleSpec ι} {r : Type u → Type*
 
 
 attribute [GameHoppingSimplifyPMF]
+  PMF.monad_bind_eq_bind
+  PMF.monad_pure_eq_pure
+  PMF.monad_map_eq_map
   PMF.map_id
   PMF.bind_const
 
@@ -121,9 +126,9 @@ macro_rules
        try simp [correctAbstractionDiagSimps]
        try simp [StateTSimps]
        try simp [OracleReductionSimps]
-       try simp only [GameHoppingSimplifyPMF]
+       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
        try simp
-       try simp only [GameHoppingSimplifyPMF]
+       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
        try rfl))
 
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
@@ -135,7 +140,7 @@ macro_rules
       (
        try simp [OracleReduction.apply, game_hopping_unfold, $defs,*]
        try simp [OracleReductionSimps]
-       try simp only [GameHoppingSimplifyPMF]
+       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
        try rfl))
 
 /-- Solve both initialization and query branches of a correct-abstraction proof. -/
@@ -162,7 +167,8 @@ macro_rules
     `(tactic|
       (constructor
        · solveCorrectAbstractionInit [$defs,*]
-       · intro query
+       · -- try solveCorrectAbstractionInit [$defs,*]
+         intro query
          cases query <;> solveCorrectAbstractionDiag [$defs,*]))
 
 private def tryCloseCurrentGoal (tac : TSyntax `tactic) : TacticM Bool := do

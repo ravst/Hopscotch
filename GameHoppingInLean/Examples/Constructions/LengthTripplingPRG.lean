@@ -1,6 +1,6 @@
 import GameHoppingInLean.Examples.Schemes.PRG
 
-def LengthTrippingPRG {k : ℕ} (inPRG : lengthDoublingPRG k) : PRG k (2*k) where
+def LengthTripplingPRG {k : ℕ} (inPRG : lengthDoublingPRG k) : PRG k (2*k) where
   draw seed :=
     let rd1 := inPRG.draw seed
     let firstHalf : BitVec k := BitVec.extractLsb' k k rd1
@@ -8,3 +8,7 @@ def LengthTrippingPRG {k : ℕ} (inPRG : lengthDoublingPRG k) : PRG k (2*k) wher
     let rd2 := inPRG.draw secondHalf
     let rd2' : BitVec (2 * k) := cast (by simp [two_mul]) rd2
     BitVec.append firstHalf rd2'
+
+def LengthTripplingPRGFamily {k : ℕ → ℕ}
+    (inPRG : lengthDoublingPRGFamily k) : PRGFamily k (fun κ => 2 * k κ) where
+  prg κ := LengthTripplingPRG (inPRG.prg κ)

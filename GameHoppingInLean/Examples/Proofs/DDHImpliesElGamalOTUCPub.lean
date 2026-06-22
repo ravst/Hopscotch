@@ -9,7 +9,8 @@ import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.PMFLiftOrder
 import GameHoppingInLean.Misc.Isos
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 open SRReduction
 open RReduction

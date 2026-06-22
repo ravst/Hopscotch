@@ -1,7 +1,8 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 import GameHoppingInLean.OracleReductions
-import GameHoppingInLean.Misc.PMFLemmas
+import GameHoppingInLean.Normalization.PMF.Simprocs
+import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure bind_pure_comp
 
