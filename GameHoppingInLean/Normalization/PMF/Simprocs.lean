@@ -254,7 +254,7 @@ private def mkRawPMFSwapProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   let pf ← mkAppM ``PMF.bind_bind_comm #[A, B, restFn]
   let pfTy ← inferType pf
   let some (_ty, lhs, rhs) := pfTy.eq? | return none
-  unless (← isDefEq lhs e) do
+  unless (← withTransparency .all <| isDefEq lhs e) do
     return none
   return some (rhs, pf)
 

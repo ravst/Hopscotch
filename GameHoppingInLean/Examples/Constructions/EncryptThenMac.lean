@@ -24,3 +24,11 @@ noncomputable def encryptThenMac {KEnc KMac Tag : Type} [DecidableEq Tag]
       enc.decrypt ke c
     else
       BitVec.zero n
+
+noncomputable def encryptThenMacFamily
+    {KEnc KMac Tag : ℕ → Type} [∀ κ, DecidableEq (Tag κ)]
+    (encFam : SymEncSchemeFamily KEnc (fun _ => BitVec))
+    (macFam : MACSchemeFamily KMac Tag) :
+    SymEncSchemeFamily (fun κ => KMac κ × KEnc κ)
+      (fun κ n => BitVec n × Tag κ) where
+  scheme κ := encryptThenMac (encFam.scheme κ) (macFam.scheme κ)

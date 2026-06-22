@@ -4,20 +4,9 @@ import Mathlib.Probability.Distributions.Uniform
 import GameHoppingInLean.Normalization.PMF.Attrs
 import GameHoppingInLean.Normalization.BitVec.Attrs
 import GameHoppingInLean.Misc.RStateSimplifierAttr
--- import VCVio.ToMathlib.Control.MonadHom
-
-/-!
-# definition of moand for statefull copmutation with randomness
--/
 
 
-def MyBetterStateT (σ : Type z) (m : Type (max z u) → Type v) (α : Type u) : Type (max v z) :=
-  σ → m (α × σ)
--- RState: state transformer over the probabilistic Pmf monad
-abbrev MyBetterRState (σ : Type u) (α : Type v) : Type (max u v) := MyBetterStateT σ PMF α
-
-
--- RState: state transformer over the probabilistic Pmf monad
+-- RState: A monad combining stateful computation with randomness
 abbrev RState (σ : Type u) (α : Type u) : Type u := StateT σ PMF α
 
 namespace StateT
@@ -37,9 +26,9 @@ namespace PMF
   simpa using (PMF.pure_map (f := f) a)
 
 
-@[simp] lemma map_pure_eq_pure2 {α β : Type} (f : α → β) (a : α) :
-    PMF.map f (pure a) = PMF.pure (f a) := by
-  simp [(PMF.pure_map (f := f) a)]
+-- @[simp] lemma map_pure_eq_pure2 {α β : Type} (f : α → β) (a : α) :
+--     PMF.map f (pure a) = PMF.pure (f a) := by
+--   simp [(PMF.pure_map (f := f) a)]
 
 
 @[simp] lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :

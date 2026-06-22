@@ -7,6 +7,9 @@ structure MACScheme (K Tag : Type) where
   keyGen : PMF K
   tag : {n : ℕ} → K → BitVec n → Tag
 
+structure MACSchemeFamily (K Tag : ℕ → Type) where
+  scheme : (κ : ℕ) → MACScheme (K κ) (Tag κ)
+
 /-- Deterministic verification derived from `tag`. -/
 def MACScheme.check {K Tag : Type} (scheme : MACScheme K Tag) [DecidableEq Tag]
     {n : ℕ} (key : K) (msg : BitVec n) (tg : Tag) : Bool :=

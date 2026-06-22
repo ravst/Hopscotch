@@ -71,6 +71,7 @@ attribute [OracleReductionSimps]
   OracleQuery.input_query
   OracleQuery.cont_query
   id_map
+  addPMFtoImpl
 -- OracleComp.instMonadLiftOracleQuery._aux_1
 -- PFunctor.FreeM.mapM
 
@@ -78,6 +79,7 @@ attribute [OracleReductionSimps]
 attribute [correctAbstractionDiagSimps]
   mapInputState
   mapOutputState
+  mapSecond
 
 attribute [StateTSimps]
   StateT.lift
@@ -121,14 +123,15 @@ macro_rules
   | `(tactic| solveCorrectAbstractionDiag [$defs,*]) =>
     `(tactic|
       (ext1 st
+       try let ⟨st1, st₂⟩ := st
        try simp [game_hopping_unfold, $defs,*]
        try simp [OracleReductionSimps]
        try simp [correctAbstractionDiagSimps]
        try simp [StateTSimps]
        try simp [OracleReductionSimps]
+       try simp [correctAbstractionDiagSimps]
        try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
-       try simp
-       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
+       try (split_ifs <;> try simp <;> rfl)
        try rfl))
 
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
@@ -200,7 +203,7 @@ elab_rules : tactic
           (apply correctAbstractionImpliesObsEq _ _ (fun x => (x, ()))
            solveCorrectAbstraction! [])),
         ← `(tactic|
-          (apply correctAbstractionImpliesObsEq _ _ (fun x => x)
+          (refine correctAbstractionImpliesObsEq _ _ (fun x => x) ?_
            solveCorrectAbstraction! [])),
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun _ => ())

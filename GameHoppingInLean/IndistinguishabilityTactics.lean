@@ -10,19 +10,37 @@ syntax "obs_eq" : tactic
 macro_rules
   | `(tactic| obs_eq) => `(tactic| apply Indistinguishable.of_ObsEq)
 
+/--
+Turn an indistinguishability goal into an observational-equivalence goal, prove it with
+the supplied abstraction map, and discharge the generated correctness conditions.
+
+Use `by_abstraction ← f` for the symmetric direction.
+-/
+syntax (name := byAbstractionForward) "by_abstraction" term : tactic
+syntax (name := byAbstractionSymm) "by_abstraction" "←" term : tactic
+
+macro_rules (kind := byAbstractionForward)
+  | `(tactic| by_abstraction $f:term) =>
+      `(tactic|
+        (obs_eq
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := byAbstractionSymm)
+  | `(tactic| by_abstraction ← $f:term) =>
+      `(tactic|
+        (obs_eq
+         symm
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
 private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Array Expr) := do
   let idxTypeWhnf ← withTransparency .all <| whnf idxType
-  let defaultCandidate ←
-    try
-      pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
-    catch _ =>
-      pure #[]
-  let structuralCandidates ←
-    match idxTypeWhnf.getAppFnArgs with
+  match idxTypeWhnf.getAppFnArgs with
     | (``Unit, #[]) =>
-        pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
+        pure #[mkConst ``Unit.unit idxTypeWhnf.getAppFn.constLevels!]
     | (``PUnit, #[]) =>
-        pure #[← Term.elabTermEnsuringType (← `(default)) idxType]
+        pure #[mkConst ``PUnit.unit idxTypeWhnf.getAppFn.constLevels!]
     | (``Empty, #[]) =>
         pure #[]
     | (``PEmpty, #[]) =>
@@ -47,8 +65,14 @@ private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Arr
               mkAppOptM ``Prod.mk #[some α, some β, some i, some j]
         pure candidates
     | _ =>
-        pure #[]
-  pure (defaultCandidate ++ structuralCandidates)
+        try
+          let inhabitedType ← mkAppM ``Inhabited #[idxType]
+          match ← trySynthInstance inhabitedType with
+          | .some _ => pure #[← mkAppM ``default #[idxType]]
+          | .none => pure #[]
+          | .undef => pure #[]
+        catch _ =>
+          pure #[]
 
 private def closeGameHoppingAssumptionGoal : TacticM Unit := do
   let goal ← getMainGoal

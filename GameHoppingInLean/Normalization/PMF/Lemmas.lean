@@ -138,6 +138,14 @@ theorem bind_map_do {α β γ : Type} (p : PMF α) (f : α → β) (q : β → P
   rw [PMF.bind_map]
   rfl
 
+/-- Raw `PMF.bind` form of `bind_map_do`. -/
+@[GameHoppingSimplifyPMF]
+theorem bind_map_raw {α β γ : Type} (p : PMF α) (f : α → β) (q : β → PMF γ) :
+    PMF.bind (PMF.map f p) q =
+    PMF.bind p (fun x => q (f x)) := by
+  rw [PMF.bind_map]
+  rfl
+
 /-- Push a map through a bind, keeping the result in raw `PMF` form. -/
 @[GameHoppingSimplifyPMF]
 theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β → γ) :
@@ -146,6 +154,13 @@ theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β �
       f x) =
     PMF.bind p (fun x => PMF.map g (f x)) := by
   change (p.bind f).map g = p.bind (fun x => (f x).map g)
+  simpa using (PMF.map_bind (p := p) (q := f) (f := g))
+
+/-- Raw `PMF.bind` form of `map_bind_do`. -/
+@[GameHoppingSimplifyPMF]
+theorem map_bind_raw {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β → γ) :
+    PMF.map g (PMF.bind p f) =
+    PMF.bind p (fun x => PMF.map g (f x)) := by
   simpa using (PMF.map_bind (p := p) (q := f) (f := g))
 
 /-- Transporting a uniform `PMF` sample across an equivalence. -/
@@ -223,6 +238,13 @@ theorem bind_uniformOfFintype_eval_do {X Y α : Type}
         rest y) := by
           rw [PMF.uniformOfFintype_prod_bind]
           simp [rest', PMF.bind_const]
+
+@[GameHoppingSimplifyPMF]
+lemma ite_pure {α} (p : Prop) [Decidable p] (a b : α) :
+      (if p then (pure a : PMF α) else pure b) =
+      (pure (if p then a else b) : PMF α)
+       := by
+  split_ifs <;> rfl
 
 /-- Commuting two independent `PMF` draws.
 

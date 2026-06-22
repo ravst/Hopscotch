@@ -1,4 +1,3 @@
-import GameHoppingInLean.Basic
 import GameHoppingInLean.MonadRandomState
 import GameHoppingInLean.StatefulRandomOracle
 import GameHoppingInLean.OracleReductions
@@ -13,7 +12,7 @@ import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 import GameHoppingInLean.Examples.Proofs.OUTCInnerImpliesOUTCDouble
 import GameHoppingInLean.Examples.Proofs.LengthTripplingPRGSecure
 -- import GameHoppingInLean.Examples.Proofs.GGMSecurePRF
--- import GameHoppingInLean.Examples.Proofs.EncryptThenMacIndCca
+import GameHoppingInLean.Examples.Proofs.EncryptThenMacIndCca
 -- import GameHoppingInLean.Examples.Proofs.DDHImpliesElGamalOTUCPub
 
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
