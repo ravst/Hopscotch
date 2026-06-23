@@ -158,7 +158,7 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
           pure (some (BitVec.zero n))
 
 attribute [local game_hopping_unfold] EtMFromMACLReduction EtMFromMACRReduction
-  EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR --EtMGameZeroL EtMGameZeroR
+  EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR
   MACScheme.check
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security and MAC unforgeability,
 family version. The generated hop obligations are intentionally left for future proof work. -/
