@@ -1,12 +1,3 @@
-This project was edited by [Aristotle](https://aristotle.harmonic.fun).
-
-To cite Aristotle:
-- Tag @Aristotle-Harmonic on GitHub PRs/issues
-- Add as co-author to commits:
-```
-Co-authored-by: Aristotle (Harmonic) <aristotle-harmonic@harmonic.fun>
-```
-
 # GameHoppingInLean
 
 This is a repository corresponding to a joint project of
@@ -16,12 +7,11 @@ The goal of this project is to implement a game hopping framwework in Lean.
 We are inspired by the tool ProofFrog, and we try to combine ProofFrogs's
 intuitive user's interface, with Lean's correctness guarantees and flexibility.
 
-The project is being developed using the LLM-based tool Codex from OpenAi.
+The project is being developed using the LLM-based tool Codex from OpenAi and Aristotele from harmonic.
 
 ## Dependencies
 
-This project depends on the VCVio library (kept in the VCVio2 catalogue) which
-is licenced under the Apache Licence.
+This project depends on the VCVio library.
 
 ## References
 

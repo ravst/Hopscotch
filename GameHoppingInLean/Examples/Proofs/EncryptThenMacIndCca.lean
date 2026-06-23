@@ -157,22 +157,8 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
         else
           pure (some (BitVec.zero n))
 
-/-- Simplified left intermediate game: decryption never calls the encryption scheme. -/
-@[game_hopping_unfold]
-noncomputable def EtMGameZeroL {KEnc KMac Tag : Type} [DecidableEq Tag]
-    (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
-    RStateOracle (EtMSpec Tag) :=
-  (EtMFromIndCpaReduction mac) ◇ (IndCpaL (C := BitVec) enc)
-
-/-- Simplified right intermediate game: decryption never calls the encryption scheme. -/
-@[game_hopping_unfold]
-noncomputable def EtMGameZeroR {KEnc KMac Tag : Type} [DecidableEq Tag]
-    (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
-    RStateOracle (EtMSpec Tag) :=
-  (EtMFromIndCpaReduction mac) ◇ (IndCpaR (C := BitVec) enc)
-
 attribute [local game_hopping_unfold] EtMFromMACLReduction EtMFromMACRReduction
-  EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR EtMGameZeroL EtMGameZeroR
+  EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR --EtMGameZeroL EtMGameZeroR
   MACScheme.check
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security and MAC unforgeability,
 family version. The generated hop obligations are intentionally left for future proof work. -/
@@ -191,10 +177,8 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     (EtMFromMACLReduction enc) ◇ (MACUFReal mac),
     (EtMFromMACLReduction enc) ◇ (MACUFIdeal mac),
     EtMGameMacIdealL enc mac,
-    EtMGameZeroL enc mac,
     (EtMFromIndCpaReduction mac) ◇ (IndCpaL enc),
     (EtMFromIndCpaReduction mac) ◇ (IndCpaR enc),
-    EtMGameZeroR enc mac,
     EtMGameMacIdealR enc mac,
     (EtMFromMACRReduction enc) ◇ (MACUFIdeal mac),
     (EtMFromMACRReduction enc) ◇ (MACUFReal mac),
@@ -204,11 +188,10 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
       ({ key := (s.2, s.1.encKey), seen := s.1.seen } :
         IndCcaState (KMac κ × KEnc κ) (fun n => EtMC (Tag κ) n)))
   · by_abstraction ← (fun s =>
-      (({ encKey := s.2, seen := s.1.seen } : EtMFromMacState (KEnc κ) (Tag κ)),
-        ({ key := s.1.macKey, seen := s.1.seen } : MACUFIdealState (KMac κ) (Tag κ))))
+      ({ encKey := s.2, seen := s.1.seen },
+        { key := s.1.macKey, seen := s.1.seen }))
   · by_abstraction (fun s =>
-      (({ encKey := s.2, seen := s.1.seen } : EtMFromMacState (KEnc κ) (Tag κ)),
-        ({ key := s.1.macKey, seen := s.1.seen } : MACUFIdealState (KMac κ) (Tag κ))))
+      ({ encKey := s.2, seen := s.1.seen },
+        { key := s.1.macKey, seen := s.1.seen }))
   · by_abstraction (fun s =>
-      ({ key := (s.2, s.1.encKey), seen := s.1.seen } :
-        IndCcaState (KMac κ × KEnc κ) (fun n => EtMC (Tag κ) n)))
+      ({ key := (s.2, s.1.encKey), seen := s.1.seen }))

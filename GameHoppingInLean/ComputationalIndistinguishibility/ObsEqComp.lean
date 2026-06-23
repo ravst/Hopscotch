@@ -5,7 +5,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenc
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.Misc.SimpAttrLemmas
 
-/- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq)
+/- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq here)
 It is easy to proof, that varios form of correctAbstractin lead both to ObsEq and AdvEq.
 But proving that ObsEq imply AdvEq is challenging. We provie this here.
 To do that, we define behavioral oracle: an definition of oracle without internla state,
