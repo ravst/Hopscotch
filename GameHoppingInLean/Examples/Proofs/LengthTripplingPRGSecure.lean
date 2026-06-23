@@ -93,10 +93,3 @@ noncomputable def secureLengthTripplingFam_of_secureLengthDoublingFam
     PRG_G3,
     PRG_rand (k κ) (2 * k κ)
   ]
-  · obs_eq
-    refine correctAbstractionImpliesObsEq _ _ (fun _ => ()) ?_
-    solveCorrectAbstraction[]
-    simp only  [GameHoppingPrettyPrintPMF]
-    simp [GameHoppingSimplifyPMF, GHSimpPMFBitVec]
-    simp only [GameHoppingPrettyPrintPMF]
-    sorry

@@ -15,6 +15,18 @@ theorem bitVec_extractLsb'_cast_eq {n m start len : ℕ} (h : n = m) (x : BitVec
   cases h
   rfl
 
+@[GHSimpPMFBitVec]
+theorem bitVec_cast_symm_cast {n m : ℕ} (h : n = m) (x : BitVec n) :
+    BitVec.cast h.symm (BitVec.cast h x) = x := by
+  cases h
+  rfl
+
+@[GHSimpPMFBitVec]
+theorem bitVec_cast_cast_symm {n m : ℕ} (h : n = m) (x : BitVec m) :
+    BitVec.cast h (BitVec.cast h.symm x) = x := by
+  cases h
+  rfl
+
 theorem bind_uniformOfFintype_bitVec_cast {n m : ℕ} {α : Type}
     (h : n = m) (f : BitVec m → PMF α) :
     PMF.bind (PMF.uniformOfFintype (BitVec n))
@@ -23,9 +35,15 @@ theorem bind_uniformOfFintype_bitVec_cast {n m : ℕ} {α : Type}
   cases h
   rfl
 
+theorem bind_uniformOfFintype_bitVec_recast {n m : ℕ} {α : Type}
+    (h : n = m) (f : BitVec n → PMF α) :
+    PMF.bind (PMF.uniformOfFintype (BitVec n)) f =
+    PMF.bind (PMF.uniformOfFintype (BitVec m)) (fun x => f (BitVec.cast h.symm x)) := by
+  cases h
+  rfl
+
 /-- Rewrite a uniform draw over `BitVec (2 * k)` as the image of a uniform draw over
 `BitVec (k + k)` through the standard width cast. -/
-@[GHSimpPMFBitVec]
 theorem uniformOfFintype_bitVec_two_mul_eq_map_cast {k : ℕ} :
     PMF.uniformOfFintype (BitVec (2 * k)) =
       (PMF.uniformOfFintype (BitVec (k + k))).map
@@ -144,7 +162,6 @@ theorem bind_uniformOfFintype_bitVec_two_mul_cast
 
 /-- The `2 * k` specialization of `bind_uniformOfFintype_bitVec_extract_do`, transported
 through the standard `BitVec (k + k) ≃ BitVec (2 * k)` cast. -/
-@[GHSimpPMFBitVec]
 theorem bind_uniformOfFintype_bitVec_two_mul_extract_do
     {k : ℕ} {α : Type} (f : BitVec k → BitVec k → PMF α) :
     (do
