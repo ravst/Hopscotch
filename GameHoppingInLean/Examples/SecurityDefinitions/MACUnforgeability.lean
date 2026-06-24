@@ -35,7 +35,6 @@ def MACUFSpec (Tag : Type) : OracleSpec (MACUFQ Tag)
 /-- Real MAC oracle:
 * `GetTag(m)` returns `tag_k(m)`
 * `CheckTag(m, t)` returns deterministic `check_k(m, t)` -/
-@[game_hopping_unfold]
 noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
     RStateOracle (MACUFSpec Tag) where
   stateType := K
@@ -52,7 +51,6 @@ noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme
 * stores key and a set of previously returned `(message, tag)` pairs
 * `GetTag(m)` returns `tag_k(m)` and records `(m, tag_k(m))`
 * `CheckTag(m, t)` returns `true` iff `(m, t)` is in the recorded set -/
-@[game_hopping_unfold]
 noncomputable def MACUFIdeal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
     RStateOracle (MACUFSpec Tag) where
   stateType := MACUFIdealState K Tag

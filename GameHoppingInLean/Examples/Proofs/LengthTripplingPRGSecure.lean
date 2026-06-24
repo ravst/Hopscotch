@@ -9,7 +9,7 @@ open scoped OracleReduction
 
 /-- `R1`: from secure-PRG game on `2k` output to secure-PRG game on `3k` output.
 On query, ask inner oracle for a `2k`-bit string `x || y`, then return `x || prg.draw y`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 def PRGDouble_to_Tripple_R1 {k : ℕ} (prg : lengthDoublingPRG k) :
     OracleReduction (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)) where
   stateType := Unit
@@ -24,7 +24,7 @@ def PRGDouble_to_Tripple_R1 {k : ℕ} (prg : lengthDoublingPRG k) :
 /-- `R2`: from secure-PRG game on `2k` output to secure-PRG game on `3k` output.
 On query, sample random `k` bits `x`, query inner oracle for `y : BitVec (2k)`,
 and return `x || y`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def PRGDouble_to_Tripple_R2 {k : ℕ} :
     OracleReduction (SecurePRGSpec k k) (SecurePRGSpec k (2 * k)) where
   stateType := Unit
@@ -37,7 +37,7 @@ noncomputable def PRGDouble_to_Tripple_R2 {k : ℕ} :
 
 /-- Explicit game `G1`: sample uniform `xy : BitVec (2k)`, split as `x || y`,
 return `x || prg.draw y`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def PRG_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
     RStateOracle (SecurePRGSpec k (2 * k)) where
   stateType := Unit
@@ -51,7 +51,7 @@ noncomputable def PRG_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
 
 /-- Explicit game `G2`: sample independent uniform `x,y : BitVec k`,
 return `x || prg.draw y`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def PRG_G2 {k : ℕ} (prg : lengthDoublingPRG k) :
     RStateOracle (SecurePRGSpec k (2 * k)) where
   stateType := Unit
@@ -64,7 +64,7 @@ noncomputable def PRG_G2 {k : ℕ} (prg : lengthDoublingPRG k) :
 
 /-- Explicit game `G3`: sample independent uniform `x : BitVec k` and
 `y : BitVec (2k)`, return `x || y`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def PRG_G3 {k : ℕ} :
     RStateOracle (SecurePRGSpec k (2 * k)) where
   stateType := Unit
@@ -74,7 +74,7 @@ noncomputable def PRG_G3 {k : ℕ} :
     let y ← PMF.uniformOfFintype (BitVec (2 * k))
     pure (BitVec.append x y)
 
-attribute [local game_hopping_unfold] LengthTripplingPRG LengthTripplingPRGFamily
+attribute [local game_hopping_unfold] LengthTripplingPRG LengthTripplingPRGFamily PRG_real PRG_rand
 /-- Family version of length-tripling security from pointwise security of a
 length-doubling PRG family. -/
 noncomputable def secureLengthTripplingFam_of_secureLengthDoublingFam
@@ -92,4 +92,4 @@ noncomputable def secureLengthTripplingFam_of_secureLengthDoublingFam
     (PRGDouble_to_Tripple_R2) ◇ (PRG_rand (k κ) (k κ)),
     PRG_G3,
     PRG_rand (k κ) (2 * k κ)
-  ]
+  ] using GHSimpPMFBitVec

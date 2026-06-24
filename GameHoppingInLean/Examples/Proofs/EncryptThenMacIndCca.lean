@@ -25,7 +25,7 @@ structure EtMFromIndCpaState (KMac Tag : Type) where
   seen : Finset (EtMCiphertext Tag)
 
 /-- Reduction from MAC-unforgeability oracle to the IND-CCA left game for Encrypt-then-MAC. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def EtMFromMACLReduction {KEnc Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) :
     OracleReduction (MACUFSpec Tag) (EtMSpec Tag) where
@@ -52,7 +52,7 @@ noncomputable def EtMFromMACLReduction {KEnc Tag : Type} [DecidableEq Tag]
             pure (some (BitVec.zero n))
 
 /-- Right-message version of `EtMFromMACLReduction`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def EtMFromMACRReduction {KEnc Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) :
     OracleReduction (MACUFSpec Tag) (EtMSpec Tag) where
@@ -79,7 +79,7 @@ noncomputable def EtMFromMACRReduction {KEnc Tag : Type} [DecidableEq Tag]
             pure (some (BitVec.zero n))
 
 /-- Reduction from IND-CPA left/right games to a simplified IND-CCA-style EtM game. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def EtMFromIndCpaReduction {KMac Tag : Type} [DecidableEq Tag]
     (mac : MACScheme KMac Tag) :
     OracleReduction (IndCpaSpec BitVec) (EtMSpec Tag) where
@@ -102,7 +102,7 @@ noncomputable def EtMFromIndCpaReduction {KMac Tag : Type} [DecidableEq Tag]
           pure (some (BitVec.zero n))
 
 /-- Explicit game after replacing MAC-real by MAC-ideal on the left branch. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
@@ -130,7 +130,7 @@ noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
           pure (some (BitVec.zero n))
 
 /-- Right-branch version of `EtMGameMacIdealL`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
     RStateOracle (EtMSpec Tag) where
@@ -159,7 +159,7 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
 
 attribute [local game_hopping_unfold] EtMFromMACLReduction EtMFromMACRReduction
   EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR
-  MACScheme.check
+  IndCpaL IndCpaR IndCcaL IndCcaR MACUFReal MACUFIdeal MACScheme.check
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security and MAC unforgeability,
 family version. The generated hop obligations are intentionally left for future proof work. -/
 noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam

@@ -8,7 +8,7 @@ import GameHoppingInLean.Normalization.BitVec.Simprocs
 
 open scoped OracleReduction
 
-attribute [local game_hopping_unfold] doubleSymEnc doubleSymEncFamily
+attribute [local game_hopping_unfold] doubleSymEnc doubleSymEncFamily OTUC_Real OTUC_Rand
 
 @[local simp, local OracleReductionSimps]
 theorem OTUCSpec_range_ctxt {C : ℕ → Type} {n : ℕ} (m : BitVec n) :
@@ -20,7 +20,7 @@ theorem OTUCDomain_ctxt_fst {n : ℕ} (m : BitVec n) :
 
 /-- `R1`: reduction from inner-OTUC (`T`) to outer-OTUC (`Double(S,T)`).
 On query `m`, sample an `S` key, encrypt with `S`, then delegate to the input OTUC oracle. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def OUTCInner_to_OUTCDouble_R1 {K₁ : Type} {C : ℕ → Type}
     (S : SymEncScheme K₁ BitVec) : OracleReduction (OTUCSpec C) (OTUCSpec C) where
   stateType := Unit
@@ -32,7 +32,7 @@ noncomputable def OUTCInner_to_OUTCDouble_R1 {K₁ : Type} {C : ℕ → Type}
 
 /-- Explicit intermediate game `G1`:
 sample an `S` key, encrypt the message with `S`, ignore that result, and output random ciphertext. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 noncomputable def OUTC_G1 {K₁ K₂ : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
     (S : SymEncScheme K₁ BitVec) (_T : SymEncScheme K₂ C) :
@@ -43,8 +43,6 @@ noncomputable def OUTC_G1 {K₁ K₂ : Type} {C : ℕ → Type}
     let ks ← liftM S.keyGen
     let _m' ← liftM (S.encrypt ks m)
     PMF.uniformOfFintype (C n)
-
-
 
 /-- OUTC/OTUC of inner scheme `T` implies OUTC/OTUC of `Double(S,T)`, via reduction `R1`. -/
 noncomputable def outcInnerImpliesOutcDouble

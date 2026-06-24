@@ -141,6 +141,7 @@ current goal, and the tactic creates one goal for each adjacent pair:
 `G₀ ≈ H₁`, `H₁ ≈ H₂`, ..., `Hₖ ≈ Gₙ`.
 -/
 syntax "game_hopping" " [" term,* "]" : tactic
+syntax "game_hopping" " [" term,* "]" " using " Lean.Parser.Tactic.simpLemma,* : tactic
 
 elab_rules : tactic
   | `(tactic| game_hopping [$chain,*]) => do
@@ -171,3 +172,31 @@ elab_rules : tactic
           setGoals goals.toList
       evalTactic (← `(tactic| all_goals try game_hopping_reduce_assumption))
       evalTactic (← `(tactic| all_goals try (obs_eq; solve_obs_eq)))
+  | `(tactic| game_hopping [$chain,*] using $simps,*) => do
+      let elems := chain.getElems
+      if elems.size < 2 then
+        throwError "game_hopping expected at least a start and final oracle"
+      checkGameHoppingEndpoints elems[0]! elems[elems.size - 1]!
+      let mids := elems.extract 1 (elems.size - 1)
+      let mut goals := #[]
+      for mid in mids do
+        match (← getGoals) with
+        | current :: rest =>
+            setGoals [current]
+            evalTactic (← `(tactic|
+              refine IndistinguishableI.trans ($mid) _ ?_ ?_))
+            match (← getGoals) with
+            | left :: right :: [] =>
+                goals := goals.push left
+                setGoals (right :: rest)
+            | _ =>
+                throwError "game_hopping internal error: transitivity did not create two goals"
+        | [] =>
+            throwError "game_hopping failed: no goals"
+      match (← getGoals) with
+      | current :: rest =>
+          setGoals (goals.toList ++ current :: rest)
+      | [] =>
+          setGoals goals.toList
+      evalTactic (← `(tactic| all_goals try game_hopping_reduce_assumption))
+      evalTactic (← `(tactic| all_goals try (obs_eq; solve_obs_eq [$simps,*])))
