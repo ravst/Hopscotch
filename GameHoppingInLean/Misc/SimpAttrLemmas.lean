@@ -37,7 +37,9 @@ lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
 /-- Running `f <$> StateT.get`. -/
 @[goodDoubleActionSimps] lemma stateT_run_map_get {σ α} (f : σ → α) (s : σ) :
     ((f <$> StateT.get) s : PMF (α × σ)) = pure (f s, s) := by
-  simp [StateT.run, StateT.get, StateT.map, map_eq_pure_bind]
+  change PMF.map (fun p : σ × σ => (f p.1, p.2)) (PMF.pure (s, s)) =
+    PMF.pure (f s, s)
+  exact PMF.pure_map (fun p : σ × σ => (f p.1, p.2)) (s, s)
 
 /-- Running `StateT.set`. -/
 @[goodDoubleActionSimps] lemma stateT_run_set {m} [Monad m] {σ} (st s : σ) :
@@ -80,6 +82,9 @@ attribute [correctAbstractionDiagSimps]
   mapInputState
   mapOutputState
   mapSecond
+  bindInputState
+  bindOutputState
+  bindSecond
 
 attribute [StateTSimps]
   StateT.lift
@@ -120,44 +125,44 @@ attribute [goodDoubleActionSimps]
 syntax "solveCorrectAbstractionDiag" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
 macro_rules
-  | `(tactic| solveCorrectAbstractionDiag [$defs,*]) =>
-    `(tactic|
-      (ext1 st
-       try let ⟨st1, st₂⟩ := st
-       try simp [game_hopping_unfold, $defs,*]
-       try simp [OracleReductionSimps]
-       try simp [correctAbstractionDiagSimps]
-       try simp [StateTSimps]
-       try simp [OracleReductionSimps]
-       try simp [correctAbstractionDiagSimps]
-       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
-       try (split_ifs <;> try simp <;> rfl)
-       try rfl))
+          | `(tactic| solveCorrectAbstractionDiag [$simps,*]) =>
+            `(tactic|
+              (ext1 st;
+               try let ⟨st1, st₂⟩ := st;
+               try simp [game_hopping_unfold];
+               try simp [OracleReductionSimps];
+               try simp [correctAbstractionDiagSimps];
+               try simp [StateTSimps];
+               try simp [RStateSimplifier];
+               try simp [OracleReductionSimps];
+               try simp [correctAbstractionDiagSimps];
+               try simp [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*];
+               try (split_ifs <;> try simp <;> rfl);
+               try rfl))
 
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
 syntax "solveCorrectAbstractionInit" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
 macro_rules
-  | `(tactic| solveCorrectAbstractionInit [$defs,*]) =>
-    `(tactic|
-      (
-       try simp [OracleReduction.apply, game_hopping_unfold, $defs,*]
-       try simp [OracleReductionSimps]
-       try simp [GHSimpPMFBitVec, GameHoppingSimplifyPMF]
-       try rfl))
+          | `(tactic| solveCorrectAbstractionInit [$simps,*]) =>
+            `(tactic|
+              (try simp [OracleReduction.apply, game_hopping_unfold];
+               try simp [OracleReductionSimps];
+               try simp [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*];
+               try rfl))
 
 /-- Solve both initialization and query branches of a correct-abstraction proof. -/
 syntax "solveCorrectAbstraction" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
 macro_rules
-  | `(tactic| solveCorrectAbstraction [$defs,*]) =>
+  | `(tactic| solveCorrectAbstraction [$simps,*]) =>
     `(tactic|
       (constructor
-       <;> try solveCorrectAbstractionInit [$defs,*]
+       <;> try solveCorrectAbstractionInit [$simps,*]
        try swap
        try
          (intro query
-          cases query <;> try solveCorrectAbstractionDiag [$defs,*])))
+          cases query <;> try solveCorrectAbstractionDiag [$simps,*])))
 
 /--
 Strict version used by tactic search: unlike `solveCorrectAbstraction`, it must close both
@@ -166,13 +171,13 @@ branches, so failed attempts can be reliably backtracked.
 syntax "solveCorrectAbstraction!" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
 macro_rules
-  | `(tactic| solveCorrectAbstraction! [$defs,*]) =>
+  | `(tactic| solveCorrectAbstraction! [$simps,*]) =>
     `(tactic|
       (constructor
-       · solveCorrectAbstractionInit [$defs,*]
-       · -- try solveCorrectAbstractionInit [$defs,*]
+       · solveCorrectAbstractionInit [$simps,*]
+       · -- try solveCorrectAbstractionInit [$simps,*]
          intro query
-         cases query <;> solveCorrectAbstractionDiag [$defs,*]))
+         cases query <;> solveCorrectAbstractionDiag [$simps,*]))
 
 private def tryCloseCurrentGoal (tac : TSyntax `tactic) : TacticM Bool := do
   let s ← saveState
@@ -192,30 +197,34 @@ Try common observational-equivalence abstraction shapes.  Each attempt must clos
 the current goal completely; failed or partial attempts restore the original goal.
 -/
 syntax "solve_obs_eq" : tactic
+syntax "solve_obs_eq" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules
+  | `(tactic| solve_obs_eq) => `(tactic| solve_obs_eq [])
 
 elab_rules : tactic
-  | `(tactic| solve_obs_eq) => do
+  | `(tactic| solve_obs_eq [$simps,*]) => do
       let attempts ← pure #[
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
-           solveCorrectAbstraction! [])),
+           solveCorrectAbstraction! [$simps,*])),
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun x => (x, ()))
-           solveCorrectAbstraction! [])),
+           solveCorrectAbstraction! [$simps,*])),
         ← `(tactic|
           (refine correctAbstractionImpliesObsEq _ _ (fun x => x) ?_
-           solveCorrectAbstraction! [])),
+           solveCorrectAbstraction! [$simps,*])),
         ← `(tactic|
           (apply correctAbstractionImpliesObsEq _ _ (fun _ => ())
-           solveCorrectAbstraction! [])),
+           solveCorrectAbstraction! [$simps,*])),
         ← `(tactic|
           (symm
            apply correctAbstractionImpliesObsEq _ _ (fun x => ((), x))
-           solveCorrectAbstraction! [])),
+           solveCorrectAbstraction! [$simps,*])),
         ← `(tactic|
           (symm
            apply correctAbstractionImpliesObsEq _ _ (fun x => (x, ()))
-           solveCorrectAbstraction! []))
+           solveCorrectAbstraction! [$simps,*]))
       ]
       for attempt in attempts do
         if ← tryCloseCurrentGoal attempt then

@@ -16,7 +16,6 @@ def OTUCSpec (C : ℕ → Type) : OracleSpec OTUCDomain :=
   (OTUCSpec C).query ⟨n, m⟩
 
 /-- OTUC real oracle: on each query, sample a fresh key from the scheme and encrypt the message. -/
-@[game_hopping_unfold]
 noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     RStateOracle (OTUCSpec C) where
   stateType := Unit
@@ -26,7 +25,6 @@ noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme
           scheme.encrypt k m
 
 /-- OTUC random oracle: ignore the message and return a uniformly random `n`-bit ciphertext. -/
-@[game_hopping_unfold]
 noncomputable def OTUC_Rand {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (_scheme : SymEncScheme K C) :
     RStateOracle (OTUCSpec C) where

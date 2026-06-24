@@ -14,7 +14,6 @@ def SecurePRGSpec (k l : ℕ) : OracleSpec Unit :=
 
 /-- Real PRG oracle.
 Stateless: samples a fresh uniform seed on each query, then returns `prg.draw seed`. -/
-@[game_hopping_unfold]
 noncomputable def PRG_real {k l : ℕ} (prg : PRG k l) :
     RStateOracle (SecurePRGSpec k l) where
   stateType := Unit
@@ -25,7 +24,6 @@ noncomputable def PRG_real {k l : ℕ} (prg : PRG k l) :
 
 /-- Random oracle baseline for PRG security.
 Ignores the query input and returns a uniformly random `(k + l)`-bit string. -/
-@[game_hopping_unfold]
 noncomputable def PRG_rand (k l : ℕ) : RStateOracle (SecurePRGSpec k l) where
   stateType := Unit
   initialState := pure ()

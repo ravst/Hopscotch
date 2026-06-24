@@ -1,6 +1,5 @@
 import GameHoppingInLean.Normalization.BitVec.Attrs
 import GameHoppingInLean.Normalization.PMF.Lemmas
-import GameHoppingInLean.MonadRandomState
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import ToMathlib.General
 
@@ -15,6 +14,83 @@ theorem bitVec_extractLsb'_cast_eq {n m start len : ℕ} (h : n = m) (x : BitVec
   cases h
   rfl
 
+@[GHSimpPMFBitVec]
+theorem bitVec_cast_symm_cast {n m : ℕ} (h : n = m) (x : BitVec n) :
+    BitVec.cast h.symm (BitVec.cast h x) = x := by
+  cases h
+  rfl
+
+@[GHSimpPMFBitVec]
+theorem bitVec_cast_cast_symm {n m : ℕ} (h : n = m) (x : BitVec m) :
+    BitVec.cast h (BitVec.cast h.symm x) = x := by
+  cases h
+  rfl
+
+/-- Equivalence between `(BitVec n × BitVec m)` and `BitVec (n + m)` via concatenation. -/
+def bitVecAppendEquiv (n m : ℕ) : (BitVec n × BitVec m) ≃ BitVec (n + m) where
+  toFun p := p.1 ++ p.2
+  invFun z := (z.extractLsb' m n, z.setWidth m)
+  left_inv := by
+    intro p
+    rcases p with ⟨x, y⟩
+    apply Prod.ext
+    · simpa using
+        (BitVec.extractLsb'_append_eq_of_le
+          (xhi := x) (xlo := y) (start := m) (len := n)
+          (h := Nat.le_refl m))
+    · simpa using (BitVec.setWidth_append (x := x) (y := y) (k := m))
+  right_inv := by
+    intro z
+    apply BitVec.eq_of_getElem_eq
+    intro i hi
+    by_cases hlt : i < m
+    · rw [BitVec.getElem_append (x := z.extractLsb' m n) (y := z.setWidth m) (h := hi)]
+      simp [hlt]
+      exact BitVec.getLsbD_eq_getElem (x := z) (i := i) hi
+    · rw [BitVec.getElem_append (x := z.extractLsb' m n) (y := z.setWidth m) (h := hi)]
+      simp [hlt]
+      have hi' : m + (i - m) = i := by omega
+      simpa [hi'] using
+        (BitVec.getLsbD_eq_getElem (x := z) (i := m + (i - m)) (h := by omega))
+
+/-- Equivalence between `BitVec (k + k)` and `BitVec (2 * k)`. -/
+def bitVecAddEquivTwoMul (k : ℕ) : BitVec (k + k) ≃ BitVec (2 * k) where
+  toFun x := BitVec.cast (by simp [two_mul]) x
+  invFun y := BitVec.cast (by simp [two_mul]) y
+  left_inv := by intro x; simp
+  right_inv := by intro y; simp
+
+/-- Relating generic `cast` on `BitVec` to `BitVec.cast`. -/
+theorem cast_congrArg_bitVec_eq_bitVec_cast {n m : ℕ} (h : n = m) (z : BitVec n) :
+    (cast (congrArg BitVec h) z : BitVec m) = BitVec.cast h z := by
+  cases h
+  rfl
+
+/-- Specialized cast-normalization for `BitVec (k + k)` to `BitVec (2 * k)`. -/
+@[GHSimpPMFBitVec]
+theorem cast_bitVec_two_mul_eq {k : ℕ} (z : BitVec (k + k)) :
+    (cast (by simp [two_mul]) z : BitVec (2 * k)) = BitVec.cast (by simp [two_mul]) z := by
+  have h : (k + k) = (2 * k) := by simp [two_mul]
+  simpa [h] using (cast_congrArg_bitVec_eq_bitVec_cast (h := h) (z := z))
+
+/-- The low `k` bits of `y ++ x` are exactly `x`. -/
+@[GHSimpPMFBitVec]
+theorem extractLsb'_zero_append_right {k m : ℕ}
+    (x : BitVec k) (y : BitVec m) :
+    BitVec.extractLsb' 0 k (y ++ x) = x := by
+  rw [← BitVec.setWidth_eq_extractLsb' (x := y ++ x) (w := k) (h := by omega)]
+  simp [BitVec.setWidth_append]
+
+/-- The high `k` bits of `x ++ y` (starting at offset `m`) are exactly `x`. -/
+@[GHSimpPMFBitVec]
+theorem extractLsb'_append_high_right {k m : ℕ}
+    (x : BitVec k) (y : BitVec m) :
+    BitVec.extractLsb' m k (x ++ y) = x := by
+  simpa using
+    (BitVec.extractLsb'_append_eq_of_le
+      (xhi := x) (xlo := y) (start := m) (len := k)
+      (h := Nat.le_refl m))
+
 theorem bind_uniformOfFintype_bitVec_cast {n m : ℕ} {α : Type}
     (h : n = m) (f : BitVec m → PMF α) :
     PMF.bind (PMF.uniformOfFintype (BitVec n))
@@ -23,15 +99,21 @@ theorem bind_uniformOfFintype_bitVec_cast {n m : ℕ} {α : Type}
   cases h
   rfl
 
+theorem bind_uniformOfFintype_bitVec_recast {n m : ℕ} {α : Type}
+    (h : n = m) (f : BitVec n → PMF α) :
+    PMF.bind (PMF.uniformOfFintype (BitVec n)) f =
+    PMF.bind (PMF.uniformOfFintype (BitVec m)) (fun x => f (BitVec.cast h.symm x)) := by
+  cases h
+  rfl
+
 /-- Rewrite a uniform draw over `BitVec (2 * k)` as the image of a uniform draw over
 `BitVec (k + k)` through the standard width cast. -/
-@[GHSimpPMFBitVec]
 theorem uniformOfFintype_bitVec_two_mul_eq_map_cast {k : ℕ} :
     PMF.uniformOfFintype (BitVec (2 * k)) =
       (PMF.uniformOfFintype (BitVec (k + k))).map
         (BitVec.cast (by simp [two_mul]) : BitVec (k + k) → BitVec (2 * k)) := by
-  simpa [RState.bitVecAddEquivTwoMul] using
-    (PMF.map_uniformOfFintype_equiv (e := RState.bitVecAddEquivTwoMul k)).symm
+  simpa [bitVecAddEquivTwoMul] using
+    (PMF.map_uniformOfFintype_equiv (e := bitVecAddEquivTwoMul k)).symm
 
 /-- Two independent uniform bitvector draws, appended together, are the same as one
 uniform draw at the appended width. -/
@@ -52,7 +134,7 @@ theorem bind_uniformOfFintype_bitVec_append_do
   rw [← PMF.uniformOfFintype_prod_bind
     (f := fun p : BitVec a × BitVec b => f (p.1 ++ p.2))]
   exact (PMF.bind_uniformOfFintype_equiv
-    (e := RState.bitVecAppendEquiv a b)
+    (e := bitVecAppendEquiv a b)
     (g := f)).symm
 
 /-- A uniform bitvector draw observed only through its high and low slices is equivalent
@@ -114,7 +196,7 @@ theorem bind_uniformOfFintype_bitVec_extract_low_high
           funext x
           rw [show ((Equiv.cast h) x : BitVec (a + b)) = BitVec.cast hNat x by
             simpa [h, Equiv.cast] using
-              RState.cast_congrArg_bitVec_eq_bitVec_cast (h := hNat) (z := x)]
+              cast_congrArg_bitVec_eq_bitVec_cast (h := hNat) (z := x)]
           simp [GHSimpPMFBitVec]
     _ =
         PMF.bind (PMF.uniformOfFintype (BitVec b))
@@ -132,19 +214,19 @@ theorem bind_uniformOfFintype_bitVec_extract_low_high
 
 /-- Raw PMF form for replacing a uniform `BitVec (2 * k)` draw by a uniform
 `BitVec (k + k)` draw transported across the standard width cast. -/
+@[GHSimpPMFBitVec]
 theorem bind_uniformOfFintype_bitVec_two_mul_cast
     {k : ℕ} {α : Type} (f : BitVec (2 * k) → PMF α) :
     PMF.bind (PMF.uniformOfFintype (BitVec (k + k)))
       (fun x => f (BitVec.cast (by simp [two_mul]) x)) =
     PMF.bind (PMF.uniformOfFintype (BitVec (2 * k))) f := by
-  simpa [RState.bitVecAddEquivTwoMul] using
+  simpa [bitVecAddEquivTwoMul] using
     (PMF.bind_uniformOfFintype_equiv
-      (e := RState.bitVecAddEquivTwoMul k)
+      (e := bitVecAddEquivTwoMul k)
       (g := f)).symm
 
 /-- The `2 * k` specialization of `bind_uniformOfFintype_bitVec_extract_do`, transported
 through the standard `BitVec (k + k) ≃ BitVec (2 * k)` cast. -/
-@[GHSimpPMFBitVec]
 theorem bind_uniformOfFintype_bitVec_two_mul_extract_do
     {k : ℕ} {α : Type} (f : BitVec k → BitVec k → PMF α) :
     (do
@@ -163,9 +245,9 @@ theorem bind_uniformOfFintype_bitVec_two_mul_extract_do
           let x ← PMF.uniformOfFintype (BitVec (k + k))
           f (BitVec.extractLsb' k k (BitVec.cast h x))
             (BitVec.extractLsb' 0 k (BitVec.cast h x))) := by
-          simpa [RState.bitVecAddEquivTwoMul] using
+          simpa [bitVecAddEquivTwoMul] using
             (PMF.bind_uniformOfFintype_equiv
-              (e := RState.bitVecAddEquivTwoMul k)
+              (e := bitVecAddEquivTwoMul k)
               (g := fun x : BitVec (2 * k) =>
                 f (BitVec.extractLsb' k k x) (BitVec.extractLsb' 0 k x)))
     _ =

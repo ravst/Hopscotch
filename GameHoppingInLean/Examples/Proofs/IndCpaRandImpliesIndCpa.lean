@@ -12,9 +12,11 @@ import GameHoppingInLean.IndistinguishabilityTactics
 
 open scoped OracleReduction
 
+attribute [local game_hopping_unfold] IndCpaL IndCpaR IndCpaRandReal IndCpaRandRand
+
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 def IndCpaRand_to_IndCpaL {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
   stateType := Unit
   initialState := pure ()
@@ -23,7 +25,7 @@ def IndCpaRand_to_IndCpaL {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C
 
 /-- Simple reduction from the single-message `ctxt` oracle to the right IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₁)`. -/
-@[game_hopping_unfold]
+@[local game_hopping_unfold]
 def IndCpaRand_to_IndCpaR {C : ℕ → Type} : OracleReduction (IndCpaRandSpec C) (IndCpaSpec C) where
   stateType := Unit
   initialState := pure ()

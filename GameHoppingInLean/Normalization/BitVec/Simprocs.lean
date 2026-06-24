@@ -109,14 +109,10 @@ private def abstractBitVecAppendOccurrences? (body : Expr) : MetaM (Option Expr)
 
 private def mkBitVecAppendUniformRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   try
-    let some (m, _instBind, _α, _β, x₁, rest₁) ← getBind? e | return none
-    unless ← isPMF? m do
-      return none
+    let some (x₁, rest₁) ← getPMFBind? e | return none
     let some a := getUniformBitVecWidth? x₁ | return none
     let .lam xName _xTy body₁ xBi := rest₁ | return none
-    let some (m₂, _instBind₂, _α₂, _β₂, x₂, rest₂) ← getBind? body₁ | return none
-    unless ← isPMF? m₂ do
-      return none
+    let some (x₂, rest₂) ← getPMFBind? body₁ | return none
     let some b := getUniformBitVecWidth? x₂ | return none
     let .lam _yName _yTy body₂ _yBi := rest₂ | return none
     let some body ← abstractBitVecAppendOccurrences? body₂ | return none
@@ -126,7 +122,7 @@ private def mkBitVecAppendUniformRewriteProof? (e : Expr) : MetaM (Option (Expr 
     let pf ← mkAppM ``bind_uniformOfFintype_bitVec_append_do #[rest]
     let pfTy ← inferType pf
     let some (_ty, lhs, rhs) := pfTy.eq? | return none
-    unless (← isDefEq lhs e) do
+    unless (← withTransparency .all <| isDefEq lhs e) do
       return none
     return some (rhs, pf)
   catch _ =>
@@ -148,6 +144,70 @@ private def getBitVecExtractLsbArgs? (e : Expr) : Option (Expr × Expr × Expr) 
       | x :: len :: start :: _ => some (start, len, x)
       | _ => none
   | _ => none
+
+private def getBitVecCastArgs? (e : Expr) : Option (Expr × Expr) :=
+  match e.getAppFnArgs with
+  | (``BitVec.cast, args) =>
+      match args.toList.reverse with
+      | x :: h :: _ => some (h, x)
+      | _ => none
+  | _ => none
+
+private partial def firstBitVecCastedOccurrence? (e : Expr) (width : Expr) (depth : Nat) :
+    MetaM (Option (Option Expr)) := do
+  if let some (h, x) := getBitVecCastArgs? e then
+    if x == mkBVar depth then
+      let hTy ← whnf (← inferType h)
+      let some (eqTy, n, m) := hTy.eq? | return none
+      if (← isDefEq eqTy (mkConst ``Nat)) && (← isDefEq n width) && !(← isDefEq m width) then
+        return some (some h)
+  match e with
+  | .bvar idx =>
+      if idx == depth then
+        return some none
+      else
+        return none
+  | .app f x =>
+      if let some result ← firstBitVecCastedOccurrence? f width depth then
+        return some result
+      firstBitVecCastedOccurrence? x width depth
+  | .lam _ ty body _ =>
+      if let some result ← firstBitVecCastedOccurrence? ty width depth then
+        return some result
+      firstBitVecCastedOccurrence? body width (depth + 1)
+  | .forallE _ ty body _ =>
+      if let some result ← firstBitVecCastedOccurrence? ty width depth then
+        return some result
+      firstBitVecCastedOccurrence? body width (depth + 1)
+  | .letE _ ty val body _ =>
+      if let some result ← firstBitVecCastedOccurrence? ty width depth then
+        return some result
+      if let some result ← firstBitVecCastedOccurrence? val width depth then
+        return some result
+      firstBitVecCastedOccurrence? body width (depth + 1)
+  | .mdata _ body =>
+      firstBitVecCastedOccurrence? body width depth
+  | .proj _ _ body =>
+      firstBitVecCastedOccurrence? body width depth
+  | _ => return none
+
+private def mkBitVecCastUniformRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  try
+    let some (x, rest) ← getPMFBind? e | return none
+    let some width := getUniformBitVecWidth? x | return none
+    let .lam xName xTy body xBi := rest | return none
+    let some (some h) ← firstBitVecCastedOccurrence? body width 0 | return none
+    let f := Expr.lam xName xTy body xBi
+    let pf ← mkAppM ``bind_uniformOfFintype_bitVec_recast #[h, f]
+    let pfTy ← inferType pf
+    let some (_ty, _lhs, rhs) := pfTy.eq? | return none
+    let targetTy ← mkEq e rhs
+    let castTy ← mkEq pfTy targetTy
+    let cast ← withTransparency .all <| mkExpectedTypeHint (← mkEqRefl pfTy) castTy
+    let pf ← mkEqMP cast pf
+    return some (rhs, pf)
+  catch _ =>
+    return none
 
 private def isSliceOf? (e : Expr) (z : Expr) (start len : Expr) : MetaM Bool := do
   let some (start', len', z') := getBitVecExtractLsbArgs? e | return false
@@ -238,6 +298,22 @@ simproc [GHSimpPMFBitVec] pmfRawBitVecAppendUniform
     let some (rhs, pf) ← PMFSimp.mkBitVecAppendUniformRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
+/-- Simproc: when a uniform `BitVec n` draw is first used through `BitVec.cast h`
+to `BitVec m`, redraw it directly at width `m` and cast only any remaining raw
+uses back to width `n`. -/
+simproc [GHSimpPMFBitVec] pmfBitVecCastUniform
+  (Bind.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkBitVecCastUniformRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
+
+/-- Raw `PMF.bind` version of `pmfBitVecCastUniform`. -/
+simproc [GHSimpPMFBitVec] pmfRawBitVecCastUniform
+  (PMF.bind _ _)
+  := fun e => do
+    let some (rhs, pf) ← PMFSimp.mkBitVecCastUniformRewriteProof? e | return .continue
+    return .visit { expr := rhs, proof? := some pf }
+
 /-- Simproc: split a uniform `BitVec (a + b)` draw used only through
 `extractLsb' 0 a` and `extractLsb' a b` into two independent uniform draws. -/
 simproc [GHSimpPMFBitVec] pmfBitVecSplitUniform
@@ -289,6 +365,27 @@ example {k : ℕ} (draw : BitVec k → BitVec (k + k)) (h : k + k = 2 * k) :
     PMF.bind (PMF.uniformOfFintype (BitVec k)) (fun x₁ =>
       PMF.bind (PMF.uniformOfFintype (BitVec k)) (fun x₂ =>
         PMF.pure (x₂ ++ BitVec.cast h (draw x₁), ()))) := by
+  simp only [GHSimpPMFBitVec]
+
+example {k : ℕ} {α : Type} (f : BitVec (2 * k) → PMF α) :
+    PMF.bind (PMF.uniformOfFintype (BitVec (k + k)))
+      (fun x => f (BitVec.cast (by simp [two_mul]) x)) =
+    PMF.bind (PMF.uniformOfFintype (BitVec (2 * k))) f := by
+  simp only [GHSimpPMFBitVec]
+
+example {k : ℕ} {α : Type} (f : BitVec (2 * k) → BitVec (k + k) → PMF α) :
+    PMF.bind (PMF.uniformOfFintype (BitVec (k + k)))
+      (fun x => f (BitVec.cast (by simp [two_mul]) x) x) =
+    PMF.bind (PMF.uniformOfFintype (BitVec (2 * k)))
+      (fun x => f x (BitVec.cast (by simp [two_mul]) x)) := by
+  simp only [GHSimpPMFBitVec]
+
+example {k : ℕ} :
+    PMF.bind (PMF.uniformOfFintype (BitVec k)) (fun x =>
+      PMF.bind (PMF.uniformOfFintype (BitVec (2 * k))) (fun y =>
+        PMF.pure (x ++ y, ()))) =
+    PMF.bind (PMF.uniformOfFintype (BitVec (k + 2 * k))) (fun xy =>
+      PMF.pure (xy, ())) := by
   simp only [GHSimpPMFBitVec]
 
 end Tests

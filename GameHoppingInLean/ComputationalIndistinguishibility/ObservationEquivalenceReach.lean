@@ -29,7 +29,10 @@ lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Typ
   case pure val =>
     intro τ hreach hb
     simp only [simulateQ_pure2]
-    simp [PMF.bind_const]
+    change
+      ((cs τ).bind fun s => PMF.map Prod.fst (PMF.pure (val, s))) =
+        PMF.map Prod.fst (PMF.pure (val, τ))
+    simp [GameHoppingSimplifyPMF, PMF.bind_const]
   case roll q cont Hind =>
     cases q
     case oracle l =>

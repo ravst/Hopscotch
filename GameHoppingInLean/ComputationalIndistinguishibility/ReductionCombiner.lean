@@ -46,7 +46,7 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
     case pure =>
       intro st
       rw [addToStateL.eq_def]
-      simp [simulateQ, PFunctor.FreeM.mapM]
+      simp [simulateQ, PFunctor.FreeM.mapM, RStateSimplifier, GameHoppingSimplifyPMF]
       -- rfl
     case roll query cont Hind =>
       intro st
@@ -57,10 +57,10 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       simp [PMF.map_bind, StateT.run]
       simp [simulateQ] at Hind
-      simp_rw [Hind]
+      try simp_rw [Hind]
       cases query <;> (
-        simp []
-        simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
+        try simp []
+        try simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
           PMF.map_bind, StateT.run]
         try simp [OracleReduction.query, OracleReduction.sample, OracleReduction.get,
           liftM, monadLift, MonadLift.monadLift, PFunctor.FreeM.lift]
@@ -68,20 +68,32 @@ lemma addToStateL_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       case oracle =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map]
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          RStateSimplifier, GameHoppingSimplifyPMF]
+        apply PMF.bindCongrOnSupport
+        intro a _ha
+        simpa using Hind a.1 st.1 a.2
       case sample =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map, Function.comp]
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          Function.comp, RStateSimplifier, GameHoppingSimplifyPMF]
         unfold Function.comp
-        simp []
+        try simp []
+        apply PMF.bindCongrOnSupport
+        intro a _ha
+        simpa using Hind a st.1 st.2
       case getState =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map, Function.comp]
-      case setState =>
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          Function.comp, RStateSimplifier, GameHoppingSimplifyPMF]
+        simpa using Hind st.1 st.1 st.2
+      case setState stNew =>
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift, PFunctor.FreeM.lift]
-        simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
+        simp [OracleSpec.query, OracleReduction.liftWithPMFAndState, RStateSimplifier,
+          GameHoppingSimplifyPMF]
+        simpa using Hind PUnit.unit stNew st.2
 
 
 noncomputable def addToStateR {I : Type u} {O : OracleSpec I} {s1 t : Type}
@@ -126,7 +138,7 @@ lemma addToStateR_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
     case pure =>
       intro st
       rw [addToStateR.eq_def]
-      simp [simulateQ, PFunctor.FreeM.mapM]
+      simp [simulateQ, PFunctor.FreeM.mapM, RStateSimplifier, GameHoppingSimplifyPMF]
       -- rfl
     case roll query cont Hind =>
       intro st
@@ -137,10 +149,10 @@ lemma addToStateR_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       simp [simulateQ, PFunctor.FreeM.mapM, OracleReduction.liftWithPMFAndState]
       simp [PMF.map_bind, StateT.run]
       simp [simulateQ] at Hind
-      simp_rw [Hind]
+      try simp_rw [Hind]
       cases query <;> (
-        simp []
-        simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
+        try simp []
+        try simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
           PMF.map_bind, StateT.run]
         try simp [OracleReduction.query, OracleReduction.sample, OracleReduction.get,
           liftM, monadLift, MonadLift.monadLift, PFunctor.FreeM.lift]
@@ -148,20 +160,32 @@ lemma addToStateR_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       case oracle =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map]
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          RStateSimplifier, GameHoppingSimplifyPMF]
+        apply PMF.bindCongrOnSupport
+        intro a _ha
+        simpa using Hind a.1 st.1 a.2
       case sample =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map, Function.comp]
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          Function.comp, RStateSimplifier, GameHoppingSimplifyPMF]
         unfold Function.comp
-        simp []
+        try simp []
+        apply PMF.bindCongrOnSupport
+        intro a _ha
+        simpa using Hind a st.1 st.2
       case getState =>
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
         simp [withPMFAndStateSpec, StateT.bind, StateT.get, RState.modify,
-          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map, Function.comp]
-      case setState =>
+          PMF.map_bind, StateT.run, set, StateT.set, Functor.map, StateT.map, PMF.map,
+          Function.comp, RStateSimplifier, GameHoppingSimplifyPMF]
+        simpa using Hind st.1 st.1 st.2
+      case setState stNew =>
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift, PFunctor.FreeM.lift]
-        simp [OracleSpec.query, OracleReduction.liftWithPMFAndState]
+        simp [OracleSpec.query, OracleReduction.liftWithPMFAndState, RStateSimplifier,
+          GameHoppingSimplifyPMF]
+        simpa using Hind PUnit.unit stNew st.2
 
 
 noncomputable def reductionStateInclusion {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}

@@ -413,7 +413,7 @@ theorem PMF.bind_uniformOfFintype_bitVec_swap_append_do
   rw [← PMF.uniformOfFintype_prod_bind
     (f := fun p : BitVec k × BitVec k => f (p.2 ++ p.1))]
   exact (PMF.bind_uniformOfFintype_equiv
-    (e := (Equiv.prodComm (BitVec k) (BitVec k)).trans (RState.bitVecAppendEquiv k k))
+    (e := (Equiv.prodComm (BitVec k) (BitVec k)).trans (bitVecAppendEquiv k k))
     (g := f)).symm
 
 noncomputable def PRF_ideal_cache_batch_flipMsb (i : ℕ) (Y : Type) [Fintype Y] [Nonempty Y] :

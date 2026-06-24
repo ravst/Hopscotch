@@ -40,7 +40,6 @@ def IndCcaSpec (C : ℕ → Type) : OracleSpec (IndCcaQ C)
 * `eavesdrop(m₀, m₁)` returns `Enc_k(m₀)` and records the ciphertext
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
-@[game_hopping_unfold]
 noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
     (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
   stateType := IndCcaState K C
@@ -64,7 +63,6 @@ noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
 * `eavesdrop(m₀, m₁)` returns `Enc_k(m₁)` and records the ciphertext
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
-@[game_hopping_unfold]
 noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
     (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
   stateType := IndCcaState K C
