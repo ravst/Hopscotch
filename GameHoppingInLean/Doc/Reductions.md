@@ -1,20 +1,28 @@
+A reduction from a specification `O₁` to a specification `O₂` is an object of type `OracleReduction O₁ O₂`. It is a structure with the following fields:
 
+- `stateType` – the type of the internal state kept by the reduction;
+- `initialState : OracleComp (withPMFSpec O₁) stateType` – a distribution on the initial state. In fact, during initialization we are already allowed to make queries to `O₂`. For that reason, `initialState` is an `OracleComp` over the specification `withPMFSpec O₁`;
+- `queries : QueryImpl O₂ (OracleComp (withPMFAndStateSpec stateType O₁))` –  
+  for each query `q : O₂.Domain`, we return an `OracleComp` computation (a value in this monad) of type `O₂.Range q`.  
+  Here `OracleComp` is over the specification `withPMFAndStateSpec stateType O₁`, which allows us to:
+  - access the state of type `stateType` via queries,
+  - sample values from a `PMF` (via queries),
+  - and query the oracle specified by `O₁`.  
 
-Reudction form spec O1 to spec O2 is an objet of type OracleReduction O1 O2. It is struct with fileds:
-* stateType -- type of internal state kept be reduction
-* initialState : OracleComp (withPMFSpec O₁) stateType -- distribuition on inital state. In fact, during initialiation we can start making queires to O2. For that reason, it is OraceComp over speicfication (withPMFSpec O₁).
-* queries : QueryImpl O₂ (OracleComp (withPMFAndStateSpec stateType O1)) --
-    for each query q : O1.Domain, we return OrclaComp computation (value in this monad) of type O1.Range q.
-    OracleComp is over spec  (withPMFAndStateSpec stateType O1) -- this allows to access state stateType via queries, sample a value from PMF (via query) and query O1 spec.
-    Crucailly, while Oracle implementation (RStateOracle) implements queries diretly in RState, here we have to sample and acess state via query. That is necessery to be able to reactivly combine all this operations.
+Crucially, while an oracle implementation (`RStateOracle`) implements queries directly in `RState`, a reduction must sample randomness and access state via queries. This is necessary to be able to reactively combine all these operations.
 
-Reductins are used in proofs by combining them with implementations. GIven reduction R : OracleReduction O1 O2 and x : RStateOracle O1 by R.apply x to have RStateOracle O1. We also write R ◇ x as shorthend.
+Reductions are used in proofs by composing them with implementations.  
+Given a reduction `R : OracleReduction O₁ O₂` and `x : RStateOracle O₂`, we obtain a new implementation `R.apply x : RStateOracle O₁`.  
+We also write `R ◇ x` as shorthand for this composition.
 
-How reduction appear in sequence of game hopping hybrids? Let say we analyze implemenation A  and want to use assumption H. Then we rewrite A as reduction R composed with H.left, and then make a hop into R composed with H.right.  Therefore, it is convinent to write reduction after having explicit implementation of A, for example by replacing some operation via call to H.left.
+How do reductions appear in a sequence of game-hopping hybrids?  
+Suppose we analyze an implementation `A` and want to use an assumption `H`. Then we rewrite `A` as a reduction `R` composed with `H.left`, and then perform a hop to `R` composed with `H.right`. Therefore, it is convenient to define the reduction after we have an explicit implementation of `A`, for example by replacing some operation with a call to `H.left`.
 
-After applciation of game_hopping it is common that we have to prove Indistinguishability between A and R ◇ x. Usually we use by_abstraction to prove this. The internal state space of composition R ◇ x is equal to product R.stateType × x.stateType, we have to write abstraction between it and A.stateType.
+After applying `game_hopping`, it is common that we must prove indistinguishability between `A` and `R ◇ x`. Usually we use `by_abstraction` to prove this. The internal state space of the composition `R ◇ x` is the product `R.stateType × x.stateType`, and we need to define an abstraction between this product and `A.stateType`.
 
-When x.stateType is unit,  abstractin function is tirvial. The tactic TODO delas with such cases. game_hopping autmatically tries this tactic.
+When `x.stateType` is `Unit`, the abstraction function is trivial. The tactic TODO deals with such cases, and `game_hopping` automatically tries this tactic.
 
-When proving correct abstraction, the 'diagram commutativity' goal will be genrated, that take about (R ◇ x).queries. After adding names of R and x into  `attribute [local game_hopping_unfold]`, the tactic by_abstraction should simplify  away that implemtation of composition. Sometimes, it will not be be aply to simplify simulateQ completly (it analyzes reduction implmentation, and for example could be stack on matchings). In such cases use TODO tactic to simplify the reduction code more. Generally, TODO simplifes simulateQ when reduction is a bind, pure, making query (roll) or other directly expose fragment of OracleComp (withPMFAndStateSpec _ _).
+When proving correct abstraction, a “diagram commutativity” goal will be generated that talks about `(R ◇ x).queries`. After adding the names of `R` and `x` to  
+`attribute [local game_hopping_unfold]`, the `by_abstraction` tactic should simplify away the implementation of the composition. Sometimes, it will not be able to fully simplify `simulateQ` (it analyzes the reduction implementation and, for example, may get stuck on pattern matches). In such cases, use the TODO tactic to simplify the reduction code further.  
 
+In general, TODO simplifies `simulateQ` when the reduction is a `bind`, `pure`, a query (`roll`), or another directly exposed fragment of `OracleComp (withPMFAndStateSpec _ _)`.

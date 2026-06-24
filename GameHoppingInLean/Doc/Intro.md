@@ -1,11 +1,18 @@
-# Intruduction: how to write cryptographic proof using game-hopping.
+# Introduction: How to Write a Cryptographic Proof Using Game-Hopping
 
-Generally, to use this library follow this steps:
-1. Formulate the crpyotgraphic statment you want to prove as indisitnguishibility (ind for short) statement. In particular, you should define two oracle implementations that no adversary can disitnguish with eah other.
-  Also formlate all used assumptions as inditinguishibility assumptions (thay have the same form as above: a pair of oracle implementations).
-  You could find more info on how to define oracle implementations in [GameHoppingInLean/Examples/Doc/OracleImplementatin.md](OracleImplementatin.md).
-3. Formulate the proof as sequence of hybrids. We will be proving that each two conseutive hybris are ind.
-  For each pair of hybrids they should be either:
-  * identicil behaviorally -- they have the same distribuition of outputs ofr any sequence of queries. Proofs of indistinguishability are usually carriad via abstration technique. More detail could be find in [ObservationalEquivalence](ObservationalEquivalence.md).
-  * the should correspond to reduction step. The hybrid on the left should have syntactic form of Reduction r applyied to left side of assumption X. The hybrid on the right should be equal to the same reduction but applied to the right side of assumption X (the same assumption). For more details about how to define reductions see [](Reductions.md).
-4. Finally your proof is done using game_hopping tactic. More info on how to use it is provided in TODO.
+To use this library, follow these steps:
+
+1. Formulate the cryptographic statement you want to prove as an indistinguishability (IND) statement. In particular, you should define two oracle implementations that no adversary can distinguish from each other.  
+   Also formulate all assumptions as indistinguishability assumptions (they have the same form as above: a pair of oracle implementations).  
+   You can find more information on how to define oracle implementations in [OracleImplementation.md](GameHoppingInLean/Examples/Doc/OracleImplementation.md).
+
+2. Formulate the proof as a sequence of hybrids. We will prove that each two consecutive hybrids are IND.  
+   For each pair of hybrids, one of the following should hold:
+
+   - They are behaviorally identical: they induce the same distribution on outputs for any sequence of queries. Proofs of indistinguishability in this case are usually carried out via the abstraction technique. More details can be found in [ObservationalEquivalence.md](ObservationalEquivalence.md).
+   - They correspond to a reduction step:  
+     The hybrid on the left should have the syntactic form of a reduction `r` applied to the left side of an assumption `X`.  
+     The hybrid on the right should be equal to the same reduction, but applied to the right side of the same assumption `X`.  
+     For more details about how to define reductions, see [Reductions.md](Reductions.md).
+
+3. Finally, complete your proof using the `game_hopping` tactic. More information on how to use it will be provided in TODO.
