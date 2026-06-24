@@ -32,8 +32,12 @@ lemma runDinstinguisher_inner_bind {I stateType : Type _} {O : OracleSpec I}
     runDinstinguisher_inner (cont out) ro state
   )
 := by
-  simp [runDinstinguisher_inner, simulateQ, PMF.map]
-  congr 1
+  simp [runDinstinguisher_inner, simulateQ]
+  change PMF.map (fun x => x.1)
+      ((ro q init).bind (fun __discr => PFunctor.FreeM.mapM ro (cont __discr.1) __discr.2)) =
+    (ro q init).bind
+      (fun __discr => PMF.map (fun x => x.1) (PFunctor.FreeM.mapM ro (cont __discr.1) __discr.2))
+  rw [PMF.map_bind]
 
 lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
   (d : OracleComp (withPMFSpec O) Bool) (impl : RStateOracle O) :
@@ -67,8 +71,8 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
       (fun p => (p.1.1, (p.1.2, p.2))) := by
   induction c using OracleComp.inductionOn generalizing sr so with
   | pure x =>
-    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps]
-    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, pure]
+    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, GameHoppingSimplifyPMF]
+    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, GameHoppingSimplifyPMF, pure]
   | query_bind t mx h =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
       -- All four heads reduce by unfolding the simulation/state-threading plumbing with
@@ -160,16 +164,39 @@ by
     intro init
     arg 2
     rw [goodDoubleAction_core2]
-  simp [StateT.run]
+  simp [StateT.run, StateT.run_bind]
   simp [OracleReduction.applyReductionToAdversary]
-  simp [StateT.run]
-  simp [PMF.map_bind]
-  congr
-  ext1 init
-  simp [PMF.monad_map_eq_map]
-  simp [PMF.map_comp]
-  unfold Function.comp
-  simp []
+  change
+    ((simulateQ (addPMFtoImpl o.queries) r.initialState initS).bind fun init =>
+        PMF.map (fun (x : Bool × (r.apply o).stateType) => x.1)
+          (PMF.map (fun p => (p.1.1, p.1.2, p.2))
+            (simulateQ (addPMFtoImpl o.queries)
+              (simulateQ OracleReduction.defaultImpl
+                (simulateQ (OracleReduction.addPMFtoImpl2 r.queries) dist) init.1)
+              init.2))) =
+      PMF.map (fun x => x.1)
+        ((simulateQ (addPMFtoImpl o.queries) r.initialState >>= fun init =>
+          (fun x => x.1) <$>
+            simulateQ (addPMFtoImpl o.queries)
+              (simulateQ OracleReduction.defaultImpl
+                (simulateQ (OracleReduction.addPMFtoImpl2 r.queries) dist) init)) initS)
+  simp [StateT.run_bind, PMF.monad_map_eq_map, PMF.map_comp, Function.comp_def]
+  change
+    ((simulateQ (addPMFtoImpl o.queries) r.initialState initS).bind fun init =>
+        PMF.map (fun x => x.1.1)
+          (simulateQ (addPMFtoImpl o.queries)
+            (simulateQ OracleReduction.defaultImpl
+              (simulateQ (OracleReduction.addPMFtoImpl2 r.queries) dist) init.1)
+            init.2)) =
+      PMF.map (fun x : Bool × o.stateType => x.1)
+        ((simulateQ (addPMFtoImpl o.queries) r.initialState initS).bind fun init =>
+          PMF.map (fun p => (p.1.1, p.2))
+            (simulateQ (addPMFtoImpl o.queries)
+              (simulateQ OracleReduction.defaultImpl
+                (simulateQ (OracleReduction.addPMFtoImpl2 r.queries) dist) init.1)
+              init.2))
+  rw [PMF.map_bind]
+  simp [PMF.map_comp, Function.comp_def]
 
 
 def compFamT {I : Type} (Spec : ℕ -> OracleSpec I) (Output : ℕ -> Type) := (κ : ℕ) -> OracleComp (withPMFSpec (Spec κ)) (Output κ)

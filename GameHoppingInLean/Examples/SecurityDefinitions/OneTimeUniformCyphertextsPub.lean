@@ -1,28 +1,34 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 
+/-- Query indices for the one-time public-key uniform-ciphertexts interface. -/
+inductive OneTimeUniformCyphertextsPubQ (M : Type) where
+  | getPk
+  | eavesdrop (msg : M)
+
 /-- One-time uniform-ciphertexts public-key oracle spec:
 * `getPk`: no arguments, returns the public key
 * `eavesdrop`: input a single message and return a ciphertext -/
-def OneTimeUniformCyphertextsPubSpec (PubK M C : Type) : OracleSpec IndCpaPubQ
-  | .getPk => (Unit, PubK)
-  | .eavesdrop => (M, C)
+def OneTimeUniformCyphertextsPubSpec (PubK M C : Type) :
+    OracleSpec (OneTimeUniformCyphertextsPubQ M)
+  | .getPk => PubK
+  | .eavesdrop _ => C
 
 instance instInhabitedOneTimeUniformCyphertextsPubRange {PubK M C : Type}
     [Inhabited PubK] [Inhabited C] :
-    ∀ q, Inhabited ((OneTimeUniformCyphertextsPubSpec PubK M C).range q)
+    ∀ q, Inhabited ((OneTimeUniformCyphertextsPubSpec PubK M C) q)
   | .getPk => by simpa [OneTimeUniformCyphertextsPubSpec] using (inferInstance : Inhabited PubK)
-  | .eavesdrop => by simpa [OneTimeUniformCyphertextsPubSpec] using (inferInstance : Inhabited C)
+  | .eavesdrop _ => by simpa [OneTimeUniformCyphertextsPubSpec] using (inferInstance : Inhabited C)
 
 /-- Convenience query constructor for requesting the public key. -/
 @[reducible, inline] def otucPubGetPk {PubK M C : Type} :
     OracleComp (OneTimeUniformCyphertextsPubSpec PubK M C) PubK :=
-  (OneTimeUniformCyphertextsPubSpec PubK M C).query .getPk ()
+  (OneTimeUniformCyphertextsPubSpec PubK M C).query .getPk
 
 /-- Convenience query constructor for the one-time uniform-ciphertexts public-key ciphertext query. -/
 @[reducible, inline] def otucPubCtxt {PubK M C : Type} (m : M) :
     OracleComp (OneTimeUniformCyphertextsPubSpec PubK M C) C :=
-  (OneTimeUniformCyphertextsPubSpec PubK M C).query .eavesdrop m
+  (OneTimeUniformCyphertextsPubSpec PubK M C).query (.eavesdrop m)
 
 /-- Real one-time uniform-ciphertexts public-key oracle:
 * `getPk` returns the public key
@@ -35,19 +41,17 @@ noncomputable def OneTimeUniformCyphertextsPubReal {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure { pk := pk, eavesdropCount := 0 }
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun
+      | .getPk => do
           let st <- get
           pure st.pk
-      | .eavesdrop, m => do
+      | .eavesdrop m => do
           let st <- get
           set { st with eavesdropCount := st.eavesdropCount + 1 }
           if st.eavesdropCount = 0 then
             scheme.encrypt st.pk m
           else
             pure (default : C)
-  }
 
 /-- Random one-time uniform-ciphertexts public-key oracle:
 * `getPk` returns the public key
@@ -60,19 +64,17 @@ noncomputable def OneTimeUniformCyphertextsPubRand {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure { pk := pk, eavesdropCount := 0 }
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun
+      | .getPk => do
           let st <- get
           pure st.pk
-      | .eavesdrop, _m => do
+      | .eavesdrop _m => do
           let st <- get
           set { st with eavesdropCount := st.eavesdropCount + 1 }
           if st.eavesdropCount = 0 then
             PMF.uniformOfFintype C
           else
             pure (default : C)
-  }
 
 /-- The oracle pair corresponding to the one-time uniform-ciphertexts public-key assumption, for use in an
 `Assumptions` set. -/
@@ -85,7 +87,7 @@ noncomputable def OneTimeUniformCyphertextsPubAssumption {PubK SecK M C : Type}
 noncomputable def OneTimeUniformCyphertextsPubAssumptionFull {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
     SingleAssumption where
-  I := IndCpaPubQ
+  I := OneTimeUniformCyphertextsPubQ M
   O := OneTimeUniformCyphertextsPubSpec PubK M C
   i := OneTimeUniformCyphertextsPubAssumption scheme
 
@@ -95,12 +97,27 @@ noncomputable def OneTimeUniformCyphertextsPubAssumption' {PubK SecK M C : Type}
   Idx := Unit
   assumptions := fun _ => OneTimeUniformCyphertextsPubAssumptionFull scheme
 
+noncomputable def OneTimeUniformCyphertextsPubAssumptionFam
+    {PubK SecK M C : ℕ → Type}
+    [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
+    IndistinguishabilityAssumptions :=
+  OneTimeUniformCyphertextsPubAssumption' (schemeFam.scheme κ)
+
 /-- One-time uniform-ciphertexts public-key security definition as an instance of `Indistinguishable`. -/
 def OneTimeUniformCyphertextsPubDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (OneTimeUniformCyphertextsPubReal scheme)
     (OneTimeUniformCyphertextsPubRand scheme)
+
+def OneTimeUniformCyphertextsPubIFam
+    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
+  ∀ κ,
+    IndistinguishableI (Assumptions κ) κ none _
+      (OneTimeUniformCyphertextsPubReal (schemeFam.scheme κ))
+      (OneTimeUniformCyphertextsPubRand (schemeFam.scheme κ))

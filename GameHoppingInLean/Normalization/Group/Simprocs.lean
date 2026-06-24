@@ -9,6 +9,23 @@ private def getBind? (e : Expr) : Option (Expr × Expr × Expr × Expr × Expr �
   | (``Bind.bind, #[m, instBind, α, β, x, f]) => some (m, instBind, α, β, x, f)
   | _ => none
 
+private def getRawPMFBind? (e : Expr) : Option (Expr × Expr × Expr × Expr) :=
+  match e.getAppFnArgs with
+  | (``PMF.bind, #[α, β, x, f]) => some (α, β, x, f)
+  | _ => none
+
+private def isPMFExpr (e : Expr) : MetaM Bool := do
+  let pmfConst ← mkConstWithFreshMVarLevels ``PMF
+  return e.isConstOf ``PMF || (← isDefEq e pmfConst)
+
+private def getAnyPMFBind? (e : Expr) : MetaM (Option (Expr × Expr × Expr × Expr)) := do
+  if let some out := getRawPMFBind? e then
+    return some out
+  let some (m, _instBind, α, β, x, f) := getBind? e | return none
+  unless (← isPMFExpr m) do
+    return none
+  return some (α, β, x, f)
+
 private def getSampleExponentArg? (e : Expr) : Option Expr :=
   match e.getAppFnArgs with
   | (``sampleExponent, #[G, _, _]) => some G
@@ -168,7 +185,7 @@ private def findGeneratorHyp? (g : Expr) : MetaM (Option Expr) := do
   return none
 
 private def mkPMFRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
-  let some (_m, _inst, _α, _β, x, f) := getBind? e | return none
+  let some (_α, _β, x, f) ← getAnyPMFBind? e | return none
   let some _G := getSampleExponentArg? x | return none
   let .lam xName _xTy body xBi := f | return none
   let some (body', g) ← abstractPowOccurrences? body | return none
@@ -178,28 +195,12 @@ private def mkPMFRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   let pf ← mkAppM ``PMF.bind_sampleExponent_pow_eq_bind_uniformOfFintype #[hgen, rest]
   let pfTy ← inferType pf
   let some (_ty, lhs, rhs) := pfTy.eq? | return none
-  unless (← isDefEq lhs e) do
-    return none
-  return some (rhs, pf)
-
-private def mkRStateRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
-  let some (_m, _inst, _α, _β, x, f) := getBind? e | return none
-  let some _G ← getLiftMSampleExponentArg? x | return none
-  let .lam xName _xTy body xBi := f | return none
-  let some (body', g) ← abstractPowOccurrences? body | return none
-  let some hgen ← findGeneratorHyp? g | return none
-  let gTy ← inferType g
-  let rest := Expr.lam xName gTy body' xBi
-  let pf ← mkAppM ``RState.do_liftM_sampleExponent_pow_eq_do_liftM_uniformOfFintype
-    #[hgen, rest]
-  let pfTy ← inferType pf
-  let some (_ty, lhs, rhs) := pfTy.eq? | return none
-  unless (← isDefEq lhs e) do
+  unless (← withTransparency .all <| isDefEq lhs e) do
     return none
   return some (rhs, pf)
 
 private def mkPMFMulLeftRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
-  let some (_m, _inst, _α, _β, x, f) := getBind? e | return none
+  let some (_α, _β, x, f) ← getAnyPMFBind? e | return none
   match x.getAppFnArgs with
   | (``PMF.uniformOfFintype, #[G, _, _]) =>
       let .lam xName _xTy body xBi := f | return none
@@ -209,30 +210,10 @@ private def mkPMFMulLeftRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr))
       let pf ← mkAppM ``PMF.bind_uniformOfFintype_mul_left_eq_bind_uniformOfFintype #[G, m, rest]
       let pfTy ← inferType pf
       let some (_ty, lhs, rhs) := pfTy.eq? | return none
-      unless (← isDefEq lhs e) do
+      unless (← withTransparency .all <| isDefEq lhs e) do
         return none
       return some (rhs, pf)
   | _ => return none
-
-private def mkRStateMulLeftRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
-  let some (_m, _inst, _α, _β, x, f) := getBind? e | return none
-  match (← getLiftMPMFArg? x) with
-  | some y =>
-      match y.getAppFnArgs with
-      | (``PMF.uniformOfFintype, #[G, _, _]) =>
-          let .lam xName _xTy body xBi := f | return none
-          let some (body', m) ← abstractMulLeftOccurrences? body | return none
-          let mTy ← inferType m
-          let rest := Expr.lam xName mTy body' xBi
-          let pf ← mkAppM ``RState.do_liftM_uniformOfFintype_mul_left_eq_do_liftM_uniformOfFintype
-            #[G, m, rest]
-          let pfTy ← inferType pf
-          let some (_ty, lhs, rhs) := pfTy.eq? | return none
-          unless (← isDefEq lhs e) do
-            return none
-          return some (rhs, pf)
-      | _ => return none
-  | none => return none
 
 end GroupSampleSimp
 
@@ -243,12 +224,11 @@ simproc [GH_group_nom] sampleExponentPowToUniformPMF
     let some (rhs, pf) ← GroupSampleSimp.mkPMFRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
-/-- Simproc: replace lifted generator exponent samples in `RState` `do` blocks by lifted
-uniform samples from `G`. -/
-simproc [GH_group_nom] sampleExponentPowToUniformRState
-  (Bind.bind _ _)
+/-- Raw `PMF.bind` version of `sampleExponentPowToUniformPMF`. -/
+simproc [GH_group_nom] sampleExponentPowToUniformRawPMF
+  (PMF.bind _ _)
   := fun e => do
-    let some (rhs, pf) ← GroupSampleSimp.mkRStateRewriteProof? e | return .continue
+    let some (rhs, pf) ← GroupSampleSimp.mkPMFRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: replace left-multiplied uniform group draws in `PMF` `do` blocks by uniform draws. -/
@@ -258,10 +238,24 @@ simproc [GH_group_nom] uniformMulLeftToUniformPMF
     let some (rhs, pf) ← GroupSampleSimp.mkPMFMulLeftRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
-/-- Simproc: replace left-multiplied lifted uniform group draws in `RState` `do` blocks by
-lifted uniform draws. -/
-simproc [GH_group_nom] uniformMulLeftToUniformRState
-  (Bind.bind _ _)
+/-- Raw `PMF.bind` version of `uniformMulLeftToUniformPMF`. -/
+simproc [GH_group_nom] uniformMulLeftToUniformRawPMF
+  (PMF.bind _ _)
   := fun e => do
-    let some (rhs, pf) ← GroupSampleSimp.mkRStateMulLeftRewriteProof? e | return .continue
+    let some (rhs, pf) ← GroupSampleSimp.mkPMFMulLeftRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
+
+section Examples
+
+example {G α : Type} [Group G] [Fintype G] [Nontrivial G] {g : G}
+    (hgen : IsGenerator g) (rest : G → PMF α) :
+    PMF.bind (sampleExponent G) (fun x => rest (g ^ x)) =
+    PMF.bind (PMF.uniformOfFintype G) rest := by
+  simp only [GH_group_nom]
+
+example {G α : Type} [Group G] [Fintype G] (m : G) (rest : G → PMF α) :
+    PMF.bind (PMF.uniformOfFintype G) (fun x => rest (m * x)) =
+    PMF.bind (PMF.uniformOfFintype G) rest := by
+  simp only [GH_group_nom]
+
+end Examples

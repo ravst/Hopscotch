@@ -4,7 +4,7 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsP
 /-- Public-key IND-CPA-rand oracle spec with a public-key reveal query and a
 single-message ciphertext query. This is definitionally the same interface as
 `OneTimeUniformCyphertextsPubSpec`, but without the one-query restriction. -/
-abbrev IndCpaRandPubSpec (PubK M C : Type) : OracleSpec IndCpaPubQ :=
+abbrev IndCpaRandPubSpec (PubK M C : Type) : OracleSpec (OneTimeUniformCyphertextsPubQ M) :=
   OneTimeUniformCyphertextsPubSpec PubK M C
 
 /-- Convenience query constructor for revealing the public key. -/
@@ -27,14 +27,12 @@ noncomputable def IndCpaRandPubReal {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun
+      | .getPk => do
           get
-      | .eavesdrop, m => do
+      | .eavesdrop m => do
           let pk <- get
           scheme.encrypt pk m
-  }
 
 /-- Random public-key IND-CPA-rand oracle:
 * `getPk` returns the public key
@@ -46,13 +44,11 @@ noncomputable def IndCpaRandPubRand {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun
+      | .getPk => do
           get
-      | .eavesdrop, _m => do
+      | .eavesdrop _m => do
           PMF.uniformOfFintype C
-  }
 
 /-- The oracle pair corresponding to the public-key IND-CPA-rand assumption, for
 use in an `Assumptions` set. -/
@@ -62,13 +58,41 @@ noncomputable def IndCpaRandPubAssumption {PubK SecK M C : Type}
       RStateOracle (IndCpaRandPubSpec PubK M C) :=
   (IndCpaRandPubReal scheme, IndCpaRandPubRand scheme)
 
+noncomputable def IndCpaRandPubAssumptionFull {PubK SecK M C : Type}
+    [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
+    SingleAssumption where
+  I := OneTimeUniformCyphertextsPubQ M
+  O := IndCpaRandPubSpec PubK M C
+  i := IndCpaRandPubAssumption scheme
+
+noncomputable def IndCpaRandPubAssumption' {PubK SecK M C : Type}
+    [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => IndCpaRandPubAssumptionFull scheme
+
+noncomputable def IndCpaRandPubAssumptionFam
+    {PubK SecK M C : ℕ → Type}
+    [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
+    IndistinguishabilityAssumptions :=
+  IndCpaRandPubAssumption' (schemeFam.scheme κ)
+
 /-- Public-key IND-CPA-rand security definition as an instance of
 `Indistinguishable`. -/
 def IndCpaRandPubDef
     (Assumptions : IndistinguishabilityAssumptions)
-    (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  Indistinguishable Assumptions Reductions
+  Indistinguishable Assumptions
     (IndCpaRandPubReal scheme)
     (IndCpaRandPubRand scheme)
+
+def IndCpaRandPubIFam
+    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
+  ∀ κ,
+    IndistinguishableI (Assumptions κ) κ none _
+      (IndCpaRandPubReal (schemeFam.scheme κ))
+      (IndCpaRandPubRand (schemeFam.scheme κ))

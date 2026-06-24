@@ -1,9 +1,48 @@
 import GameHoppingInLean.Normalization.PMF.Lemmas
+import GameHoppingInLean.Normalization.RState.Lemmas
 import GameHoppingInLean.Misc.SimprocHelpers
 
 open Lean Meta
 
 namespace PMFSimp
+
+theorem rstateDoLiftMComm {σ α β γ}
+    (A : PMF α) (B : PMF β) (rest : α → β → RState σ γ) :
+    (do
+      let x ← (liftM A : RState σ α)
+      let y ← (liftM B : RState σ β)
+      rest x y) =
+    (do
+      let y ← (liftM B : RState σ β)
+      let x ← (liftM A : RState σ α)
+      rest x y) := by
+  funext s
+  change StateT.run ((liftM A : RState σ α) >>= fun x => do
+      let y ← (liftM B : RState σ β)
+      rest x y) s =
+    StateT.run ((liftM B : RState σ β) >>= fun y => do
+      let x ← (liftM A : RState σ α)
+      rest x y) s
+  rw [StateT.run_bind, StateT.run_bind]
+  simp [StateT.run_bind]
+  simpa using (PMF.bind_comm (p := A) (q := B) (f := fun a b => StateT.run (rest a b) s))
+
+theorem rstateDoLiftMCommDep {σ α β γ δ}
+    (B : PMF β) (A : PMF α) (C : β → PMF γ) (rest : β → α → γ → RState σ δ) :
+    (do
+      let b ← (liftM B : RState σ β)
+      let a ← (liftM A : RState σ α)
+      let c ← (liftM (C b) : RState σ γ)
+      rest b a c) =
+    (do
+      let b ← (liftM B : RState σ β)
+      let c ← (liftM (C b) : RState σ γ)
+      let a ← (liftM A : RState σ α)
+      rest b a c) := by
+  refine congrArg (fun f => Bind.bind (liftM B : RState σ β) f) ?_
+  funext b
+  simpa using
+    (rstateDoLiftMComm (A := A) (B := C b) (rest := fun a c => rest b a c))
 
 private def getBind? (e : Expr) : MetaM (Option (Expr × Expr × Expr × Expr × Expr × Expr)) := do
   match e.getAppFnArgs with
@@ -373,7 +412,7 @@ private def mkSwapProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   unless SimprocHelpers.shouldSwapIndependentDraws A B body2 do
     return none
   let restFn := Expr.lam xName xTy (Expr.lam yName yTy body2 yBi) xBi
-  let pf ← mkAppM ``RState.do_liftM_comm #[A, B, restFn]
+  let pf ← mkAppM ``PMFSimp.rstateDoLiftMComm #[A, B, restFn]
   let pfTy ← inferType pf
   let some (_ty, lhs, rhs) := pfTy.eq? | return none
   unless (← isDefEq lhs e) do
@@ -396,7 +435,7 @@ private def mkSwapDepProof? (e : Expr) : MetaM (Option (Expr × Expr)) := do
   let .lam zName zTy body3 zBi := h | return none
   let CFn := Expr.lam xName xTy (CVal.lowerLooseBVars 1 1) xBi
   let restFn := Expr.lam xName xTy (Expr.lam yName yTy (Expr.lam zName zTy body3 zBi) yBi) xBi
-  let pf ← mkAppM ``RState.do_liftM_comm_dep #[B, A, CFn, restFn]
+  let pf ← mkAppM ``PMFSimp.rstateDoLiftMCommDep #[B, A, CFn, restFn]
   let pfTy ← inferType pf
   let some (_ty, lhs, rhs) := pfTy.eq? | return none
   unless (← isDefEq lhs e) do

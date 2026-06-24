@@ -10,7 +10,7 @@ inductive IndCpaPubQ (M : Type) where
 unrestricted left/right eavesdropping query. -/
 def IndCpaPubSpec (PubK M C : Type) : OracleSpec (IndCpaPubQ M)
   | .getPk => PubK
-  | .eavesdrop _=> C
+  | .eavesdrop _ => C
 
 /-- Convenience query constructor for revealing the public key. -/
 @[reducible, inline] def indCpaPubGetPk {PubK M C : Type} :
@@ -32,7 +32,7 @@ noncomputable def IndCpaPubL {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries :=fun input => match input with
+  queries := fun
       | .getPk => do
           get
       | .eavesdrop (m₀, _m₁) => do
@@ -50,7 +50,7 @@ noncomputable def IndCpaPubR {PubK SecK M C : Type}
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure pk
-  queries := fun input => match input with
+  queries := fun
       | .getPk => do
           get
       | .eavesdrop (_m₀, m₁) => do
@@ -72,12 +72,17 @@ noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
   O := IndCpaPubSpec PubK M C
   i := IndCpaPubAssumption scheme
 
--- TODO; add PubEncSchemeFamily and convert this defintion to family version
--- noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
---     (scheme : PubEncScheme PubK SecK M C) :
---     IndistinguishabilityAssumptions where
---   Idx := Unit
---   assumptions := fun _ => IndCpaPubAssumptionFull scheme
+noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
+    (scheme : PubEncScheme PubK SecK M C) :
+    IndistinguishabilityAssumptions where
+  Idx := Unit
+  assumptions := fun _ => IndCpaPubAssumptionFull scheme
+
+noncomputable def IndCpaPubAssumptionFam
+    {PubK SecK M C : ℕ → Type}
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
+    IndistinguishabilityAssumptions :=
+  IndCpaPubAssumption' (schemeFam.scheme κ)
 
 /-- Public-key IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaPubDef
@@ -86,6 +91,15 @@ def IndCpaPubDef
   Indistinguishable Assumptions
     (IndCpaPubL scheme)
     (IndCpaPubR scheme)
+
+def IndCpaPubIFam
+    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    {PubK SecK M C : ℕ → Type}
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
+  ∀ κ,
+    IndistinguishableI (Assumptions κ) κ none _
+      (IndCpaPubL (schemeFam.scheme κ))
+      (IndCpaPubR (schemeFam.scheme κ))
 
 /-- The bounded step version of `IndCpaPubDef` but for a fixed number of steps -/
 def IndCpaPubDefQ

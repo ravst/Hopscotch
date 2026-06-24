@@ -1,9 +1,40 @@
 import GameHoppingInLean.Normalization.PMF.Attrs
-import GameHoppingInLean.MonadRandomState
+import Mathlib.Probability.ProbabilityMassFunction.Basic
+import Mathlib.Probability.ProbabilityMassFunction.Monad
+import Mathlib.Probability.Distributions.Uniform
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import ToMathlib.General
 
 namespace PMF
+
+@[GameHoppingSimplifyPMF]
+lemma map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
+    PMF.map f (PMF.pure a) = PMF.pure (f a) := by
+  exact PMF.pure_map f a
+
+@[GameHoppingSimplifyPMF]
+lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
+    f <$> (PMF.pure a) = PMF.pure (f a) := by
+  rw [PMF.monad_map_eq_map]
+  exact PMF.map_pure_eq_pure f a
+
+/-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
+@[GameHoppingSimplifyPMF]
+lemma uniformOfFintype_prod_bind
+    {A B α : Type}
+    [Fintype A] [Nonempty A] [Fintype B] [Nonempty B]
+    (f : A × B → PMF α) :
+    (PMF.uniformOfFintype (A × B)).bind f =
+      (PMF.uniformOfFintype A).bind (fun a =>
+        (PMF.uniformOfFintype B).bind (fun b => f (a, b))) := by
+  ext x
+  have hprod :
+      (∑' i : A × B, (f i) x) = ∑' i : A, ∑' j : B, (f (i, j)) x := by
+    simpa using (ENNReal.tsum_prod' (f := fun p : A × B => (f p) x))
+  simp [PMF.bind_apply, Fintype.card_prod, ENNReal.mul_inv, ENNReal.tsum_mul_left,
+    mul_assoc, mul_left_comm, mul_comm, hprod]
+  simp [<-Finset.mul_sum]
+  rw [Fintype.sum_prod_type fun x_1 ↦ (f x_1) x]
 
 /-- Rewrite a raw `PMF.bind` into monadic `do` notation. -/
 @[GameHoppingPrettyPrintPMF]

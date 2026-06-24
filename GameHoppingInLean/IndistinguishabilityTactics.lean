@@ -18,6 +18,8 @@ Use `by_abstraction ← f` for the symmetric direction.
 -/
 syntax (name := byAbstractionForward) "by_abstraction" term : tactic
 syntax (name := byAbstractionSymm) "by_abstraction" "←" term : tactic
+syntax (name := byRandAbstractionForward) "by_rand_abstraction" term : tactic
+syntax (name := byRandAbstractionSymm) "by_rand_abstraction" "←" term : tactic
 
 macro_rules (kind := byAbstractionForward)
   | `(tactic| by_abstraction $f:term) =>
@@ -32,6 +34,21 @@ macro_rules (kind := byAbstractionSymm)
         (obs_eq
          symm
          refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := byRandAbstractionForward)
+  | `(tactic| by_rand_abstraction $f:term) =>
+      `(tactic|
+        (obs_eq
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := byRandAbstractionSymm)
+  | `(tactic| by_rand_abstraction ← $f:term) =>
+      `(tactic|
+        (obs_eq
+         symm
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
          solveCorrectAbstraction[]))
 
 private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Array Expr) := do
