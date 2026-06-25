@@ -56,7 +56,7 @@ def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme Pu
   refine correctAbstractionImpliesObsEq
     (OTSToIndCpaHybrid scheme i)
     (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme))
-    (fun st => (st.1, { pk := st.2, eavesdropCount := if st.1 > i then 1 else 0 }))
+    (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
     ?_
   constructor
   · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyL, applySRReduction,
@@ -99,7 +99,7 @@ def OTSHybridRight {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme P
   refine correctAbstractionImpliesObsEq
     (OTSToIndCpaHybrid scheme (i + 1))
     (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme))
-    (fun st => (st.1, { pk := st.2, eavesdropCount := if st.1 > i then 1 else 0 }))
+    (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
     ?_
   constructor
   · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyR, applySRReduction,
