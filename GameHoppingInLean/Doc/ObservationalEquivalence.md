@@ -1,15 +1,22 @@
+We say that two oracle implementations `A` and `B` (of type `RStateOracle O`) are *observation-indistinguishable with length* `l` (written `ObsEqBounded A B l`) if, for any list of queries of length up to `l`, both `A` and `B` respond to these queries with outputs having the same distribution.  
+The parameter `l` is an `ENat`; the value `+∞` (i.e. `none`) means that this holds for lists of queries of any length.
 
-We say that two Oracle Implemetation A and B (of type RStateOracle O) are Observation indistiginshable with length l  (ObsEqBounded A B l) if for any list of queries of length up to l, both A B repond to this queires with outputs of the same distribution. The l is ENat, value +inf (=none) mean that this holds for lists of queries of any length.
+To prove this, we almost always use `correctAbstraction` or `correctAbstractionBind`.  
+We must define a function `f : A.stateType → B.stateType` that is preserved by the transition function. More precisely, for any state `a ∈ A.stateType` and any query `q`, it should be equivalent to:
 
-To prove this we almost always use correctAbstraction or correctAbstractionBind. We have to define function f : A.stateType -> B.stateType that should be preserved by the transition function. In more detail, if we take state a \in A.stateType it is the same to first process query q and the project via f or to project via f first and then process query.
+- first process `q` in `A` and then project the resulting state via `f`, or  
+- first project `a` via `f` and then process `q` in `B`.
 
-correctAbstractionBind allow for function f to be randomized, ie. it is of type A.stateType -> PMF B.stateType.
+`correctAbstractionBind` allows the function `f` to be randomized, i.e. of type  
+`A.stateType → PMF B.stateType`.
 
-These are main cases when we can define such fucntion:
-* when A.stateType is naturally isomorphic to B.stateType we could take the ismorphism (if it preserves query processing)
-* When A.stateType have some uninportant varaibles (that does not affect execution), then function f could just forget them.
-* If A.stateType satifies some invariant, we could define f : {A.stateType // inv} -> A.stateType which forgot the invariant (this function is inclusion). In such case, the main work is in defining oracle implementation (RStateOracle) over type {A.stateType // inv}.
-* Sometimes B.stateType keeps fresh randomness in variable t, because it samples much before it need to use it. To move the moment if sampling to later stage we do the following. Let A by implmentation that samples value of t when it is actually needed. Then we  we define nondetministc f as follows. On states when value of t is undefined in A.stateType but defined in B.stateType function f samples random value and put it to t in B.stateType.
+These are the main cases when we can define such a function `f`:
 
-We infer ObsEq from correctAbstraction using lemma correctAbstractionImpliesObsEq and from correctAbstractionBind using correctAbstractionBindImpliesObsEq.
+- When `A.stateType` is naturally isomorphic to `B.stateType`, we can take the isomorphism as `f` (provided it preserves query processing).
+- When `A.stateType` has some unimportant variables (that do not affect execution), the function `f` can simply forget them.
+- If `A.stateType` satisfies some invariant, we can define  
+  `f : { a : A.stateType // inv a } → A.stateType`  
+  which forgets the invariant (this function is the inclusion). In such a case, the main work is in defining the oracle implementation (`RStateOracle`) over the subtype `{ A.stateType // inv }`.
+- Sometimes `B.stateType` keeps fresh randomness in a variable `t`, because it samples far before it needs to use it. To move the sampling to a later stage, we proceed as follows. Let `A` be the implementation that samples the value of `t` only when it is actually needed. Then we define a nondeterministic `f` as follows: on states where the value of `t` is undefined in `A.stateType` but defined in `B.stateType`, the function `f` samples a random value and assigns it to `t` in `B.stateType`.
 
+We derive `ObsEq` from `correctAbstraction` using the lemma `correctAbstractionImpliesObsEq`, and from `correctAbstractionBind` using `correctAbstractionBindImpliesObsEq`.
