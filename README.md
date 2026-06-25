@@ -10,7 +10,7 @@ intuitive user's interface, with Lean's correctness guarantees and flexibility.
 The project is being developed using the LLM-based tool Codex from OpenAi and Aristotele from harmonic.
 
 ## Documentation
- documentation for this project can find in [GameHoppingInLean/Doc/Intro.md](GameHoppingInLean/Doc/game-hopping-intro/SKILL.md).
+ documentation for this project can find in [GameHoppingInLean/Doc/Intro.md](game-hopping-intro/SKILL.md).
 
 ## Dependencies
 
