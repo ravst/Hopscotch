@@ -40,15 +40,15 @@ noncomputable def OneTimeUniformCyphertextsPubReal {PubK SecK M C : Type}
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
-    pure { pk := pk, eavesdropCount := 0 }
+    pure { pk := pk, eavesdropDone := false }
   queries := fun
       | .getPk => do
           let st <- get
           pure st.pk
       | .eavesdrop m => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          if not st.eavesdropDone then
+            set { st with eavesdropDone := true }
             scheme.encrypt st.pk m
           else
             pure (default : C)
@@ -63,15 +63,15 @@ noncomputable def OneTimeUniformCyphertextsPubRand {PubK SecK M C : Type}
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
-    pure { pk := pk, eavesdropCount := 0 }
+    pure { pk := pk, eavesdropDone := false }
   queries := fun
       | .getPk => do
           let st <- get
           pure st.pk
       | .eavesdrop _m => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          set { st with eavesdropDone := true }
+          if not st.eavesdropDone then
             PMF.uniformOfFintype C
           else
             pure (default : C)

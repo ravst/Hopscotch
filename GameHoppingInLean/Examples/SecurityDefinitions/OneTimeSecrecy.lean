@@ -1,10 +1,10 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 
-/-- State carried by the one-time secrecy oracles: the public key and the number of
-eavesdrop queries answered so far. -/
+/-- State carried by the one-time secrecy oracles: the public key and whether an
+eavesdrop query has already been answered. -/
 structure OneTimeSecrecyState (PubK : Type) where
   pk : PubK
-  eavesdropCount : ℕ
+  eavesdropDone : Bool
 
 /-- One-time secrecy oracle spec:
 * `getPk`: no arguments, returns the public key
@@ -32,15 +32,15 @@ noncomputable def OneTimeSecrecyL {PubK SecK M C : Type}
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
-    pure { pk := pk, eavesdropCount := 0 }
+    pure { pk := pk, eavesdropDone := false }
   queries := fun input => match input with
       | .getPk => do
           let st <- get
           pure st.pk
       | .eavesdrop (m₀, _m₁) => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          set { st with eavesdropDone := true }
+          if not st.eavesdropDone then
             scheme.encrypt st.pk m₀
           else
             pure (default : C)
@@ -55,15 +55,15 @@ noncomputable def OneTimeSecrecyR {PubK SecK M C : Type}
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
-    pure { pk := pk, eavesdropCount := 0 }
+    pure { pk := pk, eavesdropDone := false }
   queries := fun input => match input with
       | .getPk => do
           let st <- get
           pure st.pk
       | .eavesdrop (_m₀, m₁) => do
           let st <- get
-          set { st with eavesdropCount := st.eavesdropCount + 1 }
-          if st.eavesdropCount = 0 then
+          set { st with eavesdropDone := true }
+          if not st.eavesdropDone then
             scheme.encrypt st.pk m₁
           else
             pure (default : C)
