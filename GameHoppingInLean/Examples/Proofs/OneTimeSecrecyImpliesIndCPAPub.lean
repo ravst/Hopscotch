@@ -3,31 +3,34 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.IndistinguishabilityTactics
 
-attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure bind_pure_comp
 
+-- attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure bind_pure_comp
+
+open scoped OracleReduction
 
 noncomputable
 def OTSToIndCpaReduction {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
-  SRReduction (IndCpaPubSpec PubK M C) (IndCpaPubSpec PubK M C) where
+  OracleReduction (IndCpaPubSpec PubK M C) (IndCpaPubSpec PubK M C) where
   stateType := ℕ
   initialState := pure 0
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
-          srQuery(IndCpaPubQ.getPk, ())
-      | .eavesdrop, (m₀, m₁) => do
-          let n <- srGet!
-          srSet(n + 1)
+  queries := fun input =>
+      match input with
+      | .getPk => do
+          orQuery((IndCpaPubQ.getPk))
+      | .eavesdrop (m₀, m₁) => do
+          let n <- orGet!
+          orSet(n + 1)
           if n > i then
-            let pk <- srQuery(IndCpaPubQ.getPk, ())
-            srSample(scheme.encrypt pk m₀)
+            let pk <- orQuery(IndCpaPubQ.getPk)
+            orSample(scheme.encrypt pk m₀)
           else if n = i then
-            srQuery(IndCpaPubQ.eavesdrop, (m₀, m₁))
+            orQuery(IndCpaPubQ.eavesdrop (m₀, m₁))
           else
-            let pk <- srQuery(IndCpaPubQ.getPk, ())
-            srSample(scheme.encrypt pk m₁)
-  }
+            let pk <- orQuery(IndCpaPubQ.getPk)
+            orSample(scheme.encrypt pk m₁)
+
 
 noncomputable
 def OTSToIndCpaHybrid {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
@@ -36,62 +39,45 @@ def OTSToIndCpaHybrid {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M 
   initialState := do
     let (pk, _sk) <- scheme.keyGen
     pure (0, pk)
-  queries := {
-    impl := fun q input => match q, input with
-      | .getPk, () => do
+  queries := fun input => match input with
+      | .getPk => do
           let (_, pk) <- get
           pure pk
-      | .eavesdrop, (m₀, m₁) => do
+      | .eavesdrop (m₀, m₁) => do
           let (n, pk) <- get
-          modify (fun (_, pk) => (n + 1, pk))
-          if n ≥ i then
+          set (n + 1, pk)
+          if n > i then
+            scheme.encrypt pk m₀
+          else if n = i then
             scheme.encrypt pk m₀
           else
             scheme.encrypt pk m₁
-  }
+
+
+attribute [local game_hopping_unfold] OTSToIndCpaHybrid OTSToIndCpaReduction OneTimeSecrecyL PubEncScheme.encrypt
 
 def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
- ObsEq (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme)) (OTSToIndCpaHybrid scheme i) := by
+ ObsEq ((OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyL scheme)) (OTSToIndCpaHybrid scheme i) := by
   apply ObsEq.symm
-  refine correctAbstractionImpliesObsEq
-    (OTSToIndCpaHybrid scheme i)
-    (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme))
-    (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
-    ?_
-  constructor
-  · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyL, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
-    simp
-  · intro q input
-    ext1 st
-    rcases st with ⟨n, pk⟩
-    simp [IndCpaPubSpec, OracleSpec.domain] at input
-    cases q with
-    | getPk =>
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-        GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyL]
-    | eavesdrop =>
-        rcases input with ⟨m₀, m₁⟩
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-        GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyL]
-        split_ifs with hlt hgt heq <;> try omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_true]
-          rfl
-          simp
-          omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_true]
-          rfl
-          simp
-          omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_false]
-          rfl
-          simp
-          omega
+  apply correctAbstractionImpliesObsEq _ _ (fun (st : ℕ × PubK) => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
+  solveCorrectAbstraction []
+  · simp_all; congr; ext1 a; congr; simp
+    (expose_names; exact Nat.le_of_succ_le h)
+  · simp_all
+  · simp_all
+  · simp_all
+    congr;
+    ext1 a;
+    expose_names
+    have H : st1 < i := by
+      exact Nat.lt_of_le_of_ne h h_1
+    have Z1 : decide (i ≤ st1) = false := by
+      simp [H]
+    have Z2 : decide (i < st1) = false := by
+      simp [H]
+      exact Nat.le_of_succ_le H
+    simp [Z1, Z2]
+
 
 def OTSHybridRight {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
  ObsEq (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme)) (OTSToIndCpaHybrid scheme (i+1)) := by
