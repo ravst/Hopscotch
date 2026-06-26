@@ -34,10 +34,15 @@ def mulLeftEquiv {G : Type} [Group G] (m : G) : G ≃ G where
     intro x
     simp [mul_assoc]
 
+@[GH_group_norm]
+theorem pow_pow_eq_pow_mul {G : Type} [Group G] (g : G) (a b : Nat) :
+    (g ^ a) ^ b = g ^ (a * b) := by
+  rw [pow_mul]
+
 namespace PMF
 
 /-- Replacing a generator exponent sample by a uniform group element inside a `PMF` bind. -/
-@[GH_group_nom]
+@[GH_group_random_exp]
 theorem bind_sampleExponent_pow_eq_bind_uniformOfFintype
     {G α : Type} [Group G] [Fintype G] [Nontrivial G] {g : G}
     (hgen : IsGenerator g) (rest : G → PMF α) :
@@ -61,7 +66,7 @@ theorem bind_sampleExponent_pow_eq_bind_uniformOfFintype
           simpa using (PMF.bind_uniformOfFintype_equiv (e := e) (g := rest)).symm
 
 /-- A generator raised to a uniformly sampled exponent is itself uniform on `G`. -/
-@[GH_group_nom]
+@[GH_group_random_exp]
 theorem sampleExponent_pow_eq_uniformOfFintype
     {G : Type} [Group G] [Fintype G] [Nontrivial G] {g : G}
     (hgen : IsGenerator g) :

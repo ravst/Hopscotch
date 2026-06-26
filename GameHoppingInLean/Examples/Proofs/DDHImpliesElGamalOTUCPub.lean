@@ -71,6 +71,16 @@ noncomputable def G2 {G : Type}
       else
         pure default
 
+noncomputable
+def G1toG2Abstraction {G : Type} [Group G] [Fintype G] [Inhabited G] [Nontrivial G] (g : G) (s : ElGamalRealState G) : PMF (ElGamalRealState G) :=
+  if s.eavesdropDone then pure s else do
+    let b ← sampleExponent G
+    pure { s with
+      b := b
+      B := g ^ b
+      C := (s.A)^b
+    }
+
 structure ElGamalToDDHReductionState (G : Type) where
   (A B C : G)
   eavesdropDone : Bool
@@ -162,6 +172,18 @@ noncomputable def G4 {G : Type}
       else
         pure default
 
+noncomputable
+def G4toG3Abstraction {G : Type} [Group G] [Fintype G] [Inhabited G] [Nontrivial G] (g : G) (s : ElGamalRandState G) : PMF (ElGamalRandState G) :=
+  if s.eavesdropDone then pure s else do
+    let b ← sampleExponent G
+    let c ← sampleExponent G
+    pure { s with
+      b := b
+      c := c
+      B := g ^ b
+      C := g ^ c
+    }
+
 attribute [local game_hopping_unfold]
   OneTimeUniformCyphertextsPubDef
   OneTimeUniformCyphertextsPubReal
@@ -173,6 +195,8 @@ attribute [local game_hopping_unfold]
   ElGamal
   G1 G2 G3 G4
   DDHToElGamalOTUCPubReduction
+  G1toG2Abstraction
+  G4toG3Abstraction
 
 /-- DDH implies one-time uniform-ciphertexts public-key security for ElGamal,
 via the lazy-query DDH reduction and the no-`once` game chain above. -/
@@ -190,7 +214,12 @@ noncomputable def ddhImpliesElGamalOTUCPub
     G3 g,
     G4 g,
     OneTimeUniformCyphertextsPubRand (ElGamal g)
-  ] using GH_group_nom
+  ] using GH_group_norm
   · by_abstraction ← (fun x => ⟨x.A, x.eavesdropDone⟩)
-  
-  all_goals sorry
+  · by_rand_abstraction (G1toG2Abstraction g)
+  · by_abstraction (fun x => ({A := x.A, B := x.B, C := x.C, eavesdropDone := x.eavesdropDone}, ()))
+    simp [GH_group_norm]
+  · by_abstraction ← (fun x => ({A := x.A, B := x.B, C := x.C, eavesdropDone := x.eavesdropDone}, ()))
+  · by_rand_abstraction ← (G4toG3Abstraction g)
+  · by_abstraction (fun x => ⟨x.A, x.eavesdropDone⟩)
+    simp [GH_group_random_exp, GH_group_norm]

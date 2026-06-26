@@ -479,7 +479,7 @@ theorem obsEq_G4_oneTimeUniformCyphertextsPubRandElGamal {G : Type} [Group G] [F
       simp
   | eavesdrop =>
       ext1 m
-      simp [GameHoppingSimplifyPMF, GH_group_nom, hgen]
+      simp [GameHoppingSimplifyPMF, GH_group_norm, hgen]
 
 /-- DDH implies one-time uniform-ciphertexts public-key for ElGamal via the DDH reduction and the game hops above. -/
 noncomputable def ddhImpliesElGamalOTUCPub

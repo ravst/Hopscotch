@@ -136,9 +136,14 @@ macro_rules
                try simp [RStateSimplifier];
                try simp [OracleReductionSimps];
                try simp [correctAbstractionDiagSimps];
+               try unfold mapSecond
+               try unfold bindSecond
+               try simp [game_hopping_unfold]
                try simp [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*];
-               try (split_ifs <;> try simp <;> rfl);
-               try rfl))
+               try rfl;
+               try split_ifs
+               all_goals try simp_all [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*]
+               all_goals try rfl))
 
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
 syntax "solveCorrectAbstractionInit" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic

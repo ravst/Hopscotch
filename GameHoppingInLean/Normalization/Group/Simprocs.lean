@@ -218,28 +218,28 @@ private def mkPMFMulLeftRewriteProof? (e : Expr) : MetaM (Option (Expr × Expr))
 end GroupSampleSimp
 
 /-- Simproc: replace generator exponent samples in `PMF` `do` blocks by uniform samples from `G`. -/
-simproc [GH_group_nom] sampleExponentPowToUniformPMF
+simproc [GH_group_random_exp] sampleExponentPowToUniformPMF
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← GroupSampleSimp.mkPMFRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Raw `PMF.bind` version of `sampleExponentPowToUniformPMF`. -/
-simproc [GH_group_nom] sampleExponentPowToUniformRawPMF
+simproc [GH_group_random_exp] sampleExponentPowToUniformRawPMF
   (PMF.bind _ _)
   := fun e => do
     let some (rhs, pf) ← GroupSampleSimp.mkPMFRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: replace left-multiplied uniform group draws in `PMF` `do` blocks by uniform draws. -/
-simproc [GH_group_nom] uniformMulLeftToUniformPMF
+simproc [GH_group_norm] uniformMulLeftToUniformPMF
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← GroupSampleSimp.mkPMFMulLeftRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Raw `PMF.bind` version of `uniformMulLeftToUniformPMF`. -/
-simproc [GH_group_nom] uniformMulLeftToUniformRawPMF
+simproc [GH_group_norm] uniformMulLeftToUniformRawPMF
   (PMF.bind _ _)
   := fun e => do
     let some (rhs, pf) ← GroupSampleSimp.mkPMFMulLeftRewriteProof? e | return .continue
@@ -251,11 +251,11 @@ example {G α : Type} [Group G] [Fintype G] [Nontrivial G] {g : G}
     (hgen : IsGenerator g) (rest : G → PMF α) :
     PMF.bind (sampleExponent G) (fun x => rest (g ^ x)) =
     PMF.bind (PMF.uniformOfFintype G) rest := by
-  simp only [GH_group_nom]
+  simp only [GH_group_random_exp]
 
 example {G α : Type} [Group G] [Fintype G] (m : G) (rest : G → PMF α) :
     PMF.bind (PMF.uniformOfFintype G) (fun x => rest (m * x)) =
     PMF.bind (PMF.uniformOfFintype G) rest := by
-  simp only [GH_group_nom]
+  simp only [GH_group_norm]
 
 end Examples
