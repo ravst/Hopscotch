@@ -20,6 +20,10 @@ syntax (name := byAbstractionForward) "by_abstraction" term : tactic
 syntax (name := byAbstractionSymm) "by_abstraction" "←" term : tactic
 syntax (name := byRandAbstractionForward) "by_rand_abstraction" term : tactic
 syntax (name := byRandAbstractionSymm) "by_rand_abstraction" "←" term : tactic
+syntax (name := byAbstractionBasicForward) "by_abstraction_basic" term : tactic
+syntax (name := byAbstractionBasicSymm) "by_abstraction_basic" "←" term : tactic
+syntax (name := byRandAbstractionBasicForward) "by_rand_abstraction_basic" term : tactic
+syntax (name := byRandAbstractionBasicSymm) "by_rand_abstraction_basic" "←" term : tactic
 
 macro_rules (kind := byAbstractionForward)
   | `(tactic| by_abstraction $f:term) =>
@@ -50,6 +54,36 @@ macro_rules (kind := byRandAbstractionSymm)
          symm
          refine correctAbstractionBindImpliesObsEq _ _ $f ?_
          solveCorrectAbstraction[]))
+
+macro_rules (kind := byAbstractionBasicForward)
+  | `(tactic| by_abstraction_basic $f:term) =>
+      `(tactic|
+        (obs_eq
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstractionBasic[]))
+
+macro_rules (kind := byAbstractionBasicSymm)
+  | `(tactic| by_abstraction_basic ← $f:term) =>
+      `(tactic|
+        (obs_eq
+         symm
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstractionBasic[]))
+
+macro_rules (kind := byRandAbstractionBasicForward)
+  | `(tactic| by_rand_abstraction_basic $f:term) =>
+      `(tactic|
+        (obs_eq
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstractionBasic[]))
+
+macro_rules (kind := byRandAbstractionBasicSymm)
+  | `(tactic| by_rand_abstraction_basic ← $f:term) =>
+      `(tactic|
+        (obs_eq
+         symm
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstractionBasic[]))
 
 private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Array Expr) := do
   let idxTypeWhnf ← withTransparency .all <| whnf idxType

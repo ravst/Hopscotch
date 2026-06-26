@@ -13,3 +13,11 @@ def ElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) : PubEncSche
   decrypt := fun sk ct =>
     let (c1, c2) := ct
     c2 * (c1 ^ sk)⁻¹
+
+noncomputable def ElGamalFamily (Γ : GroupGeneratorFamily) :
+    PubEncSchemeFamily Γ.G (fun _ => ℕ) Γ.G (fun κ => Γ.G κ × Γ.G κ) where
+  scheme := fun κ => by
+    letI := Γ.group κ
+    letI := Γ.fintype κ
+    letI := Γ.nontrivial κ
+    exact ElGamal (Γ.gen κ)

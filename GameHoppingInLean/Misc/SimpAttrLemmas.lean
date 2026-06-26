@@ -145,6 +145,30 @@ macro_rules
                all_goals try simp_all [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*]
                all_goals try rfl))
 
+/--
+Basic correct-abstraction query-diagram setup.  This unfolds the oracle/state plumbing and
+then stops after the first `rfl` attempt, leaving PMF normalization and branch splitting to
+the caller.
+-/
+syntax "solveCorrectAbstractionDiagBasic" : tactic
+
+macro_rules
+          | `(tactic| solveCorrectAbstractionDiagBasic) =>
+            `(tactic|
+              (ext1 st;
+               try let ⟨st1, st₂⟩ := st;
+               try simp [game_hopping_unfold];
+               try simp [OracleReductionSimps];
+               try simp [correctAbstractionDiagSimps];
+               try simp [StateTSimps];
+               try simp [RStateSimplifier];
+               try simp [OracleReductionSimps];
+               try simp [correctAbstractionDiagSimps];
+               try unfold mapSecond
+               try unfold bindSecond
+               try simp [game_hopping_unfold]
+               try rfl))
+
 /-- Solve a correct-abstraction initialization diagram by standard unfolding. -/
 syntax "solveCorrectAbstractionInit" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
@@ -168,6 +192,22 @@ macro_rules
        try
          (intro query
           cases query <;> try solveCorrectAbstractionDiag [$simps,*])))
+
+/--
+Basic version of `solveCorrectAbstraction` whose query diagrams stop before PMF
+normalization.
+-/
+syntax "solveCorrectAbstractionBasic" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules
+  | `(tactic| solveCorrectAbstractionBasic [$simps,*]) =>
+    `(tactic|
+      (constructor
+       <;> try solveCorrectAbstractionInit [$simps,*]
+       try swap
+       try
+         (intro query
+          cases query <;> try solveCorrectAbstractionDiagBasic)))
 
 /--
 Strict version used by tactic search: unlike `solveCorrectAbstraction`, it must close both

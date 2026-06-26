@@ -193,24 +193,32 @@ attribute [local game_hopping_unfold]
   dhReal
   dhRand
   ElGamal
+  ElGamalFamily
   G1 G2 G3 G4
   DDHToElGamalOTUCPubReduction
   G1toG2Abstraction
   G4toG3Abstraction
 
-/-- DDH implies one-time uniform-ciphertexts public-key security for ElGamal,
-via the lazy-query DDH reduction and the no-`once` game chain above. -/
-noncomputable def ddhImpliesElGamalOTUCPub
-    {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G)
-    (hgen : IsGenerator g) :
-    OneTimeUniformCyphertextsPubDef (DecisionalDHAssumption' g) (ElGamal g) := by
+/-- Family version of DDH implying one-time uniform-ciphertexts public-key security for
+ElGamal, over a security-parameter-indexed family of generated finite groups. -/
+noncomputable def ddhImpliesElGamalOTUCPubFam (Γ : GroupGeneratorFamily) :
+    OneTimeUniformCyphertextsPubIFam
+      (DecisionalDHAssumptionFam Γ)
+      (ElGamalFamily Γ) := by
   intro κ
+  letI := Γ.group κ
+  letI := Γ.fintype κ
+  letI := Γ.nontrivial κ
+  letI := Γ.inhabited κ
+  let g := Γ.gen κ
+  have hgen : IsGenerator g := by
+    simpa [g] using Γ.isGenerator κ
   game_hopping [
     OneTimeUniformCyphertextsPubReal (ElGamal g),
     G1 g,
     G2 g,
-    (DDHToElGamalOTUCPubReduction G) ◇ (dhReal g),
-    (DDHToElGamalOTUCPubReduction G) ◇ (dhRand g),
+    (DDHToElGamalOTUCPubReduction (Γ.G κ)) ◇ (dhReal g),
+    (DDHToElGamalOTUCPubReduction (Γ.G κ)) ◇ (dhRand g),
     G3 g,
     G4 g,
     OneTimeUniformCyphertextsPubRand (ElGamal g)
