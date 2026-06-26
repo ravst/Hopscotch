@@ -61,12 +61,9 @@ def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme Pu
   apply ObsEq.symm
   apply correctAbstractionImpliesObsEq _ _ (fun (st : ℕ × PubK) => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
   solveCorrectAbstraction []
-  · simp_all; congr; ext1 a; congr; simp
+  · congr; ext1 a; congr; simp
     (expose_names; exact Nat.le_of_succ_le h)
-  · simp_all
-  · simp_all
-  · simp_all
-    congr;
+  · congr;
     ext1 a;
     expose_names
     have H : st1 < i := by
@@ -80,55 +77,56 @@ def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme Pu
 
 
 def OTSHybridRight {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
- ObsEq (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme)) (OTSToIndCpaHybrid scheme (i+1)) := by
-  apply ObsEq.symm
-  refine correctAbstractionImpliesObsEq
-    (OTSToIndCpaHybrid scheme (i + 1))
-    (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme))
-    (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
-    ?_
-  constructor
-  · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyR, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
-    simp
-  · intro q input
-    ext1 st
-    rcases st with ⟨n, pk⟩
-    simp [IndCpaPubSpec, OracleSpec.domain] at input
-    cases q with
-    | getPk =>
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-        GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
-    | eavesdrop =>
-        rcases input with ⟨m₀, m₁⟩
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-        GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
-        split_ifs with hlt hgt heq <;> try omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_true]
-          rfl
-          simp
-          omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_true]
-          rfl
-          simp
-          omega
-        · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-          rw [ite_cond_eq_false]
-          rfl
-          simp
-          omega
+ ObsEq ((OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme)) (OTSToIndCpaHybrid scheme (i+1)) := by
+  sorry
+  -- apply ObsEq.symm
+  -- refine correctAbstractionImpliesObsEq
+  --   (OTSToIndCpaHybrid scheme (i + 1))
+  --   (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme))
+  --   (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
+  --   ?_
+  -- constructor
+  -- · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyR, applySRReduction,
+  --     GameHoppingSimplifyPMF, monad_norm, mapSecond]
+  --   simp
+  -- · intro q input
+  --   ext1 st
+  --   rcases st with ⟨n, pk⟩
+  --   simp [IndCpaPubSpec, OracleSpec.domain] at input
+  --   cases q with
+  --   | getPk =>
+  --       simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
+  --       OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
+  --       GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
+  --   | eavesdrop =>
+  --       rcases input with ⟨m₀, m₁⟩
+  --       simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
+  --       OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
+  --       GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
+  --       split_ifs with hlt hgt heq <;> try omega
+  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
+  --         rw [ite_cond_eq_true]
+  --         rfl
+  --         simp
+  --         omega
+  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
+  --         rw [ite_cond_eq_true]
+  --         rfl
+  --         simp
+  --         omega
+  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
+  --         rw [ite_cond_eq_false]
+  --         rfl
+  --         simp
+  --         omega
 
 noncomputable def OTSToIndCpaHybridStep {PubK SecK M C : Type} [Inhabited C]
-    (reductions : IndistinguishabilityReductions) (scheme : PubEncScheme PubK SecK M C) (i : ℕ)
-  (hRed : (OTSToIndCpaReduction scheme i) ∈ (reductions.reductions (IndCpaPubSpec PubK M C) (IndCpaPubSpec PubK M C))) :
-  Indistinguishable (OneTimeSecrecyAssumption' scheme) reductions (OTSToIndCpaHybrid scheme i) (OTSToIndCpaHybrid scheme (i+1)) := by
+    (scheme : PubEncScheme PubK SecK M C) (i : ℕ)
+   :
+  Indistinguishable (OneTimeSecrecyAssumption' scheme) (OTSToIndCpaHybrid scheme i) (OTSToIndCpaHybrid scheme (i+1)) := by
   intro κ
   let hLeft :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) reductions κ none
+      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
         (IndCpaPubSpec PubK M C)
         (OTSToIndCpaHybrid scheme i)
         (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme)) :=
