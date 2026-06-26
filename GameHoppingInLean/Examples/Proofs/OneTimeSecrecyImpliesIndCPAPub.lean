@@ -65,15 +65,8 @@ def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme Pu
     (expose_names; exact Nat.le_of_succ_le h)
   · congr;
     ext1 a;
-    expose_names
-    have H : st1 < i := by
-      exact Nat.lt_of_le_of_ne h h_1
-    have Z1 : decide (i ≤ st1) = false := by
-      simp [H]
-    have Z2 : decide (i < st1) = false := by
-      simp [H]
-      exact Nat.le_of_succ_le H
-    simp [Z1, Z2]
+    congr 4
+    grind
 
 
 def OTSHybridRight {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
@@ -129,25 +122,26 @@ noncomputable def OTSToIndCpaHybridStep {PubK SecK M C : Type} [Inhabited C]
       IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
         (IndCpaPubSpec PubK M C)
         (OTSToIndCpaHybrid scheme i)
-        (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme)) :=
+        ((OTSToIndCpaReduction scheme i) ◇(OneTimeSecrecyL scheme)) :=
     Indistinguishable.symmetric <|
       Indistinguishable.of_ObsEq (OTSHybridLeft scheme i)
   let hOTS :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) reductions κ none
+      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
         (OneTimeSecrecySpec PubK M C)
         (OneTimeSecrecyL scheme)
         (OneTimeSecrecyR scheme) :=
     IndistinguishableI.assumption ()
   let hMiddle :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) reductions κ none
+      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
         (IndCpaPubSpec PubK M C)
-        (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyL scheme))
-        (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme)) :=
-    IndistinguishableI.reduction (r := OTSToIndCpaReduction scheme i) none hOTS hRed
+        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyL scheme))
+        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme)) :=
+    sorry
+    -- IndistinguishableI.reduction (r := OTSToIndCpaReduction scheme i) none hOTS hRed
   let hRight :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) reductions κ none
+      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
         (IndCpaPubSpec PubK M C)
-        (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme))
+        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme))
         (OTSToIndCpaHybrid scheme (i + 1)) :=
     Indistinguishable.of_ObsEq (OTSHybridRight scheme i)
   exact Indistinguishable.transitive hLeft <|
@@ -155,18 +149,19 @@ noncomputable def OTSToIndCpaHybridStep {PubK SecK M C : Type} [Inhabited C]
 
 noncomputable
 def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
-    (Reductions : IndistinguishabilityReductions)
+
     (scheme : PubEncScheme PubK SecK M C)
     (i : ℕ)
-    (hRed : forall i, (OTSToIndCpaReduction scheme i) ∈ (Reductions.reductions (IndCpaPubSpec PubK M C) (IndCpaPubSpec PubK M C))) :
-    Indistinguishable (OneTimeSecrecyAssumption' scheme) Reductions
+     :
+    Indistinguishable (OneTimeSecrecyAssumption' scheme)
     (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) := by
     intro κ
     refine (Indistinguishable.long_step i (fun j => OTSToIndCpaHybrid scheme j) (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) (by rfl) (by rfl) ?_)
     intro i hi
     simp [ro_seq_fixed]
     apply OTSToIndCpaHybridStep
-    apply hRed
+
+
 
 def HybridZeroIndCpaL {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
   ObsEq (OTSToIndCpaHybrid scheme 0) (IndCpaPubL scheme) := by
