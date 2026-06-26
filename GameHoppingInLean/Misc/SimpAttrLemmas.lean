@@ -5,6 +5,7 @@ import GameHoppingInLean.Normalization.PMF.Lemmas
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.PMFLiftOrder
+import GameHoppingInLean.IndistinguishabilityDef
 import Lean
 
 open Lean Elab Tactic
@@ -74,6 +75,7 @@ attribute [OracleReductionSimps]
   OracleQuery.cont_query
   id_map
   addPMFtoImpl
+  ro_seq_fixed
 -- OracleComp.instMonadLiftOracleQuery._aux_1
 -- PFunctor.FreeM.mapM
 

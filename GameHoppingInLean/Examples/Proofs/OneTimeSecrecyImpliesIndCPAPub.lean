@@ -4,9 +4,7 @@ import GameHoppingInLean.OracleReductions
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.IndistinguishabilityTactics
-
-
--- attribute [-simp] PMF.monad_bind_eq_bind PMF.monad_pure_eq_pure bind_pure_comp
+import GameHoppingInLean.ObservationalEquvialence
 
 open scoped OracleReduction
 
@@ -54,102 +52,17 @@ def OTSToIndCpaHybrid {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M 
             scheme.encrypt pk m₁
 
 
-attribute [local game_hopping_unfold] OTSToIndCpaHybrid OTSToIndCpaReduction OneTimeSecrecyL PubEncScheme.encrypt
-
-def OTSHybridLeft {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
- ObsEq ((OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyL scheme)) (OTSToIndCpaHybrid scheme i) := by
-  apply ObsEq.symm
-  apply correctAbstractionImpliesObsEq _ _ (fun (st : ℕ × PubK) => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
-  solveCorrectAbstraction []
-  · congr; ext1 a; congr; simp
-    (expose_names; exact Nat.le_of_succ_le h)
-  · congr;
-    ext1 a;
-    congr 4
-    grind
-
-
-def OTSHybridRight {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
- ObsEq ((OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme)) (OTSToIndCpaHybrid scheme (i+1)) := by
-  sorry
-  -- apply ObsEq.symm
-  -- refine correctAbstractionImpliesObsEq
-  --   (OTSToIndCpaHybrid scheme (i + 1))
-  --   (applySRReduction (OTSToIndCpaReduction scheme i) (OneTimeSecrecyR scheme))
-  --   (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
-  --   ?_
-  -- constructor
-  -- · simp only [OTSToIndCpaHybrid, OTSToIndCpaReduction, OneTimeSecrecyR, applySRReduction,
-  --     GameHoppingSimplifyPMF, monad_norm, mapSecond]
-  --   simp
-  -- · intro q input
-  --   ext1 st
-  --   rcases st with ⟨n, pk⟩
-  --   simp [IndCpaPubSpec, OracleSpec.domain] at input
-  --   cases q with
-  --   | getPk =>
-  --       simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-  --       OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-  --       GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
-  --   | eavesdrop =>
-  --       rcases input with ⟨m₀, m₁⟩
-  --       simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-  --       OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaReduction, FreeMonad.lift,
-  --       GameHoppingSimplifyPMF, OTSToIndCpaHybrid, OneTimeSecrecyR]
-  --       split_ifs with hlt hgt heq <;> try omega
-  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-  --         rw [ite_cond_eq_true]
-  --         rfl
-  --         simp
-  --         omega
-  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-  --         rw [ite_cond_eq_true]
-  --         rfl
-  --         simp
-  --         omega
-  --       · simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-  --         rw [ite_cond_eq_false]
-  --         rfl
-  --         simp
-  --         omega
-
-noncomputable def OTSToIndCpaHybridStep {PubK SecK M C : Type} [Inhabited C]
-    (scheme : PubEncScheme PubK SecK M C) (i : ℕ)
-   :
-  Indistinguishable (OneTimeSecrecyAssumption' scheme) (OTSToIndCpaHybrid scheme i) (OTSToIndCpaHybrid scheme (i+1)) := by
-  intro κ
-  let hLeft :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
-        (IndCpaPubSpec PubK M C)
-        (OTSToIndCpaHybrid scheme i)
-        ((OTSToIndCpaReduction scheme i) ◇(OneTimeSecrecyL scheme)) :=
-    Indistinguishable.symmetric <|
-      Indistinguishable.of_ObsEq (OTSHybridLeft scheme i)
-  let hOTS :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
-        (OneTimeSecrecySpec PubK M C)
-        (OneTimeSecrecyL scheme)
-        (OneTimeSecrecyR scheme) :=
-    IndistinguishableI.assumption ()
-  let hMiddle :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
-        (IndCpaPubSpec PubK M C)
-        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyL scheme))
-        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme)) :=
-    sorry
-    -- IndistinguishableI.reduction (r := OTSToIndCpaReduction scheme i) none hOTS hRed
-  let hRight :
-      IndistinguishableI (OneTimeSecrecyAssumption' scheme) κ none
-        (IndCpaPubSpec PubK M C)
-        ( (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme))
-        (OTSToIndCpaHybrid scheme (i + 1)) :=
-    Indistinguishable.of_ObsEq (OTSHybridRight scheme i)
-  exact Indistinguishable.transitive hLeft <|
-    Indistinguishable.transitive hMiddle hRight
+attribute [local game_hopping_unfold]
+  OTSToIndCpaHybrid
+  OTSToIndCpaReduction
+  OneTimeSecrecyL
+  OneTimeSecrecyR
+  IndCpaPubL
+  IndCpaPubR
+  PubEncScheme.encrypt
 
 noncomputable
 def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
-
     (scheme : PubEncScheme PubK SecK M C)
     (i : ℕ)
      :
@@ -158,99 +71,97 @@ def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
     intro κ
     refine (Indistinguishable.long_step i (fun j => OTSToIndCpaHybrid scheme j) (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) (by rfl) (by rfl) ?_)
     intro i hi
-    simp [ro_seq_fixed]
-    apply OTSToIndCpaHybridStep
-
-
-
-def HybridZeroIndCpaL {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-  ObsEq (OTSToIndCpaHybrid scheme 0) (IndCpaPubL scheme) := by
-  refine correctAbstractionImpliesObsEq
-    (OTSToIndCpaHybrid scheme 0)
-    (IndCpaPubL scheme)
-    (fun st => st.2)
-    ?_
-  --simp [correctAbstraction]
-  constructor
-  · simp only [OTSToIndCpaHybrid, IndCpaPubL, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
-  · intro q input
-    ext1 st
-    rcases st with ⟨n, pk⟩
-    simp [IndCpaPubSpec, OracleSpec.domain] at input
-    cases q with
-    | getPk =>
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaHybrid, IndCpaPubL]
-    | eavesdrop =>
-        rcases input with ⟨m₀, m₁⟩
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaHybrid, IndCpaPubL]
-        simp [FreeMonad.roll, GameHoppingSimplifyPMF]
-
-def HybridQIndCpaR {PubK SecK M C : Type} [Inhabited C] (scheme : PubEncScheme PubK SecK M C) (q : ℕ) :
-  ObsEqBounded (OTSToIndCpaHybrid scheme q) (IndCpaPubR scheme) q := by
-  apply ObsEqBounded.symm
-  refine correctAbstractionBImpliesObsEqBounded
-    (IndCpaPubR scheme)
-    (OTSToIndCpaHybrid scheme q)
-    (fun n => fun st => ⟨q - n, st⟩ )
-    q
-    ?_
-  constructor
-  · simp only [OTSToIndCpaHybrid, IndCpaPubL, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond, IndCpaPubR]
-    simp
-  · intro q input k
-    cases q with
-    | getPk =>
-        apply Or.inr
-        ext1 st
-        simp [IndCpaPubR] at st
-        simp [OracleSpec.domain, IndCpaPubSpec] at input
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaHybrid, IndCpaPubL,
-        IndCpaPubR, GameHoppingSimplifyPMF]
-    | eavesdrop =>
-        rcases input with ⟨m₀, m₁⟩
-        apply Or.inl
-        ext1 st
-        simp [IndCpaPubR] at st
-        simp [mapOutputState, StateT.run, mapInputState, applySRReduction,
-        OracleComp.simulateQ, FreeMonad.mapM, OTSToIndCpaHybrid, IndCpaPubL,
-        IndCpaPubR, GameHoppingSimplifyPMF]
-        rw [ite_cond_eq_false]
-        simp[GameHoppingSimplifyPMF]
-        · congr
-          ext x
-          congr
-          omega
-        · simp
-          if h : q = 0 then
-            apply Fin.elim0
-            simp [h] at k
-            assumption
-          else
-            exact Nat.zero_lt_of_ne_zero h
-
-open scoped IndistinguishableI
+    game_hopping [
+      OTSToIndCpaHybrid scheme i,
+      (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyL scheme),
+      (OTSToIndCpaReduction scheme i) ◇ (OneTimeSecrecyR scheme),
+      OTSToIndCpaHybrid scheme (i + 1)
+    ]
+    · by_abstraction (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
+      · congr; ext1 a; grind
+      · congr; ext1 a; congr 4; grind
+    · by_abstraction ← (fun st => (st.1, { pk := st.2, eavesdropDone := st.1 > i }))
+      <;> try omega
+      · congr 1; ext1 a; grind
+      · congr 1; ext1 a; congr 4; grind
 
 /-- One-time secrecy implies public-key IND-CPA (for a fixed number of steps) -/
 noncomputable def OneTimeSecrecyImpliesIndCPAPub
-   (Reductions : IndistinguishabilityReductions)
     {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) [Inhabited C]
-    (hRed : ∀ i, (OTSToIndCpaReduction scheme i) ∈
-      (Reductions.reductions (IndCpaPubSpec PubK M C) (IndCpaPubSpec PubK M C))) :
-  IndCpaPubDefQ (OneTimeSecrecyAssumption' scheme) Reductions scheme := by
+  : IndCpaPubDefQ (OneTimeSecrecyAssumption' scheme) scheme := by
   intro κ q
-  calc
-    IndCpaPubL scheme
-        ≈ᵢ[OneTimeSecrecyAssumption' scheme,Reductions,κ,q,IndCpaPubSpec PubK M C]
-      OTSToIndCpaHybrid scheme 0 :=
-        Indistinguishable.of_ObsEq (ObsEq.symm (HybridZeroIndCpaL scheme))
-    _   ≈ᵢ[OneTimeSecrecyAssumption' scheme,Reductions,κ,none,IndCpaPubSpec PubK M C]
-      OTSToIndCpaHybrid scheme q :=
-        (OTSHybridsIndistinguishable Reductions scheme q hRed) κ
-    _   ≈ᵢ[OneTimeSecrecyAssumption' scheme,Reductions,κ,q,IndCpaPubSpec PubK M C]
-      IndCpaPubR scheme :=
-        IndistinguishableI.obsEqB q (HybridQIndCpaR scheme q)
+  game_hopping [
+    IndCpaPubL scheme,
+    OTSToIndCpaHybrid scheme 0,
+    OTSToIndCpaHybrid scheme q,
+    IndCpaPubR scheme
+  ]
+  · by_abstraction ← (fun st => st.2)
+  · apply Indistinguishable.indistinguishabilityIUnboundedToBounded q
+    apply OTSHybridsIndistinguishable
+  · apply IndistinguishableI.obsEqB
+    symm
+    refine (correctAbstractionBImpliesObsEqBounded _ _ (fun b => fun s => (q-b, s)) q ?_)
+    constructor
+    · simp [game_hopping_unfold, GameHoppingSimplifyPMF]
+    · intro q k
+      cases q
+      · apply Or.inr
+        ext1 st
+        simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+      · apply Or.inl
+        ext1 st
+        simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+        split_ifs <;> try grind
+
+
+  -- · apply IndistinguishableI.obsEqB
+  --   refine (correctAbstractionBoundImpliesObsEqBounded _ _ ?_  ?_ q ?_)
+  --   · simp [game_hopping_unfold]
+  --     exact (fun x => x.2)
+  --   · simp [game_hopping_unfold]
+  --     exact (fun x => q - x.1)
+  --   · constructor
+  --     · constructor
+  --       · simp[game_hopping_unfold, GameHoppingSimplifyPMF]
+  --       · constructor
+  --         · simp [goodValuation, game_hopping_unfold]
+  --           intro query
+  --           cases query
+  --           · intro a b
+  --             simp [RStateSimplifier]
+  --             have : q ≤ q - a + 1 + a := by omega
+  --             exact_mod_cast this
+  --           · intro a b
+  --             simp [RStateSimplifier]
+  --             split_ifs <;> try omega
+  --             · intro x hx
+  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
+  --               have ⟨a, ⟨b, c⟩ ⟩ := hx
+  --               simp_all
+  --               expose_names
+  --               have : q ≤ q - (a_1 + 1) + 1 + a_1 := by omega
+  --               exact_mod_cast this
+  --             · intro x hx
+  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
+  --               simp_all
+  --             · intro x hx
+  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
+  --               have ⟨a, ⟨b, c⟩ ⟩ := hx
+  --               simp_all
+  --               expose_names
+  --               have : q ≤ q - (a_1 + 1) + 1 + a_1 := by omega
+  --               exact_mod_cast this
+  --         · intro q s hs
+  --           simp at hs
+  --           cases q
+  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+  --             split_ifs <;> try omega
+  --             simp [GameHoppingSimplifyPMF]
+  --     · simp only [game_hopping_unfold]
+  --       intro x hx
+  --       simp [GameHoppingSimplifyPMF]
+  --       simp only [PMF.monad_bind_eq_bind, PMF.monad_pure_eq_pure, PMF.mem_support_bind_iff, PMF.mem_support_pure_iff] at hx
+  --       have ⟨a, ⟨ ha₁, ha₂⟩⟩ := hx
+  --       simp_all

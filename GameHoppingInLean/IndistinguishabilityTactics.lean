@@ -20,6 +20,10 @@ syntax (name := byAbstractionForward) "by_abstraction" term : tactic
 syntax (name := byAbstractionSymm) "by_abstraction" "←" term : tactic
 syntax (name := byRandAbstractionForward) "by_rand_abstraction" term : tactic
 syntax (name := byRandAbstractionSymm) "by_rand_abstraction" "←" term : tactic
+syntax (name := obsEqByAbstractionForward) "obs_eq_by_abstraction" term : tactic
+syntax (name := obsEqByAbstractionSymm) "obs_eq_by_abstraction" "←" term : tactic
+syntax (name := obsEqByRandAbstractionForward) "obs_eq_by_rand_abstraction" term : tactic
+syntax (name := obsEqByRandAbstractionSymm) "obs_eq_by_rand_abstraction" "←" term : tactic
 syntax (name := byAbstractionBasicForward) "by_abstraction_basic" term : tactic
 syntax (name := byAbstractionBasicSymm) "by_abstraction_basic" "←" term : tactic
 syntax (name := byRandAbstractionBasicForward) "by_rand_abstraction_basic" term : tactic
@@ -52,6 +56,32 @@ macro_rules (kind := byRandAbstractionSymm)
       `(tactic|
         (obs_eq
          symm
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := obsEqByAbstractionForward)
+  | `(tactic| obs_eq_by_abstraction $f:term) =>
+      `(tactic|
+        (refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := obsEqByAbstractionSymm)
+  | `(tactic| obs_eq_by_abstraction ← $f:term) =>
+      `(tactic|
+        (symm
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := obsEqByRandAbstractionForward)
+  | `(tactic| obs_eq_by_rand_abstraction $f:term) =>
+      `(tactic|
+        (refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction[]))
+
+macro_rules (kind := obsEqByRandAbstractionSymm)
+  | `(tactic| obs_eq_by_rand_abstraction ← $f:term) =>
+      `(tactic|
+        (symm
          refine correctAbstractionBindImpliesObsEq _ _ $f ?_
          solveCorrectAbstraction[]))
 

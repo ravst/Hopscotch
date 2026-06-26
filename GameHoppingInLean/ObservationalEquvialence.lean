@@ -85,11 +85,13 @@ lemma obsEq_trans {I : Type} {O : OracleSpec I}
   intro queriesList
   rw [h₁₂ queriesList, h₂₃ queriesList]
 
+@[symm]
 lemma ObsEq.symm {ro₁ ro₂ : RStateOracle O} (h : ObsEq ro₁ ro₂) :
     ObsEq ro₂ ro₁ := by
   intro queriesList
   exact (h queriesList).symm
 
+@[symm]
 lemma ObsEqBounded.symm {ro₁ ro₂ : RStateOracle O} {q_b : ENat}
     (h : ObsEqBounded ro₁ ro₂ q_b) :
     ObsEqBounded ro₂ ro₁ q_b := by
@@ -372,6 +374,27 @@ def correctAbstractionBindBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RSt
   ro₁.initialState.support ⊆ {x | val x >= b}
 
 
+def correctAbstractionBound_step {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+  (f : ro₁.stateType → ro₂.stateType)
+  (val : ro₁.stateType → ENat)
+  : Prop :=
+∀ (query : O.Domain) (s : ro₁.stateType),
+    (val s > 0) ->
+    mapOutputState f (ro₁.queries query) s =
+    mapInputState f (ro₂.queries query) s
+
+def correctAbstractionBound_inner {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+  (f : ro₁.stateType → ro₂.stateType) (val : ro₁.stateType → ENat) : Prop :=
+ro₁.initialState.map f = ro₂.initialState ∧
+goodValuation ro₁ val ∧
+correctAbstractionBound_step ro₁ ro₂ f val
+
+def correctAbstractionBound {I : Type} {O : OracleSpec I} (ro₁ ro₂ : RStateOracle O)
+  (f : ro₁.stateType → ro₂.stateType) (val : ro₁.stateType → ENat) (b : ENat) : Prop :=
+  correctAbstractionBound_inner ro₁ ro₂ f val ∧
+  ro₁.initialState.support ⊆ {x | val x >= b}
+
+
 /- ## Correctness of Bounded Abstraction -/
 /- Finally, we show that correct bounded abstraction, implies bounded observational equivalence. -/
 
@@ -460,6 +483,43 @@ lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec
     · exact ENat.coe_le_coe.mpr hq
     · apply X
   simpa [PMF.bind_bind, PMF.bind_const] using hRun2AuxFst y hybound
+
+lemma correctAbstractionBoundImpliesCorrectAbstractionBindBound {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType)
+  (val : ro₁.stateType → ENat)
+  (b : ℕ)
+  (HB : correctAbstractionBound ro₁ ro₂ f val b) :
+  correctAbstractionBindBound ro₁ ro₂ (fun x => PMF.pure (f x)) val b := by
+  constructor
+  · constructor
+    · apply HB.1.1
+    · constructor
+      · apply HB.1.2.1
+      · have HB' := HB.1.2.2
+        simp [correctAbstractionBound_step] at HB'
+        simp [correctAbstractionBindBound_step]
+        intro q s hs
+        unfold bindOutputState
+        unfold bindInputState
+        unfold bindSecond
+        unfold mapInputState at HB'
+        unfold mapOutputState at HB'
+        unfold mapSecond at HB'
+        simp [PMF.map_eq_bind_pure]
+        rw [← HB']
+        · simp [PMF.map_eq_bind_pure]
+        · assumption 
+  · apply HB.2
+
+lemma correctAbstractionBoundImpliesObsEqBounded {I : Type} {O : OracleSpec I}
+  (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → ro₂.stateType)
+  (val : ro₁.stateType → ENat)
+  (b : ℕ)
+  (HB : correctAbstractionBound ro₁ ro₂ f val b) :
+  ObsEqBounded ro₁ ro₂ b := by
+    apply correctAbstractionBindBoundImpliesObsEqBounded2
+    apply correctAbstractionBoundImpliesCorrectAbstractionBindBound <;>
+      try apply HB
 
 -- ## version with explicit indices
 
@@ -568,9 +628,6 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
   apply congrArg (fun g => PMF.bind ro₁.initialState g)
   funext a
   simpa [PMF.bind_bind, PMF.bind_const] using hRun2AuxFst a
-
-
-
 
 
 -- lemma rState2Rstate_correct_abstraction_bind2 {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : Nat):
