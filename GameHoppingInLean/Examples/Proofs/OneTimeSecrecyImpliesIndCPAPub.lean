@@ -85,11 +85,13 @@ def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
       · congr 1; ext1 a; grind
       · congr 1; ext1 a; congr 4; grind
 
-/-- One-time secrecy implies public-key IND-CPA (for a fixed number of steps) -/
-noncomputable def OneTimeSecrecyImpliesIndCPAPub
-    {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) [Inhabited C]
-  : IndCpaPubDefQ (OneTimeSecrecyAssumption' scheme) scheme := by
+/-- Family version: one-time secrecy implies bounded public-key IND-CPA at every security parameter. -/
+noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
+    {PubK SecK M C : ℕ → Type}
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) [∀ κ, Inhabited (C κ)] :
+    IndCpaPubBoundedIFam (OneTimeSecrecyAssumptionFam schemeFam) schemeFam := by
   intro κ q
+  let scheme := schemeFam.scheme κ
   game_hopping [
     IndCpaPubL scheme,
     OTSToIndCpaHybrid scheme 0,
@@ -104,6 +106,7 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPub
     refine (correctAbstractionBImpliesObsEqBounded _ _ (fun b => fun s => (q-b, s)) q ?_)
     constructor
     · simp [game_hopping_unfold, GameHoppingSimplifyPMF]
+      rfl
     · intro q k
       cases q
       · apply Or.inr
@@ -113,6 +116,7 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPub
         ext1 st
         simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
         split_ifs <;> try grind
+
 
 
   -- · apply IndistinguishableI.obsEqB

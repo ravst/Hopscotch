@@ -101,11 +101,10 @@ def IndCpaPubIFam
       (IndCpaPubL (schemeFam.scheme κ))
       (IndCpaPubR (schemeFam.scheme κ))
 
-/-- The bounded step version of `IndCpaPubDef` but for a fixed number of steps -/
-def IndCpaPubDefQ
-   (Assumptions : IndistinguishabilityAssumptions)
-    {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  IndistinguishableQ Assumptions
-    (IndCpaPubSpec PubK M C)
-    (IndCpaPubL scheme)
-    (IndCpaPubR scheme)
+def IndCpaPubBoundedIFam
+    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    {PubK SecK M C : ℕ → Type}
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
+  ∀ κ, ∀ (b : ℕ), IndistinguishableI (Assumptions κ) κ b _
+      (IndCpaPubL (schemeFam.scheme κ))
+      (IndCpaPubR (schemeFam.scheme κ))
