@@ -471,7 +471,7 @@ lemma reductionCombinerCorrect_nontrivial {I : Type} {O : OracleSpec I}
   (assumption : SingleAssumption)
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
-  (Hneq : x1.1 >= 1 ∧ x2.1 >= 1)
+  (Hneq : x1.1 > 0 ∧ x2.1 > 0)
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner_nontrivial x1 x2) :=
 by
@@ -497,6 +497,11 @@ by
   generalize (getPMF (runDinstinguisher dist (x2.2.apply assumption.i.2)) true).toReal = z2
   grind
 
+def NatPlus := {x : ℕ // x>0}
+def Prod.natLower (x : NatPlus × X) : (ℕ × X) :=
+  (x.1.val, x.2)
+
+
 noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
   : ℕ × (OracleReduction O1 O2)
@@ -505,7 +510,13 @@ noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Or
   if HO1 : forall x : I1, Nonempty (O1 x) then
     have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x1.2.initialState
     have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x2.2.initialState
-    reductionCombiner_nontrivial x1 x2
+    if Hx1 : x1.1 >0 then
+      if Hx2 : x2.1 >0 then
+        reductionCombiner_nontrivial x1 x2
+      else
+        x1
+    else
+      x2
   else by
     simp at HO1
     have Hx := Classical.choose_spec HO1
@@ -526,7 +537,6 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption)
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
-  (Hneq : x1.1 >= 1 ∧ x2.1 >= 1)
   : ascToReal dist assumption x1 + ascToReal dist assumption x2 =
   ascToReal dist assumption (reductionCombiner x1 x2) :=
   by
@@ -535,5 +545,18 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
     simp [H]
     have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x1.2.initialState
     have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ H) x2.2.initialState
-    apply reductionCombinerCorrect_nontrivial
-    apply Hneq
+    if Hx1 : x1.1>0 then
+      if Hx2 : x2.1>0 then
+        simp [Hx1, Hx2]
+        apply reductionCombinerCorrect_nontrivial
+        exact ⟨Hx1, Hx2⟩
+      else
+        simp [Hx1, Hx2]
+        simp [ascToReal]
+        apply Or.inl
+        exact Nat.eq_zero_of_not_pos Hx2
+    else
+        simp [Hx1]
+        simp [ascToReal]
+        apply Or.inl
+        exact Nat.eq_zero_of_not_pos Hx1
