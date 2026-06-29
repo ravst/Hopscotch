@@ -1,6 +1,7 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.ComputationalIndistinguishibility.Defs
 
 -- the proof that 'indCpaRand' definition imply 'indCpa'.
 
@@ -48,3 +49,24 @@ noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ �
     (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandReal (schemeFam.scheme κ)),
     IndCpaR (schemeFam.scheme κ)
   ]
+
+noncomputable def proof_constants {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
+    :=
+    symbolicSoundnessBound (indCpaRandImpliesIndCpa schemeFam κ)
+
+noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    (schemeFam : SymEncSchemeFamily K C)
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
+    : symbolicSoundnessBound (indCpaRandImpliesIndCpa schemeFam κ) = sorry := by
+  simp [proof_constants, symbolicSoundnessBound, indCpaRandImpliesIndCpa]
+  simp [transitive_step_val, assumptionJoiner, Prod.fst, Prod.snd, symbolicSoundnessBound,
+    sumJoiner, AssumptionsUseT.empty, asUseType, finsetSum, EmptyCollection.emptyCollection,
+
+    ]
+  conv =>
+    arg 1
+    arg 1
+  -- why (symbolicSoundnessBound (Indistinguishable.of_ObsEq ⋯)) does not simplify?
+  sorry
