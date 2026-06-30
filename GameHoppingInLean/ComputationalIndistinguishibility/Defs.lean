@@ -27,16 +27,6 @@ structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
   )
 
 
--- def positive {Assumptions : IndistinguishabilityAssumptions}
---   {I : Type} {O : OracleSpec I} (x : AssumptionsUseT Assumptions O) : Prop :=
---   forall i : x.subset, (x.values i).1 >= 1
-
--- def positiveP {Assumptions : IndistinguishabilityAssumptions}
---   {I : Type} {O : OracleSpec I}
---   (x : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) : Prop :=
---   positive x.1 ∧ positive x.2
-
-
 namespace AssumptionsUseT
 
 def empty (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) :
@@ -50,7 +40,7 @@ def empty (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : Oracle
 
 end AssumptionsUseT
 
-
+-- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)
 def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
   (val1 val2 : AssumptionsUseT Assumptions O)
   (joiner : {J : Assumptions.Idx} ->
@@ -61,33 +51,15 @@ def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} 
   : AssumptionsUseT Assumptions O :=
   {
     subset := finsetSum val1.subset val2.subset
-    values := sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner
+    values := fun x => sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner x
   }
 
 
-
-
--- def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
---   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
---   (asc : AssumptionsUseT Assumptions O)
---   [Fintype (Assumptions.Idx)]
---   (distinguisher : adversaryT O)
---   : Prop :=
---   -- forall distinguisher : adversaryT O,
---   FreeM.depth distinguisher ≤ q_b ->
---     (advantage distinguisher ro1 ro2) =
---     ∑ j, (asc.values j).1 *
---     advantage
---       (OracleReduction.applyReductionToAdversary (asc.values j).2 distinguisher)
---       (Assumptions.assumptions j).i.1 (Assumptions.assumptions j).i.2
-
-
-def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   (distinguisher : adversaryT O)
   : Prop :=
-  -- forall distinguisher : adversaryT O,
   FreeM.depth distinguisher ≤ q_b ->
     (advantage distinguisher ro1 ro2) =
     ∑ j : { x // x ∈ asc.1.subset },
@@ -96,12 +68,11 @@ def advBound2 (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
        ascToReal distinguisher ((Assumptions.assumptions j)) (asc.2.values j)
 
 def advBoundQ (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
-  -- [Fintype (Assumptions.Idx)]
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   : Prop :=
   forall (distinguisher : adversaryT O),
-  advBound2 Assumptions q_b O ro1 ro2 asc distinguisher
+  advBound Assumptions q_b O ro1 ro2 asc distinguisher
 
 def noAssumptionUse {Assumptions : IndistinguishabilityAssumptions} : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
   (AssumptionsUseT.empty _ _, AssumptionsUseT.empty _ _)
@@ -113,7 +84,7 @@ noncomputable def obse_eq_step2
   (Hb : ObsEqBounded o₁ o₂ a)
   : advBoundQ Assumptions a O o₁ o₂ (noAssumptionUse) :=
   by
-    simp [advBoundQ, advBound2, AssumptionsUseT.empty, advantage, noAssumptionUse]
+    simp [advBoundQ, advBound, AssumptionsUseT.empty, advantage, noAssumptionUse]
     intro dist
     apply obsEq_distinquishing_adv
     apply Hb
@@ -126,7 +97,7 @@ noncomputable def obse_eq_step
   (Hb : ObsEqBounded o₁ o₂ a)
   : { asc // advBoundQ Assumptions a O o₁ o₂ asc } :=
   ⟨(AssumptionsUseT.empty _ _, AssumptionsUseT.empty _ _), by
-    simp [advBoundQ, advBound2, AssumptionsUseT.empty, advantage]
+    simp [advBoundQ, advBound, AssumptionsUseT.empty, advantage]
     intro dist
     apply obsEq_distinquishing_adv
     apply Hb
@@ -231,7 +202,7 @@ noncomputable def transitive_step_proof
       let jointr : AssumptionsUseT Assumptions O := assumptionJoiner asc1.2 asc2.2 (fun a b => reductionCombiner a b)
       simp [advBoundQ, transitive_step_val]
       intro dist
-      simp [advBound2]
+      simp [advBound]
       intro Hdepth
       simp [joint, jointr, assumptionJoiner]
       have HHx := sumJoinerCorrect' (fun J => asUseType Assumptions O J)
@@ -253,8 +224,6 @@ noncomputable def transitive_step_proof
       rw [<-HHx]
       clear HHx
       rw [(advatangeTriangle _ rm _)]
-      -- rw [advBoundEq] at Hasc1 Hasc2
-      -- simp [advBound2] at Hasc1 Hasc2
       rw [(Hasc1 dist Hdepth)]
       rw [(Hasc2 dist Hdepth)]
       simp []
@@ -267,50 +236,48 @@ by
   exact Nat.le_of_succ_le H
 
 
-def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
-      -- [Fintype (Assumptions.Idx)]
-      {κ : ℕ} {q_b : ENat}
-      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) -> ℕ
-| IndistinguishableI.assumption idx =>
-  0
-| IndistinguishableI.obsEqB a b =>
-  0
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
-  1 + lengthOfIndI ind
-| IndistinguishableI.symm q_b ind  =>
-  1 + lengthOfIndI ind
-| IndistinguishableI.trans rm q_b ind1 ind2 =>
-  1 + lengthOfIndI ind1 + lengthOfIndI ind2
-| IndistinguishableI.longSequence a q_b ro Hseq =>
-  1 + ∑ i : Finset.range a, lengthOfIndI (Hseq i (by
-    cases i
-    case mk val prop =>
-    simp []
-    exact List.mem_range.mp prop
-  ))
+-- def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
+--       {κ : ℕ} {q_b : ENat}
+--       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
+--       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) -> ℕ
+-- | IndistinguishableI.assumption idx =>
+--   0
+-- | IndistinguishableI.obsEqB a b =>
+--   0
+-- | @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
+--   1 + lengthOfIndI ind
+-- | IndistinguishableI.symm q_b ind  =>
+--   1 + lengthOfIndI ind
+-- | IndistinguishableI.trans rm q_b ind1 ind2 =>
+--   1 + lengthOfIndI ind1 + lengthOfIndI ind2
+-- | IndistinguishableI.longSequence a q_b ro Hseq =>
+--   1 + ∑ i : Finset.range a, lengthOfIndI (Hseq i (by
+--     cases i
+--     case mk val prop =>
+--     simp []
+--     exact List.mem_range.mp prop
+--   ))
 
 
-theorem sum_ge_entry {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ):
-    f a ≤ ∑ x ∈ s, f x :=
-by
-  apply Finset.single_le_sum
-  · intro i Hi
-    exact Nat.zero_le (f i)
-  assumption
+-- theorem sum_ge_entry {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ):
+--     f a ≤ ∑ x ∈ s, f x :=
+-- by
+--   apply Finset.single_le_sum
+--   · intro i Hi
+--     exact Nat.zero_le (f i)
+--   assumption
 
-theorem sum_ge_entry2 {y : ℕ} {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ) (Hle : y <= f a):
-    y ≤ ∑ x ∈ s, f x :=
-by
-  apply Nat.le_trans
-  · apply Hle
-  apply sum_ge_entry
-  assumption
+-- theorem sum_ge_entry2 {y : ℕ} {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ) (Hle : y <= f a):
+--     y ≤ ∑ x ∈ s, f x :=
+-- by
+--   apply Nat.le_trans
+--   · apply Hle
+--   apply sum_ge_entry
+--   assumption
 
 
 noncomputable def long_step_combinator {O : OracleSpec I}
   {Assumptions : IndistinguishabilityAssumptions}
-  --[Fintype (Assumptions.Idx)]
   :
   (a : ℕ) ->
   (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) -> AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
@@ -322,7 +289,6 @@ noncomputable def long_step_combinator {O : OracleSpec I}
 
 
 noncomputable def symbolicSoundnessBound {Assumptions : IndistinguishabilityAssumptions}
-      -- [Fintype (Assumptions.Idx)]
       {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
@@ -392,7 +358,6 @@ lemma long_Step_proof_induction
 
 
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
-      -- [Fintype (Assumptions.Idx)]
       {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
@@ -402,7 +367,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       simp [symbolicSoundnessBound]
       simp [advBoundQ]
       intro dist
-      simp [advBound2]
+      simp [advBound]
       intro Hdist
       simp [ascToReal]
       rw [applyComplexInitReduction2_identity]
@@ -416,7 +381,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
     simp [advBoundQ, symbolicSoundnessBound]
     intro dist Hdist
     rw [advantage_reduction]
-    simp [advBoundQ, advBound2] at Hasc
+    simp [advBoundQ, advBound] at Hasc
     rw [(Hasc (OracleReduction.applyReductionToAdversary r dist) (by
       exact sup_eq_left.mp rfl))]
     congr
@@ -431,7 +396,7 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
 | IndistinguishableI.symm q_b ind  =>
     let re := symbolicSoundness ind
     by
-      simp [advBoundQ, advBound2, symbolicSoundnessBound]
+      simp [advBoundQ, advBound, symbolicSoundnessBound]
       intro dist
       rw [advantageReverse]
       intro Hdist

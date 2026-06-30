@@ -56,17 +56,39 @@ noncomputable def proof_constants {K : ℕ → Type} {C : ℕ → ℕ → Type}
     :=
     symbolicSoundnessBound (indCpaRandImpliesIndCpa schemeFam κ)
 
+lemma stupidBoundRewrite {I : Type}
+  {Assumptions : IndistinguishabilityAssumptions}
+  {O : OracleSpec I}
+  (x : AssumptionsUseT Assumptions O) :
+  x = {subset := x.subset, values := (fun t => x.values t)} :=
+    by simp
+
+
+lemma empty_union (x : Finset X) [DecidableEq X] : x ∪ ∅ = x := by simp []
+lemma union_empty (x : Finset X) [DecidableEq X] : ∅ ∪ x = x := by simp []
+
 noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
-    : symbolicSoundnessBound (indCpaRandImpliesIndCpa schemeFam κ) = sorry := by
-  simp [proof_constants, symbolicSoundnessBound, indCpaRandImpliesIndCpa]
-  simp [transitive_step_val, assumptionJoiner, Prod.fst, Prod.snd, symbolicSoundnessBound,
-    sumJoiner, AssumptionsUseT.empty, asUseType, finsetSum, EmptyCollection.emptyCollection,
-
-    ]
+    : (proof_constants schemeFam κ) = sorry := by
+  -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
+  simp [indCpaRandImpliesIndCpa, proof_constants]
+  simp [transitive_step_val, assumptionJoiner, symbolicSoundnessBound,
+    sumJoiner, AssumptionsUseT.empty, finsetSum,
+    Indistinguishable.of_ObsEq, noAssumptionUse,
+    empty_union, union_empty
+  ]
   conv =>
     arg 1
     arg 1
+    arg 2
+
+  simp [Finset.instLattice]
+  have ext : forall {A B : Type _} (f : A -> B), f = (fun x => f x) := by simp []
+
+  conv =>
+    arg 1
+    arg 2
+    rw [ext]
   -- why (symbolicSoundnessBound (Indistinguishable.of_ObsEq ⋯)) does not simplify?
   sorry
