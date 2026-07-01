@@ -64,33 +64,20 @@ lemma stupidBoundRewrite {I : Type}
     by simp
 
 
-lemma empty_union (x : Finset X) [DecidableEq X] : x ∪ ∅ = x := by simp []
-lemma union_empty (x : Finset X) [DecidableEq X] : ∅ ∪ x = x := by simp []
+-- lemma empty_union (x : Finset X) [DecidableEq X] : x ∪ ∅ = x := by simp []
+-- lemma union_empty (x : Finset X) [DecidableEq X] : ∅ ∪ x = x := by simp []
 
-noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
-    (schemeFam : SymEncSchemeFamily K C)
-    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
-    : (proof_constants schemeFam κ).1.values = (fun x => sorry) := by
-  -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
-  simp [indCpaRandImpliesIndCpa, proof_constants, IndCpaRandAssumption']
-  simp [transitive_step_val, assumptionJoiner, symbolicSoundnessBound,
-    sumJoiner, AssumptionsUseT.empty, finsetSum,
-    Indistinguishable.of_ObsEq, noAssumptionUse,
-    empty_union, union_empty
-  ]
-  funext x
-  simp [] at x
-
-  -- conv =>
-  --   arg 1
-  --   arg 2
-
-  -- simp [Finset.instLattice]
-  -- have ext : forall {A B : Type _} (f : A -> B), f = (fun x => f x) := by simp []
-
-  -- conv =>
-  --   arg 1
-  --   arg 2
-  --   rw [ext]
-  -- -- why (symbolicSoundnessBound (Indistinguishable.of_ObsEq ⋯)) does not simplify?
-  sorry
+-- noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
+--     (schemeFam : SymEncSchemeFamily K C)
+--     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
+--     : (proof_constants schemeFam κ).1.values = (fun x => sorry) := by
+--   -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
+--   simp [indCpaRandImpliesIndCpa, proof_constants, IndCpaRandAssumption']
+--   simp [transitive_step_val, assumptionJoiner, symbolicSoundnessBound,
+--     sumJoiner, AssumptionsUseT.empty, finsetSum,
+--     Indistinguishable.of_ObsEq, noAssumptionUse,
+--     empty_union, union_empty
+--   ]
+--   funext x
+--   simp [] at x
+--   sorry
