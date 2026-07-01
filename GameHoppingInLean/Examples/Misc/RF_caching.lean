@@ -14,8 +14,7 @@ noncomputable def PRF_ideal2 (X Y : Type) [DecidableEq X] [Fintype Y] [Nonempty 
     RStateOracle (SecurePRFSpec X Y) where
   stateType := Finmap (fun _x : X => Y)
   initialState := pure ∅
-  queries := {
-    impl := fun _ x => do
+  queries x := do
       let c <- get
       match c.lookup x with
       | Option.some y => return y
@@ -23,7 +22,7 @@ noncomputable def PRF_ideal2 (X Y : Type) [DecidableEq X] [Fintype Y] [Nonempty 
           let newVal ← PMF.uniformOfFintype Y
           StateT.set (c.insert x newVal)
           pure newVal
-  }
+
 
 /-- Complete a lazy random-function cache into a total function.
 
@@ -69,7 +68,7 @@ private lemma completePRFCache_empty (X Y : Type)
     (completePRFCache X Y ∅ ) = PMF.uniformOfFintype (X → Y) := by
   classical
   simp [completePRFCache]
-  simp only [GameHoppingSimplifyPMF]
+  -- simp only [GameHoppingSimplifyPMF]
   rw [← PMF.map_uniformOfFintype_equiv  (emptyCacheMissingEquiv X Y)]
   simp only [GameHoppingSimplifyPMF, emptyCacheMissingEquiv]
   simp
@@ -122,12 +121,12 @@ theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
     apply PMF.ext
     intro f
     simp [PMF.uniformOfFintype_apply]
-  · simp [PRF_ideal, PRF_ideal2, OracleSpec.domain, SecurePRFSpec]
-    intro i query
+  · simp [PRF_ideal, PRF_ideal2, OracleSpec.Domain, SecurePRFSpec]
+    intro query
     ext1 st
     simp [bindInputState, bindOutputState, PRF_ideal, PRF_ideal2, completePRFCache,
               StateT.run, bindSecond, Functor.map, StateT.map, StateT.set, liftM, bindSecond, completePRFCache, monadLift, MonadLift.monadLift, StateT.lift, StateT.map]
-    simp only [GameHoppingSimplifyPMF]
+    -- simp only [GameHoppingSimplifyPMF]
     cases hgm : Finmap.lookup query st with
     | none =>
       simp [bindSecond, completePRFCache, StateT.map, StateT.lift, StateT.set, StateT.run]

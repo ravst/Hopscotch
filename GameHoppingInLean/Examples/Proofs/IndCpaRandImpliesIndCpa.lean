@@ -70,7 +70,7 @@ lemma union_empty (x : Finset X) [DecidableEq X] : ∅ ∪ x = x := by simp []
 noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
-    : (proof_constants schemeFam κ) = sorry := by
+    : (proof_constants schemeFam κ).1.values = sorry := by
   -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
   simp [indCpaRandImpliesIndCpa, proof_constants]
   simp [transitive_step_val, assumptionJoiner, symbolicSoundnessBound,
@@ -78,8 +78,10 @@ noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → T
     Indistinguishable.of_ObsEq, noAssumptionUse,
     empty_union, union_empty
   ]
+  ext x
+  simp [] at x
+
   conv =>
-    arg 1
     arg 1
     arg 2
 
