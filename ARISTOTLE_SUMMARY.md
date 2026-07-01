@@ -1,3 +1,16 @@
+# Summary of changes for run a22b61a0-0482-4b4b-b913-71bf967d305e
+Completed the original task on `GameHoppingInLean/Examples/Proofs/GGMSecurePRF.lean`.
+
+The file did not contain literal `sorry`s but had three broken proof steps inside `obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb` that caused the build to fail (an unsolved-goals error and two `simp made no progress` errors). All three were in the state-monad/PMF reduction of the cache-abstraction commuting square.
+
+Fixes, following the requested style (`simp [correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]` and the project's `StateTSimps` set):
+- In the cached-query (`pos`) branch, extended the closing `simp` with `bind, pure, StateT.bind, StateT.pure` and the project simp sets so the `StateT.pure`/`PMF.bind` reduction goes through.
+- In both uncached-query sub-branches (`query[i] = true` / `false`), added `bind` and `pure` to the `simp only` so the `StateT.set >>= …` (a genuine `Bind.bind`) actually unfolds, letting the subsequent `expandCache_insert_union` rewrite apply.
+
+Verification: `lake build` completes successfully for the whole project; `GGMSecurePRF.lean` contains no `sorry`/`admit`; and `#print axioms` for both the fixed lemma `obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb` and the top-level result `secureGGM_of_securePRG` lists only `[propext, Classical.choice, Quot.sound]`.
+
+Only cosmetic linter warnings (whitespace, isolated `·`, `show` vs `change`, empty line) remain in the file; these do not affect correctness or the build.
+
 # Summary of changes for run 7a5df0c4-57af-4076-b684-09339b7f92ed
 Filled in the `sorry` in `abstraction_with_levels_and_reach` in `GameHoppingInLean/ComputationalIndistinguishibility/ObservationEquivalenceReach.lean`.
 

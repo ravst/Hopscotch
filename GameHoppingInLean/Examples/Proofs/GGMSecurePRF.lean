@@ -10,6 +10,23 @@ attribute [-simp] bind_pure_comp
 open scoped IndistinguishableI
 open scoped OracleReduction
 
+
+/-- Any indistinguishability that holds under the empty assumption set holds under
+any assumption set. -/
+noncomputable def liftEmptyAssumptions
+    {Assumptions : IndistinguishabilityAssumptions} {κ : ℕ}
+    {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    (h : IndistinguishableI IndistinguishabilityAssumptions.empty κ q_b O ro₁ ro₂) :
+    IndistinguishableI Assumptions κ q_b O ro₁ ro₂ := by
+  induction h with
+  | assumption i => exact i.elim
+  | obsEqB q hObs => exact IndistinguishableI.obsEqB q hObs
+  | complexInitReduction r q h ih => exact IndistinguishableI.complexInitReduction r q ih
+  | symm q h ih => exact IndistinguishableI.symm q ih
+  | trans ro₂ q h₁ h₂ ih₁ ih₂ => exact IndistinguishableI.trans ro₂ q ih₁ ih₂
+  | longSequence l q ro hStep ih =>
+      exact IndistinguishableI.longSequence l q ro (fun j hj => ih j hj)
+
 /-- The `i`-th hybrid for the GGM proof.
 
 The oracle samples a uniformly random label for every depth-`i` node in the GGM tree.
@@ -48,8 +65,9 @@ theorem obsEq_real_GGMHybrid_zero {k n : ℕ} (prg : lengthDoublingPRG k) :
     simp only [PMF.map_uniformOfFintype_equiv]
   · intro query
     ext seed
-    simp [RState.mapStateBij, PRF_real, GGMHybrid, GGM, e]
-    sorry
+    simp only [RState.mapStateBij, PRF_real, GGMHybrid, GGM, e, StateTSimps,
+      RStateSimplifier, GameHoppingSimplifyPMF, Equiv.coe_fn_mk, Equiv.coe_fn_symm_mk,
+      PMF.pure_map, Fin.val_zero, Nat.sub_zero, BitVec.extractLsb'_eq_self]
 
 /-- The final GGM hybrid is the ideal random-function oracle. -/
 theorem obsEq_GGMHybrid_last_ideal {k n : ℕ} (prg : lengthDoublingPRG k) :
@@ -135,7 +153,7 @@ noncomputable def GGMHybridStepReduction2PRG {k n : ℕ} (prg : lengthDoublingPR
     return output
 
 
-noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n+1)) :
+noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
     OracleReduction (SecurePRFSpec (BitVec i.1) (BitVec k)) (SecurePRFSpec (BitVec n) (BitVec k)) where
   stateType := Unit
   initialState := pure ()
@@ -149,7 +167,7 @@ noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG
 /-- Consecutive GGM hybrids differ by one use of the underlying PRG. -/
 -- easy
 theorem obsEq_GGMHybrid_reduction_rf {k n : ℕ}
-    (prg : lengthDoublingPRG k) (i : Fin (n+1)) :
+    (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
     ObsEq (GGMHybrid prg i)
       ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k))) := by
   apply ObsEq.symm
@@ -173,21 +191,22 @@ theorem obsEq_GGMHybrid_reduction_rf {k n : ℕ}
       (PRF_ideal (BitVec i.1) (BitVec k)))
     (GGMHybrid prg i)
     e ?_ ?_
-  · ext labels
-    simp [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid, PRF_ideal, e,
-      PMF.map_bind, PMF.uniformOfFintype_apply]
-    sorry
+  · simp only [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid, PRF_ideal, e,
+      OracleReductionSimps, StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF,
+      Equiv.coe_fn_mk, PMF.bind_pure]
+    congr 1
+    exact Subsingleton.elim _ _
   · intro query
     ext1 st
-    simp [RState.mapStateBij, OracleReduction.apply, GGMHybridStepReduction2RF,
-      GGMHybrid, PRF_ideal, e]
-    unfold RState.mapStateBij
-    simp [StateT.run]
-    sorry
+    simp only [RState.mapStateBij, OracleReduction.apply, GGMHybridStepReduction2RF,
+      GGMHybrid, PRF_ideal, e, OracleReductionSimps, StateTSimps, RStateSimplifier,
+      GameHoppingSimplifyPMF, SecurePRFSpec, OracleReduction.query, simulateQ_query,
+      OracleQuery.cont_query, OracleQuery.input_query, Equiv.coe_fn_mk, Equiv.coe_fn_symm_mk,
+      id_eq]
 
 -- easy/medium
 theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
-    (prg : lengthDoublingPRG k) (i : Fin (n+1)) :
+    (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
     ObsEq (GGMHybrid2 prg i)
       ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k))) := by
   apply ObsEq.symm
@@ -210,7 +229,17 @@ theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
   · ext labels
     simp [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid2, PRF_ideal2, e,
       PMF.map_bind, PMF.uniformOfFintype_apply]
-    sorry
+    refine (tsum_eq_single ((), (∅ : Finmap fun _ => BitVec k)) ?_).trans ?_
+    · rintro ⟨u, m⟩ hb
+      simp only [Prod.mk.injEq, not_and] at hb
+      by_cases hlm : labels = m
+      · subst hlm
+        rw [if_pos rfl, if_neg]
+        rw [Prod.mk.injEq]
+        rintro ⟨hu, h₂⟩
+        exact hb (Prod.ext hu h₂)
+      · simp [hlm]
+    · simp
   · intro query
     ext1 st
     simp [RState.mapStateBij, OracleReduction.apply, GGMHybridStepReduction2RF,
@@ -220,62 +249,50 @@ theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
     generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) st = m
     cases m with
     | none =>
-      simp
-      sorry
-    | some m => sorry
+      simp only [correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
+        GameHoppingSimplifyPMF, OracleReduction.liftWithPMFAndState, RState.modify,
+        StateT.set, StateT.run, StateT.get, bindSecond, liftM, monadLift,
+        MonadLift.monadLift, StateT.lift, hm, OracleSpec.query_def,
+        OracleQuery.input_apply, OracleQuery.cont_apply, OracleQuery.input,
+        OracleQuery.cont, simulateQ_query, set, get, StateT.bind, StateT.pure,
+        getThe, MonadStateOf.get, MonadState.get, stateT_run_get, id_eq]
+    | some m =>
+      simp only [correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
+        GameHoppingSimplifyPMF, OracleReduction.liftWithPMFAndState, RState.modify,
+        StateT.set, StateT.run, StateT.get, bindSecond, liftM, monadLift,
+        MonadLift.monadLift, StateT.lift, hm, OracleSpec.query_def,
+        OracleQuery.input_apply, OracleQuery.cont_apply, OracleQuery.input,
+        OracleQuery.cont, simulateQ_query, set, get, StateT.bind, StateT.pure,
+        getThe, MonadStateOf.get, MonadState.get, stateT_run_get, id_eq]
 
 /-- Replacing the embedded PRG call with uniform randomness advances the hybrid by one level. -/
 noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
-    (prg : lengthDoublingPRG k) (i : Fin (n+1)) :
+    (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
     Indistinguishable IndistinguishabilityAssumptions.empty
       (GGMHybrid prg i)
       (GGMHybrid2 prg i) := by
-  sorry
-  -- intro hRed κ
-
-  -- let hLeft :
-  --     IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-  --       (SecurePRFSpec (BitVec n) (BitVec k))
-  --       (GGMHybrid prg i)
-  --       (applySRReduction (GGMHybridStepReduction2RF prg i)
-  --         (PRF_ideal (BitVec i.1) (BitVec k))) :=
-  --   Indistinguishable.of_ObsEq (obsEq_GGMHybrid_reduction_rf prg i)
-  -- let hRF :
-  --     IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-  --       (SecurePRFSpec (BitVec i.1) (BitVec k))
-  --       (PRF_ideal (BitVec i.1) (BitVec k))
-  --       (PRF_ideal2 (BitVec i.1) (BitVec k)) :=
-  --   indistinguishable_PRF_ideal_PRF_ideal2
-  --     (Reductions := Reductions) (BitVec i.1) (BitVec k) κ
-  -- let hMiddle :
-  --     IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-  --       (SecurePRFSpec (BitVec n) (BitVec k))
-  --       (applySRReduction (GGMHybridStepReduction2RF prg i)
-  --         (PRF_ideal (BitVec i.1) (BitVec k)))
-  --       (applySRReduction (GGMHybridStepReduction2RF prg i)
-  --         (PRF_ideal2 (BitVec i.1) (BitVec k))) :=
-  --   IndistinguishableI.reduction (r := GGMHybridStepReduction2RF prg i) none hRF hRed
-  -- let hRight :
-  --     IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-  --       (SecurePRFSpec (BitVec n) (BitVec k))
-  --       (applySRReduction (GGMHybridStepReduction2RF prg i)
-  --         (PRF_ideal2 (BitVec i.1) (BitVec k)))
-  --       (GGMHybrid2 prg i) :=
-  --   Indistinguishable.symmetric
-  --     (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i))
-  -- calc
-  --   GGMHybrid prg i
-  --       ≈ᵢ[IndistinguishabilityAssumptions.empty, κ, none,
-  --           SecurePRFSpec (BitVec n) (BitVec k)]
-  --     applySRReduction (GGMHybridStepReduction2RF prg i)
-  --       (PRF_ideal (BitVec i.1) (BitVec k)) := hLeft
-  --   _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-  --           SecurePRFSpec (BitVec n) (BitVec k)]
-  --     applySRReduction (GGMHybridStepReduction2RF prg i)
-  --       (PRF_ideal2 (BitVec i.1) (BitVec k)) := hMiddle
-  --   _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-  --           SecurePRFSpec (BitVec n) (BitVec k)]
-  --     GGMHybrid2 prg i := hRight
+  intro κ
+  have hL :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        (GGMHybrid prg i)
+        ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k))) :=
+    Indistinguishable.of_ObsEq (obsEq_GGMHybrid_reduction_rf prg i)
+  have hM :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)))
+        ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k))) :=
+    IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i) none
+      (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.1) (BitVec k) κ)
+  have hR :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        ((GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)))
+        (GGMHybrid2 prg i) :=
+    Indistinguishable.symmetric
+      (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i))
+  exact IndistinguishableI.trans _ none hL (IndistinguishableI.trans _ none hM hR)
 
 
 def BitVec.flipMsb {k : ℕ} (v : BitVec k.succ) : BitVec k.succ :=
@@ -415,6 +432,22 @@ theorem PMF.bind_uniformOfFintype_bitVec_swap_append_do
     (e := (Equiv.prodComm (BitVec k) (BitVec k)).trans (bitVecAppendEquiv k k))
     (g := f)).symm
 
+/-- `PMF.bind`-form of `bind_uniformOfFintype_bitVec_append_do`. -/
+theorem pmfBind_uniform_bitVec_append {a b : ℕ} {α : Type} (f : BitVec (a + b) → PMF α) :
+    (PMF.uniformOfFintype (BitVec a)).bind (fun x₁ =>
+      (PMF.uniformOfFintype (BitVec b)).bind (fun x₂ => f (x₁ ++ x₂))) =
+    (PMF.uniformOfFintype (BitVec (a + b))).bind f := by
+  have h := bind_uniformOfFintype_bitVec_append_do (a := a) (b := b) f
+  simpa only [pmf_monad_bind_eq_bind] using h
+
+/-- `PMF.bind`-form of `PMF.bind_uniformOfFintype_bitVec_swap_append_do`. -/
+theorem pmfBind_uniform_bitVec_swap_append {k : ℕ} {α : Type} (f : BitVec (k + k) → PMF α) :
+    (PMF.uniformOfFintype (BitVec k)).bind (fun x₁ =>
+      (PMF.uniformOfFintype (BitVec k)).bind (fun x₂ => f (x₂ ++ x₁))) =
+    (PMF.uniformOfFintype (BitVec (k + k))).bind f := by
+  have h := PMF.bind_uniformOfFintype_bitVec_swap_append_do f
+  simpa only [pmf_monad_bind_eq_bind] using h
+
 noncomputable def PRF_ideal_cache_batch_flipMsb (i : ℕ) (Y : Type) [Fintype Y] [Nonempty Y] :
     RStateOracle (SecurePRFSpec (BitVec i.succ) Y) where
   stateType := Finmap (fun _x : (BitVec i.succ) => Y)
@@ -434,7 +467,7 @@ noncomputable def PRF_ideal_cache_batch_flipMsb (i : ℕ) (Y : Type) [Fintype Y]
         StateT.set (c ∪ newVals)
         return v1
 
-noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ)  :
+noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ) :
     RStateOracle (SecurePRFSpec (BitVec i.succ) (BitVec k)) where
   stateType := Finmap (fun _x : (BitVec i) => BitVec (k + k))
   initialState := pure ∅
@@ -455,117 +488,120 @@ noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ)  :
           StateT.set (c.insert x' (v2 ++ v1))
         return v1
 
+/-- Abstraction from the paired parent-label cache (`flipMsb2`) to the per-child cache
+(`flipMsb`): a parent `x'` holding `w : BitVec (k+k)` corresponds to its two children,
+each holding the appropriate half `PRG.chooseHalfI w b`. -/
+noncomputable def expandCache (i k : ℕ)
+    (m : Finmap (fun _ : BitVec i => BitVec (k + k))) :
+    Finmap (fun _ : BitVec (i + 1) => BitVec k) :=
+  FinmapFromOptionFun (fun y : BitVec (i + 1) =>
+    (m.lookup (BitVec.extractLsb' 0 i y)).map (fun w => PRG.chooseHalfI w (y[i])))
+
+@[simp] lemma expandCache_lookup (i k : ℕ)
+    (m : Finmap (fun _ : BitVec i => BitVec (k + k))) (y : BitVec (i + 1)) :
+    (expandCache i k m).lookup y =
+      (m.lookup (BitVec.extractLsb' 0 i y)).map (fun w => PRG.chooseHalfI w (y[i])) := by
+  rw [expandCache, FinmapFromOptionFun_lookup]
+
+@[simp] lemma expandCache_mem (i k : ℕ)
+    (m : Finmap (fun _ : BitVec i => BitVec (k + k))) (y : BitVec (i + 1)) :
+    y ∈ (expandCache i k m).keys ↔ BitVec.extractLsb' 0 i y ∈ m.keys := by
+  simp only [Finmap.mem_keys, ← Finmap.lookup_isSome, expandCache_lookup, Option.isSome_map]
+
+@[simp] lemma expandCache_empty (i k : ℕ) :
+    expandCache i k (∅ : Finmap (fun _ : BitVec i => BitVec (k + k))) = ∅ := by
+  apply Finmap.ext_lookup
+  intro y
+  simp
+
+/-- Inserting a parent label into the `flipMsb2` cache corresponds to inserting the two child
+labels into the `flipMsb` cache. -/
+lemma expandCache_insert_union (i k : ℕ)
+    (m : Finmap (fun _ : BitVec i => BitVec (k + k))) (x : BitVec (i + 1)) (w : BitVec (k + k))
+    (hx : BitVec.extractLsb' 0 i x ∉ m.keys) :
+    expandCache i k (m.insert (BitVec.extractLsb' 0 i x) w) =
+      (expandCache i k m) ∪
+        ((Finmap.insert x (PRG.chooseHalfI w (x[i]))
+          (∅ : Finmap (fun _ : BitVec (i + 1) => BitVec k))).insert x.flipMsb
+            (PRG.chooseHalfI w (x.flipMsb[i]))) := by
+  have hxnotL : x ∉ expandCache i k m := by
+    rw [← Finmap.mem_keys, expandCache_mem]; exact hx
+  have hfnotL : x.flipMsb ∉ expandCache i k m := by
+    rw [← Finmap.mem_keys, expandCache_mem, BitVec.extractLsb'_zero_flipMsb]; exact hx
+  apply Finmap.ext_lookup
+  intro y
+  by_cases hyx : y = x
+  · subst hyx
+    rw [Finmap.lookup_union_right hxnotL, Finmap.lookup_insert_of_ne _
+      (Ne.symm (BitVec.flipMsb_ne_self y)), Finmap.lookup_insert]
+    simp [Finmap.lookup_insert]
+  · by_cases hyf : y = x.flipMsb
+    · subst hyf
+      rw [Finmap.lookup_union_right hfnotL, expandCache_lookup,
+        BitVec.extractLsb'_zero_flipMsb, Finmap.lookup_insert, Finmap.lookup_insert]
+      simp
+    · have hne : BitVec.extractLsb' 0 i y ≠ BitVec.extractLsb' 0 i x := by
+        intro h
+        rcases BitVec.eq_or_eq_flipMsb_of_extractLsb'_eq h with h1 | h1
+        · exact hyx h1
+        · exact hyf h1
+      by_cases hym : y ∈ expandCache i k m
+      · rw [Finmap.lookup_union_left hym]
+        simp [Finmap.lookup_insert_of_ne _ hne]
+      · have hmnone : m.lookup (BitVec.extractLsb' 0 i y) = none := by
+          rw [Finmap.lookup_eq_none]
+          intro hmem
+          exact hym (by rw [← Finmap.mem_keys, expandCache_mem]; exact Finmap.mem_keys.mpr hmem)
+        rw [Finmap.lookup_union_right hym]
+        simp [expandCache_lookup, Finmap.lookup_insert_of_ne _ hne, hmnone,
+          Finmap.lookup_insert_of_ne _ hyf, Finmap.lookup_insert_of_ne _ hyx,
+          Finmap.lookup_empty]
+
 theorem obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb (i k : ℕ) :
     ObsEq
       (PRF_ideal_cache_batch_flipMsb2 i k)
       (PRF_ideal_cache_batch_flipMsb i (BitVec k)) := by
-  refine correctAbstractionImpliesObsEq _ _ ?_ ?_
-  · simp [PRF_ideal_cache_batch_flipMsb2, PRF_ideal_cache_batch_flipMsb]
-    intro fmap
-    exact FinmapFromOptionFun fun x : BitVec i.succ =>
-      (fmap.lookup (BitVec.extractLsb' 0 i x)).map fun label =>
-        PRG.chooseHalfI label x[i]
-  · constructor <;> simp [PRF_ideal_cache_batch_flipMsb2, PRF_ideal_cache_batch_flipMsb]
-    · sorry
-    simp [OracleSpec.Domain, SecurePRFSpec]
-    intro q
+  refine correctAbstractionImpliesObsEq _ _ (expandCache i k) ?_
+  constructor
+  · change PMF.map (expandCache i k) (PMF.pure ∅) = PMF.pure ∅
+    rw [PMF.pure_map, expandCache_empty]
+  · intro query
     ext1 st
-    simp [StateT.run, StateT.get, StateT.set, mapOutputState, mapInputState]
-    simp only [GameHoppingSimplifyPMF]
-    generalize hm : Finmap.lookup (BitVec.extractLsb' 0 i q) st = m
-    simp [correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
-    cases m with
-    | none =>
-      rw [ite_cond_eq_false]
-      · simp
-        split_ifs with hqi
-        · simp [StateT.set, StateT.run]
-          congr 1
-          ext1 a
-          congr 1
-          ext1 b
-          congr 3
-          ext1 x
-          by_cases hqx : x = q
-          · subst hqx
-            simp [hm]
-            rw [ite_cond_eq_false]
-            · simp [hqi, PRG.chooseHalfI]
-            · simp
-              intro h
-              exact BitVec.flipMsb_ne_self x h.symm
-          · by_cases hfqx : x = q.flipMsb
-            · rw [hfqx]
-              rw [BitVec.extractLsb'_zero_flipMsb]
-              simp [hm, hqi, PRG.chooseHalfI]
-            · have hparent_ne :
-                  BitVec.extractLsb' 0 i x ≠ BitVec.extractLsb' 0 i q := by
-                intro hparent
-                rcases BitVec.eq_or_eq_flipMsb_of_extractLsb'_eq hparent with h | h
-                · exact hqx h
-                · exact hfqx h
-              rw [Finmap.lookup_insert_of_ne st hparent_ne]
-              cases hlook : Finmap.lookup (BitVec.extractLsb' 0 i x) st with
-              | none =>
-                  simp [hlook]
-                  symm
-                  simpa [hfqx] using
-                    (Finmap.lookup_insert_of_ne
-                      (s := (∅ : Finmap (fun _x : BitVec (i + 1) => BitVec k)))
-                      (a := q) (a' := x) (b := a) hqx)
-              | some label =>
-                  simp [hlook]
-        · simp [StateT.set, StateT.run]
-          simp only [GameHoppingSimplifyPMF]
-          simp at hqi
-          congr 1
-          ext1 a
-          congr 1
-          ext1 b
-          congr 3
-          ext1 x
-          by_cases hqx : x = q
-          · subst hqx
-            simp [hm]
-            rw [ite_cond_eq_false]
-            · simp [hqi, PRG.chooseHalfI]
-            · simp
-              intro h
-              exact BitVec.flipMsb_ne_self x h.symm
-          · by_cases hfqx : x = q.flipMsb
-            · rw [hfqx]
-              rw [BitVec.extractLsb'_zero_flipMsb]
-              simp [hm, hqi, PRG.chooseHalfI]
-            · have hparent_ne :
-                  BitVec.extractLsb' 0 i x ≠ BitVec.extractLsb' 0 i q := by
-                intro hparent
-                rcases BitVec.eq_or_eq_flipMsb_of_extractLsb'_eq hparent with h | h
-                · exact hqx h
-                · exact hfqx h
-              rw [Finmap.lookup_insert_of_ne st hparent_ne]
-              cases hlook : Finmap.lookup (BitVec.extractLsb' 0 i x) st with
-              | none =>
-                  simp [hlook]
-                  symm
-                  simpa [hfqx] using
-                    (Finmap.lookup_insert_of_ne
-                      (s := (∅ : Finmap (fun _x : BitVec (i + 1) => BitVec k)))
-                      (a := q) (a' := x) (b := a) hqx)
-              | some label =>
-                  simp [hlook]
-      · have hnot : BitVec.extractLsb' 0 i q ∉ st.keys := by
-          rw [Finmap.mem_keys]
-          exact Finmap.lookup_eq_none.mp hm
-        simp [hnot]
-    | some x =>
-      rw [ite_cond_eq_true]
-      · simp[hm]
-      · simp
-        apply Finmap.mem_of_lookup_eq_some
-        assumption
+    simp only [mapOutputState, mapInputState, PRF_ideal_cache_batch_flipMsb2,
+      PRF_ideal_cache_batch_flipMsb, correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
+      GameHoppingSimplifyPMF, mapSecond, SecurePRFSpec, OracleSpec.Domain]
+    by_cases hc : BitVec.extractLsb' 0 i query ∈ st.keys
+    · have hcE : query ∈ (expandCache i k st).keys := (expandCache_mem i k st query).mpr hc
+      obtain ⟨v, hv⟩ : ∃ v, Finmap.lookup (BitVec.extractLsb' 0 i query) st = some v :=
+        Option.isSome_iff_exists.mp (Finmap.lookup_isSome.mpr (Finmap.mem_keys.mp hc))
+      simp [hc, hcE, hv, expandCache_lookup, bind, pure, StateT.bind, StateT.pure,
+        StateTSimps, GameHoppingSimplifyPMF, correctAbstractionDiagSimps]
+    · have hcE : query ∉ (expandCache i k st).keys :=
+        fun h => hc ((expandCache_mem i k st query).mp h)
+      simp only [hc, hcE, dif_neg, if_false, not_false_eq_true, StateTSimps, RStateSimplifier,
+        GameHoppingSimplifyPMF, StateT.set, StateT.lift, StateT.bind, StateT.pure, set, get,
+        bindSecond, correctAbstractionDiagSimps]
+      congr 1
+      funext a
+      congr 1
+      funext b
+      by_cases hqi : query[i] = true
+      · rw [if_pos hqi]
+        simp only [bind, StateT.set, StateT.bind, StateT.pure, pure, StateTSimps,
+          GameHoppingSimplifyPMF, bindSecond, correctAbstractionDiagSimps]
+        rw [expandCache_insert_union i k st query (a ++ b) hc]
+        simp [hqi, PRG.chooseHalfI, BitVec.extractLsb'_append_eq_left,
+          BitVec.extractLsb'_append_eq_right, BitVec.getElem_flipMsb_msb]
+      · rw [if_neg hqi]
+        have hqf : query[i] = false := Bool.not_eq_true _ |>.mp hqi
+        simp only [bind, StateT.set, StateT.bind, StateT.pure, pure, StateTSimps,
+          GameHoppingSimplifyPMF, bindSecond, correctAbstractionDiagSimps]
+        rw [expandCache_insert_union i k st query (b ++ a) hc]
+        simp [hqf, PRG.chooseHalfI, BitVec.extractLsb'_append_eq_left,
+          BitVec.extractLsb'_append_eq_right, BitVec.getElem_flipMsb_msb]
 
 lemma Finmap.union_insert_mem {X : Type} [DecidableEq X] {f : X → Type} (m1 m2 : Finmap f) (x : X) (v : f x)
-  (hx : x ∈ m1.keys):
+  (hx : x ∈ m1.keys) :
   m1 ∪ (m2.insert x v) = m1 ∪ m2 := by
   apply Finmap.ext_lookup
   intro y
@@ -579,7 +615,7 @@ lemma Finmap.union_insert_mem {X : Type} [DecidableEq X] {f : X → Type} (m1 m2
     · rw [Finmap.lookup_insert_of_ne m2 hyx]
 
 lemma Finmap.union_insert_not_mem {X : Type} [DecidableEq X] {f : X → Type} (m1 m2 : Finmap f) (x : X) (v : f x)
-  (hx : x ∉  m1.keys) :
+  (hx : x ∉ m1.keys) :
   m1 ∪ (m2.insert x v) = (m1.insert x v) ∪ m2 := by
   apply Finmap.ext_lookup
   intro y
@@ -604,7 +640,7 @@ lemma Finmap.union_insert_not_mem {X : Type} [DecidableEq X] {f : X → Type} (m
       rw [Finmap.lookup_union_right hy, Finmap.lookup_union_right hyInsert]
       rw [Finmap.lookup_insert_of_ne m2 hyx]
 
-def batch_new_vals_bij_mem {l k : ℕ } (c : Finmap (fun _ : BitVec l.succ => BitVec k)) (x : BitVec l.succ ) (h_non_mem : x ∉ c.keys) (hf_mem: x.flipMsb ∈ c.keys) :
+def batch_new_vals_bij_mem {l k : ℕ} (c : Finmap (fun _ : BitVec l.succ => BitVec k)) (x : BitVec l.succ) (h_non_mem : x ∉ c.keys) (hf_mem: x.flipMsb ∈ c.keys) :
 ({ x_1 // x_1 ∈ ({x' ∈ {x, x.flipMsb} | x' ∉ c.keys} : Finset (BitVec l.succ)) } → BitVec k) ≃ BitVec k where
   toFun f := f ⟨x, by simp; assumption⟩
   invFun e := fun _ => e
@@ -619,7 +655,7 @@ def batch_new_vals_bij_mem {l k : ℕ } (c : Finmap (fun _ : BitVec l.succ => Bi
   right_inv := by
      simp [Function.LeftInverse, Function.RightInverse]
 
-def batch_new_vals_bij_not_mem {l k : ℕ } (c : Finmap (fun _ : BitVec l.succ => BitVec k)) (x : BitVec l.succ ) (h_non_mem : x ∉ c.keys) (hf_not_mem: x.flipMsb ∉ c.keys) :
+def batch_new_vals_bij_not_mem {l k : ℕ} (c : Finmap (fun _ : BitVec l.succ => BitVec k)) (x : BitVec l.succ) (h_non_mem : x ∉ c.keys) (hf_not_mem: x.flipMsb ∉ c.keys) :
 ({ x_1 // x_1 ∈ ({x' ∈ {x, x.flipMsb} | x' ∉ c.keys} : Finset (BitVec l.succ)) } → BitVec k) ≃ BitVec k × BitVec k where
   toFun f := ⟨f ⟨x, by simp; assumption⟩, f ⟨x.flipMsb, by simp; assumption⟩⟩
   invFun e := fun a =>
@@ -640,7 +676,7 @@ def batch_new_vals_bij_not_mem {l k : ℕ } (c : Finmap (fun _ : BitVec l.succ =
     simp [BitVec.flipMsb_ne_self]
 
 @[simp]
-lemma Finmap.from_fun_lookup (X' : Finset X) (f : X' → Y) (elem : X) [DecidableEq X]:
+lemma Finmap.from_fun_lookup (X' : Finset X) (f : X' → Y) (elem : X) [DecidableEq X] :
   (FinmapFromFun X' f).lookup elem =
     if he : elem ∈ X' then
       Option.some (f ⟨elem, he⟩)
@@ -654,7 +690,7 @@ lemma Finmap.from_fun_lookup (X' : Finset X) (f : X' → Y) (elem : X) [Decidabl
       simp [he])
 
 @[simp]
-lemma Finmap.from_fun_in (X' : Finset X) (f : X' → Y) (elem : X) [DecidableEq X]:
+lemma Finmap.from_fun_in (X' : Finset X) (f : X' → Y) (elem : X) [DecidableEq X] :
   (elem ∈ (FinmapFromFun X' f)) ↔ elem ∈ X' := by
   rw [← Finmap.mem_keys]
   simp
@@ -667,14 +703,10 @@ theorem obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch {k n : ℕ}
         (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)) := by
   apply obsEqReflexive
   simp [PRF_ideal_cache_batch_flipMsb, PRF_ideal_cache_batch]
-  ext1 _
-  ext1 x
-  congr
-  ext1 c
-  ext1 st
+  funext x c
+  simp only [GGMHybrid2_Vs_3_batch, StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF]
   split_ifs with hif <;> try rfl
-  simp [GGMHybrid2_Vs_3_batch, StateT.run, Function.comp]
-  simp only [GameHoppingSimplifyPMF]
+  simp only [StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF]
   by_cases hflip : x.flipMsb ∈ c.keys
   · conv_lhs =>
       simp [StateT.set]
@@ -686,7 +718,6 @@ theorem obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch {k n : ℕ}
     simp
     rw [← PMF.map_uniformOfFintype_equiv (batch_new_vals_bij_mem c x hif hflip).symm ]
     simp [StateT.set]
-    simp only [GameHoppingSimplifyPMF, StateT.set]
     congr 1
     ext1 a
     simp [batch_new_vals_bij_mem]
@@ -726,7 +757,6 @@ theorem obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch {k n : ℕ}
           intro h
           exact BitVec.flipMsb_ne_self x h.symm
       · tactic => assumption
-    simp only [GameHoppingSimplifyPMF]
     rw [← PMF.map_uniformOfFintype_equiv (batch_new_vals_bij_not_mem c x hif hflip).symm ]
     simp [StateT.set, batch_new_vals_bij_not_mem]
     simp only [GameHoppingSimplifyPMF, StateT.set]
@@ -735,14 +765,15 @@ theorem obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch {k n : ℕ}
     congr
     ext1 b
     congr 2
+    · simp
     apply Finmap.ext_lookup
     intro e
     by_cases hex : e = x
     · subst hex
       simp
       rw [Finmap.lookup_union_right]
-      simp
-      assumption
+      · simp
+        assumption
       apply hif
     · rw [Finmap.lookup_insert_of_ne] <;> try assumption
       by_cases hex2 : e = x.flipMsb
@@ -772,63 +803,60 @@ theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
   refine correctAbstractionImpliesObsEq _ _ (fun (a,b) => b) ?_
   constructor
   · simp [PMF.map]
-  · simp [OracleComp.simulateQ, OracleSpec.domain, SecurePRFSpec]
-    intro _ query
+  · intro query
     ext1 st
-    simp [mapOutputState, mapInputState, StateT.get, StateT.set, StateT.run, PMF.map]
+    simp only [OracleReductionSimps, correctAbstractionDiagSimps, StateTSimps,
+      RStateSimplifier, GameHoppingSimplifyPMF, SecurePRFSpec]
     generalize Hm : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) st.2 = m
     cases m with
     | none =>
       simp []
       rw [ite_cond_eq_false]
-      · simp
-        simp only [GameHoppingSimplifyPMF]
+      · simp only [RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF]
         by_cases hqi : query[i.val]
         · simp only [GameHoppingSimplifyPMF, hqi, PRG.chooseHalfI]
           simp
-          simp only [GameHoppingSimplifyPMF]
           conv_rhs =>
-            rw [← PMF.bind_uniformOfFintype_bitVec_append_do]
-          simp
-          simp only [GameHoppingSimplifyPMF]
-          congr
-          ext1 a
-          congr
-          ext1 b
-          congr 3
-          rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
+            rw [← pmfBind_uniform_bitVec_append (a := k) (b := k)]
+          simp only [RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF,
+            StateT.set, set, MonadState.set, MonadStateOf.set]
           congr 1
-        · simp at hqi
-          simp only [GameHoppingSimplifyPMF, hqi, PRG.chooseHalfI]
+          funext a
+          congr 1
+          funext b
+          congr 3
+          · exact (BitVec.extractLsb'_append_eq_left).symm
+          · rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
+            congr 1
+        · simp only [Bool.not_eq_true] at hqi
+          simp only [GameHoppingSimplifyPMF, hqi, PRG.chooseHalfI, Bool.false_eq_true,
+            if_false, reduceIte]
           conv_rhs =>
-            rw [← PMF.bind_uniformOfFintype_bitVec_swap_append_do]
-          simp
-          simp only [GameHoppingSimplifyPMF]
-          congr
-          ext1 a
-          congr
-          ext1 b
-          congr 3
-          rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
+            rw [← pmfBind_uniform_bitVec_swap_append]
+          simp only [RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF,
+            StateT.set, set, MonadState.set, MonadStateOf.set]
+          conv_lhs => rw [PMF.bind_comm]
           congr 1
-      ·
-        have hnot : BitVec.extractLsb' 0 i.1 query ∉ st.2.keys := by
+          funext a
+          congr 1
+          funext b
+          congr 3
+          · exact (BitVec.extractLsb'_append_eq_right).symm
+          · rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
+            congr 1
+      · have hnot : BitVec.extractLsb' 0 i.1 query ∉ st.2.keys := by
           rw [Finmap.mem_keys]
           exact Finmap.lookup_eq_none.mp Hm
         simp [hnot]
-
     | some x =>
       simp
       rw [ite_cond_eq_true]
-      · simp
-        simp only [GameHoppingSimplifyPMF]
+      · simp only [RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF]
+        rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
+        simp only [Nat.add_zero, Nat.zero_add, Hm, Option.getD_some]
+        rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
         congr 1
-        rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
-        simp [Hm]
-        rw [BitVec.extractLsb'_extractLsb' (h := by omega)]
-        congr
-      ·
-        have hin : BitVec.extractLsb' 0 i.1 query ∈ st.2.keys := by
+      · have hin : BitVec.extractLsb' 0 i.1 query ∈ st.2.keys := by
           rw [Finmap.mem_keys]
           exact Finmap.mem_of_lookup_eq_some Hm
         simp [hin]
@@ -847,123 +875,68 @@ noncomputable def indistinguishableI_GGMHybrid2_Vs_3
       (SecurePRFSpec (BitVec n) (BitVec k))
       (GGMHybrid2 prg i.succ)
       (GGMHybrid3 prg i) := by
-  let hLeft :
+  have hStart :
       IndistinguishableI IndistinguishabilityAssumptions.empty κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid2 prg i.succ)
-        ( (GGMHybridStepReduction2RF prg i.succ) ◇
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
           (PRF_ideal2 (BitVec i.succ.1) (BitVec k))) :=
     Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i.succ)
-  let hRF₁ :
-      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
-        (SecurePRFSpec (BitVec i.succ.1) (BitVec k))
-        (PRF_ideal2 (BitVec i.succ.1) (BitVec k))
-        (PRF_ideal (BitVec i.succ.1) (BitVec k)) :=
-    Indistinguishable.symmetric
-      (indistinguishable_PRF_ideal_PRF_ideal2
-        (BitVec i.succ.1) (BitVec k) κ)
-  let hRF₂ :
-      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
-        (SecurePRFSpec (BitVec i.succ.1) (BitVec k))
-        (PRF_ideal (BitVec i.succ.1) (BitVec k))
-        (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-          (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)) :=
-    Indistinguishable.of_ObsEq
-      (obsEq_PRF_ideal_PRF_ideal_cache_pair
-        (BitVec i.succ.1) (BitVec k)
-        (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i))
-  let hRF :
+  have hInner :
       IndistinguishableI IndistinguishabilityAssumptions.empty κ none
         (SecurePRFSpec (BitVec i.succ.1) (BitVec k))
         (PRF_ideal2 (BitVec i.succ.1) (BitVec k))
         (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
           (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)) :=
-    calc
-      PRF_ideal2 (BitVec i.succ.1) (BitVec k)
-          ≈ᵢ[IndistinguishabilityAssumptions.empty, κ, none,
-              SecurePRFSpec (BitVec i.succ.1) (BitVec k)]
-        PRF_ideal (BitVec i.succ.1) (BitVec k) := hRF₁
-      _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-              SecurePRFSpec (BitVec i.succ.1) (BitVec k)]
-        PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-          (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i) := hRF₂
-  let hMiddle :
+    IndistinguishableI.trans _ none
+      (Indistinguishable.symmetric
+        (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.succ.1) (BitVec k) κ))
+      (Indistinguishable.of_ObsEq
+        (obsEq_PRF_ideal_PRF_ideal_cache_pair (BitVec i.succ.1) (BitVec k)
+          (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)))
+  have hMiddle :
       IndistinguishableI IndistinguishabilityAssumptions.empty κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
-        (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
           (PRF_ideal2 (BitVec i.succ.1) (BitVec k)))
-        (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
           (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
             (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i))) :=
-    IndistinguishableI.reduction (r := GGMHybridStepReduction2RF prg i.succ) none hRF hRi2
-  let hRight :
-      IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
+    IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none hInner
+  have hBatchToFlip :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
-        (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
           (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
             (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)))
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
+          (PRF_ideal_cache_batch_flipMsb i.1 (BitVec k))) :=
+    IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none
+      (Indistinguishable.symmetric
+        (Indistinguishable.of_ObsEq
+          (obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch (k := k) i)))
+  have hFlipToFlip2 :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
+          (PRF_ideal_cache_batch_flipMsb i.1 (BitVec k)))
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
+          (PRF_ideal_cache_batch_flipMsb2 i.1 k)) :=
+    IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none
+      (Indistinguishable.symmetric
+        (Indistinguishable.of_ObsEq
+          (obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb i.1 k)))
+  have hBridge :
+      IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        ((GGMHybridStepReduction2RF prg i.succ) ◇
+          (PRF_ideal_cache_batch_flipMsb2 i.1 k))
         (GGMHybrid3 prg i) :=
-    let hBatchFlip :
-        IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-          (SecurePRFSpec (BitVec n) (BitVec k))
-          (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-            (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-              (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)))
-          (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-            (PRF_ideal_cache_batch_flipMsb i.1 (BitVec k))) :=
-      IndistinguishableI.reduction (r := GGMHybridStepReduction2RF prg i.succ) none
-        (Indistinguishable.symmetric
-          (Indistinguishable.of_ObsEq
-            (obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch (k := k) i)))
-        hRi2
-    let hFlipFlip2 :
-        IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-          (SecurePRFSpec (BitVec n) (BitVec k))
-          (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-            (PRF_ideal_cache_batch_flipMsb i.1 (BitVec k)))
-          (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-            (PRF_ideal_cache_batch_flipMsb2 i.1 k)) :=
-      IndistinguishableI.reduction (r := GGMHybridStepReduction2RF prg i.succ) none
-        (Indistinguishable.symmetric
-          (Indistinguishable.of_ObsEq
-            (obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb i.1 k)))
-        hRi2
-    let hFlip2GGM :
-        IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ none
-          (SecurePRFSpec (BitVec n) (BitVec k))
-          (applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-            (PRF_ideal_cache_batch_flipMsb2 i.1 k))
-          (GGMHybrid3 prg i) :=
-      Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_Vs_3_batch_bridge prg i)
-    calc
-      applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-          (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-            (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i))
-          ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-              SecurePRFSpec (BitVec n) (BitVec k)]
-        applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-          (PRF_ideal_cache_batch_flipMsb i.1 (BitVec k)) := hBatchFlip
-      _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-              SecurePRFSpec (BitVec n) (BitVec k)]
-        applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-          (PRF_ideal_cache_batch_flipMsb2 i.1 k) := hFlipFlip2
-      _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-              SecurePRFSpec (BitVec n) (BitVec k)]
-        GGMHybrid3 prg i := hFlip2GGM
-  calc
-    GGMHybrid2 prg i.succ
-        ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-        (PRF_ideal2 (BitVec i.succ.1) (BitVec k)) := hLeft
-    _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      applySRReduction (GGMHybridStepReduction2RF prg i.succ)
-        (PRF_ideal_cache_batch (BitVec i.succ.1) (BitVec k)
-          (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)) := hMiddle
-    _ ≈ᵢ[IndistinguishabilityAssumptions.empty, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid3 prg i := hRight
+    Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_Vs_3_batch_bridge prg i)
+  exact IndistinguishableI.trans _ none hStart
+    (IndistinguishableI.trans _ none hMiddle
+      (IndistinguishableI.trans _ none hBatchToFlip
+        (IndistinguishableI.trans _ none hFlipToFlip2 hBridge)))
 
 
 -- easy, just definition
@@ -991,7 +964,7 @@ theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
     ( (GGMHybridStepReduction2PRG prg i)  ◇ (PRG_rand k k))
     e ?_ ?_
   · simp [OracleReduction.apply, GGMHybridStepReduction2PRG, GGMHybrid3, PRG_rand, e]
-    sorry
+    rw [PMF.pure_map]
   · intro query
     ext1 st
     rcases st with ⟨cache, u⟩
@@ -1003,12 +976,23 @@ theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
     generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) cache = m
     cases m with
     | none =>
-        -- simp [hm, StateT.run, StateT.set]
-        simp only [GameHoppingSimplifyPMF]
-        simp [StateT.run, StateT.set, set]
-        sorry
+        simp only [OracleReductionSimps, correctAbstractionDiagSimps, StateTSimps,
+          RStateSimplifier, GameHoppingSimplifyPMF, OracleReduction.liftWithPMFAndState,
+          RState.modify, StateT.set, StateT.run, StateT.get, bindSecond, liftM, monadLift,
+          MonadLift.monadLift, StateT.lift, hm, OracleSpec.query_def, OracleQuery.input_apply,
+          OracleQuery.cont_apply, OracleQuery.input, OracleQuery.cont, simulateQ_query,
+          OracleReduction.set, OracleReduction.get, OracleReduction.query, set, get,
+          StateT.bind, StateT.pure, getThe, MonadStateOf.get, MonadState.get,
+          stateT_run_get, stateT_run_map_get, simulateQ_query_bind, id_eq]
     | some m =>
-        sorry
+        simp only [OracleReductionSimps, correctAbstractionDiagSimps, StateTSimps,
+          RStateSimplifier, GameHoppingSimplifyPMF, OracleReduction.liftWithPMFAndState,
+          RState.modify, StateT.set, StateT.run, StateT.get, bindSecond, liftM, monadLift,
+          MonadLift.monadLift, StateT.lift, hm, OracleSpec.query_def, OracleQuery.input_apply,
+          OracleQuery.cont_apply, OracleQuery.input, OracleQuery.cont, simulateQ_query,
+          OracleReduction.set, OracleReduction.get, OracleReduction.query, set, get,
+          StateT.bind, StateT.pure, getThe, MonadStateOf.get, MonadState.get,
+          stateT_run_get, stateT_run_map_get, simulateQ_query_bind, id_eq]
 
 def Finmap.mapKeys (s : Finmap (fun _ : α => β)) (f : β → γ) : Finmap (fun _ : α => γ) where
   entries := s.entries.map (fun x => ⟨x.1, f x.2⟩)
@@ -1039,6 +1023,14 @@ theorem Finmap.mapKeys_insert [DecidableEq α]
     simp
   · simp [h]
 
+/-- One expansion step of `applyPRGs`, stated for a non-literal positive length. -/
+lemma applyPRGs_step {k q : ℕ} (prg : PRG k k) (s : BitVec k) (bits : BitVec q) (hq : 0 < q) :
+    applyPRGs prg s bits =
+      applyPRGs prg (PRG.chooseHalfI (prg.draw s) (bits.getLsbD 0))
+        (BitVec.extractLsb' 1 (q - 1) bits) := by
+  obtain ⟨m, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hq.ne'
+  rfl
+
 -- by correct abstraction, we map each seed in cache to its prgs.
 theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin n) :
@@ -1046,200 +1038,127 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
       (GGMHybrid2 prg i.castSucc) := by
   apply ObsEq.symm
   refine correctAbstractionImpliesObsEq _ _ (?_) (?_)
-  · simp[OracleReduction.apply, GGMHybridStepReduction2PRG, GGMHybrid2, PRG_real]
-    intro f
-    exact ⟨(Finmap.mapKeys f prg.draw), ()⟩
+  · exact fun f => ⟨(Finmap.mapKeys f prg.draw), ()⟩
   · constructor
-    · simp [GGMHybrid2, OracleReduction.apply, GGMHybridStepReduction2PRG, PRG_real]
+    · simp [GGMHybrid2, OracleReduction.apply, GGMHybridStepReduction2PRG, PRG_real,
+        OracleReductionSimps, StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF,
+        Finmap.mapKeys_empty]
     · intro query
-      cases query
-      -- simp [OracleSpec.Domain, SecurePRFSpec] at query
-      simp [GGMHybrid2, OracleReduction.apply, GGMHybridStepReduction2PRG, PRG_real,
-            mapOutputState, mapInputState]
       ext1 st
-      simp [mapOutputState, mapInputState, mapSecond, StateT.run, OracleComp.simulateQ, FreeMonad.roll, FreeMonad.mapM]
-      generalize hm : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) st = m
+      simp only [mapOutputState, mapInputState, OracleReductionSimps,
+        correctAbstractionDiagSimps, StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF,
+        GGMHybrid2, GGMHybridStepReduction2PRG, PRG_real, OracleReduction.liftWithPMFAndState,
+        RState.modify, StateT.set, StateT.run, StateT.get, bindSecond, liftM, monadLift,
+        MonadLift.monadLift, StateT.lift, OracleSpec.query_def, OracleQuery.input_apply,
+        OracleQuery.cont_apply, OracleQuery.input, OracleQuery.cont, simulateQ_query,
+        OracleReduction.set, OracleReduction.get, OracleReduction.query, set, get,
+        StateT.bind, StateT.pure, getThe, MonadStateOf.get, MonadState.get,
+        stateT_run_get, stateT_run_map_get, simulateQ_query_bind, id_eq,
+        Fin.val_castSucc, Finmap.lookup_mapKeys]
+      generalize hlk : Finmap.lookup (BitVec.extractLsb' 0 (↑i) query) st = m
       cases m with
       | none =>
-        simp
-        simp only [GameHoppingSimplifyPMF]
-        simp
-        simp only [GameHoppingSimplifyPMF]
+        simp only [Option.map_none, ← OracleComp.liftM_def, simulateQ_query_bind,
+          simulateQ_pure, OracleReduction.liftWithPMFAndState, OracleSpec.query_def,
+          OracleQuery.input_apply, OracleQuery.cont_apply, RState.modify, StateT.lift,
+          StateT.set, StateT.get, StateT.run, StateT.bind, StateT.pure, getThe,
+          MonadStateOf.get, MonadState.get, set, get, stateT_run_get, stateT_run_map_get,
+          StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF, id_eq]
+        simp only [liftM_self, liftM, monadLift, MonadLift.monadLift, StateT.lift,
+          StateT.bind, StateT.pure, StateT.get, StateT.set, StateT.run, RState.modify,
+          getThe, MonadStateOf.get, MonadState.get, set, get, stateT_run_get,
+          stateT_run_map_get, OracleQuery.cont, OracleQuery.cont_apply,
+          StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF, id_eq]
         congr 1
-        ext1 a
-        congr 2
-        rw [applyPRGs.eq_def]
-        generalize hk : n - i = k
-        cases k with
-        | zero => omega
-        | succ k'=> simp
-      | some x =>
-        simp
-        congr 2
-        rw [applyPRGs.eq_def]
-        generalize hk : n - i = k
-        cases k with
-        | zero => omega
-        | succ k'=> simp
+        funext o
+        rw [applyPRGs_step prg o _ (by omega), Finmap.mapKeys_insert]
+      | some v =>
+        simp only [Option.map_some, ← OracleComp.liftM_def, simulateQ_query_bind,
+          simulateQ_pure, OracleReduction.liftWithPMFAndState, OracleSpec.query_def,
+          OracleQuery.input_apply, OracleQuery.cont_apply, RState.modify, StateT.lift,
+          StateT.set, StateT.get, StateT.run, StateT.bind, StateT.pure, getThe,
+          MonadStateOf.get, MonadState.get, set, get, stateT_run_get, stateT_run_map_get,
+          StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF, id_eq]
+        rw [applyPRGs_step prg v _ (by omega)]
 
 /-- One hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
-    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
-    :
+    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
     Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid2 prg i.castSucc)
       (GGMHybrid2 prg i.succ) := by
   intro κ
-  let liftEmpty :
-      {q_b : ENat} → {I : Type} → {O : OracleSpec I} →
-      {ro₁ ro₂ : RStateOracle O} →
-      IndistinguishableI IndistinguishabilityAssumptions.empty κ q_b O ro₁ ro₂ →
-      IndistinguishableI (SecurePRGAssumption' prg) κ q_b O ro₁ ro₂ := by
-    intro q_b I O ro₁ ro₂ h
-    induction h with
-    | assumption i =>
-        cases i
-    | obsEqB q_b hObs =>
-        exact IndistinguishableI.obsEqB q_b hObs
-    | simpleReduction r q_b h hRed ih =>
-        exact IndistinguishableI.simpleReduction r q_b ih hRed
-    | reduction r q_b h hRed ih =>
-        exact IndistinguishableI.reduction r q_b ih hRed
-    | complexInitReduction r q_b h hRed ih =>
-        exact IndistinguishableI.complexInitReduction r q_b ih hRed
-    | randReduction r q_b h hRed ih =>
-        exact IndistinguishableI.randReduction r q_b ih hRed
-    | symm q_b h ih =>
-        exact IndistinguishableI.symm q_b ih
-    | trans ro₂ q_b h₁ h₂ ih₁ ih₂ =>
-        exact IndistinguishableI.trans ro₂ q_b ih₁ ih₂
-    | longSequence l q_b ro hStep ih =>
-        exact IndistinguishableI.longSequence l q_b ro (fun i hi => ih i hi)
-  let hLeft :
+  have hLeft :
       IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid2 prg i.castSucc)
-        (applySRReduction (GGMHybridStepReduction2PRG prg i) (PRG_real prg)) :=
+        ((GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg)) :=
     Indistinguishable.symmetric
       (Indistinguishable.of_ObsEq (obsEq_applyStepReduction_rand_GGMHybrid2 prg i))
-  let hPRG :
+  have hPRG :
       IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRGSpec k k) (PRG_real prg) (PRG_rand k k) := by
     simpa [SecurePRGAssumption', SecurePRGAssumptionFull, SecurePRGAssumption] using
       (IndistinguishableI.assumption
         (Assumptions := SecurePRGAssumption' prg)
         (κ := κ) (q_b := none) ())
-  let hMiddle :
+  have hMiddle :
       IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
-        ( (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg))
-        ( (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k)) :=
-    IndistinguishableI.reduction (r := GGMHybridStepReduction2PRG prg i) none hPRG hRi
-  let hRight₁ :
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
+        ((GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg))
+        ((GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k)) :=
+    IndistinguishableI.complexInitReduction (GGMHybridStepReduction2PRG prg i) none hPRG
+  have hRight1 :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
-        (applySRReduction (GGMHybridStepReduction2PRG prg i) (PRG_rand k k))
+        ((GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k))
         (GGMHybrid3 prg i) :=
     Indistinguishable.symmetric
       (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_applyStepReduction_real prg i))
-  let hRight₂ :
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
+  have hRight2 :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid3 prg i)
         (GGMHybrid2 prg i.succ) :=
     Indistinguishable.symmetric
-      (liftEmpty (indistinguishableI_GGMHybrid2_Vs_3
-        (Reductions := Reductions) prg i κ hRi2))
-  calc
-    GGMHybrid2 prg i.castSucc
-        ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      applySRReduction (GGMHybridStepReduction2PRG prg i) (PRG_real prg) := hLeft
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      applySRReduction (GGMHybridStepReduction2PRG prg i) (PRG_rand k k) := hMiddle
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid3 prg i := hRight₁
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid2 prg i.succ := hRight₂
+      (liftEmptyAssumptions (indistinguishableI_GGMHybrid2_Vs_3 prg i κ))
+  exact IndistinguishableI.trans _ none hLeft
+    (IndistinguishableI.trans _ none hMiddle
+      (IndistinguishableI.trans _ none hRight1 hRight2))
 
+/-- One GGM hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
-    {Reductions : IndistinguishabilityReductions}
-    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
-    (hRi : GGMHybridStepReduction2PRG prg i ∈ Reductions.reductions _ _)
-    (hStep2 : ∀ i : Fin (n+1),
-      GGMHybridStepReduction2RF prg i ∈ Reductions.reductions _ _) :
-    Indistinguishable (SecurePRGAssumption' prg) Reductions
+    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
+    Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid prg i.castSucc)
       (GGMHybrid prg i.succ) := by
   intro κ
-  let liftEmpty :
-      {q_b : ENat} → {I : Type} → {O : OracleSpec I} →
-      {ro₁ ro₂ : RStateOracle O} →
-      IndistinguishableI IndistinguishabilityAssumptions.empty Reductions κ q_b O ro₁ ro₂ →
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ q_b O ro₁ ro₂ := by
-    intro q_b I O ro₁ ro₂ h
-    induction h with
-    | assumption i =>
-        cases i
-    | obsEqB q_b hObs =>
-        exact IndistinguishableI.obsEqB q_b hObs
-    | simpleReduction r q_b h hRed ih =>
-        exact IndistinguishableI.simpleReduction r q_b ih hRed
-    | reduction r q_b h hRed ih =>
-        exact IndistinguishableI.reduction r q_b ih hRed
-    | complexInitReduction r q_b h hRed ih =>
-        exact IndistinguishableI.complexInitReduction r q_b ih hRed
-    | randReduction r q_b h hRed ih =>
-        exact IndistinguishableI.randReduction r q_b ih hRed
-    | symm q_b h ih =>
-        exact IndistinguishableI.symm q_b ih
-    | trans ro₂ q_b h₁ h₂ ih₁ ih₂ =>
-        exact IndistinguishableI.trans ro₂ q_b ih₁ ih₂
-    | longSequence l q_b ro hStep ih =>
-        exact IndistinguishableI.longSequence l q_b ro (fun i hi => ih i hi)
-  let hLeft :
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
+  have hLeft :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid prg i.castSucc)
         (GGMHybrid2 prg i.castSucc) :=
-    liftEmpty (obsEq_rand_GGMHybrid_1_2 prg i.castSucc (hStep2 i.castSucc) κ)
-  let hMiddle :
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
+    liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.castSucc κ)
+  have hMiddle :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid2 prg i.castSucc)
         (GGMHybrid2 prg i.succ) :=
-    GGMHybrid2_step_indistinguishable_of_securePRG
-      (Reductions := Reductions) prg i hRi (hStep2 i.succ) κ
-  let hRight :
-      IndistinguishableI (SecurePRGAssumption' prg) Reductions κ none
+    GGMHybrid2_step_indistinguishable_of_securePRG prg i κ
+  have hRight :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
         (SecurePRFSpec (BitVec n) (BitVec k))
         (GGMHybrid2 prg i.succ)
         (GGMHybrid prg i.succ) :=
     Indistinguishable.symmetric
-      (liftEmpty (obsEq_rand_GGMHybrid_1_2 prg i.succ (hStep2 i.succ) κ))
-  calc
-    GGMHybrid prg i.castSucc
-        ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid2 prg i.castSucc := hLeft
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid2 prg i.succ := hMiddle
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid prg i.succ := hRight
+      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.succ κ))
+  exact IndistinguishableI.trans _ none hLeft
+    (IndistinguishableI.trans _ none hMiddle hRight)
 
+/-- All GGM hybrids are indistinguishable assuming the length-doubling PRG is secure. -/
 noncomputable def GGMHybrids_indistinguishable_of_securePRG
-    {Reductions : IndistinguishabilityReductions}
-    {k n : ℕ} (prg : lengthDoublingPRG k)
-    (hStep : ∀ i : Fin n,
-      GGMHybridStepReduction2PRG prg i ∈ Reductions.reductions _ _)
-    (hStep2 : ∀ i : Fin (n+1),
-      GGMHybridStepReduction2RF prg i ∈ Reductions.reductions _ _) :
-    Indistinguishable (SecurePRGAssumption' prg) Reductions
+    {k n : ℕ} (prg : lengthDoublingPRG k) :
+    Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid prg 0)
       (GGMHybrid prg (Fin.last n)) := by
   intro κ
@@ -1253,34 +1172,29 @@ noncomputable def GGMHybrids_indistinguishable_of_securePRG
   · exact Finset.mem_range.mp j.2
   · intro i hi
     simp [ro_seq_fixed]
-    exact GGMHybrid_step_indistinguishable_of_securePRG
-      (Reductions := Reductions) prg ⟨i, hi⟩ (hStep ⟨i, hi⟩) hStep2 κ
+    exact GGMHybrid_step_indistinguishable_of_securePRG prg ⟨i, hi⟩ κ
 
-/-- GGM is secure assuming the underlying length-doubling PRG is secure, given the
-reduction memberships used by the hybrid argument. -/
+/-- GGM is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def secureGGM_of_securePRG
-    {Reductions : IndistinguishabilityReductions}
-    {k n : ℕ} (prg : lengthDoublingPRG k)
-    (hStep : ∀ i : Fin n,
-      GGMHybridStepReduction2PRG prg i ∈ Reductions.reductions _ _)
-    (hStep2 : ∀ i : Fin (n+1),
-      GGMHybridStepReduction2RF prg i ∈ Reductions.reductions _ _) :
-    SecurePRFDef (SecurePRGAssumption' prg) Reductions (GGM prg n) := by
+    {k n : ℕ} (prg : lengthDoublingPRG k) :
+    SecurePRFDef (SecurePRGAssumption' prg) (GGM prg n) := by
   intro κ
-  calc
-    PRF_real (GGM prg n)
-        ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid prg 0 :=
-        Indistinguishable.of_ObsEq (obsEq_real_GGMHybrid_zero prg)
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      GGMHybrid prg (Fin.last n) :=
-        (GGMHybrids_indistinguishable_of_securePRG
-          (Reductions := Reductions) prg hStep hStep2) κ
-    _ ≈ᵢ[SecurePRGAssumption' prg, Reductions, κ, none,
-            SecurePRFSpec (BitVec n) (BitVec k)]
-      PRF_ideal (BitVec n) (BitVec k) :=
-        Indistinguishable.of_ObsEq (obsEq_GGMHybrid_last_ideal prg)
+  have h1 :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        (PRF_real (GGM prg n)) (GGMHybrid prg 0) :=
+    Indistinguishable.of_ObsEq (obsEq_real_GGMHybrid_zero prg)
+  have h2 :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        (GGMHybrid prg 0) (GGMHybrid prg (Fin.last n)) :=
+    GGMHybrids_indistinguishable_of_securePRG prg κ
+  have h3 :
+      IndistinguishableI (SecurePRGAssumption' prg) κ none
+        (SecurePRFSpec (BitVec n) (BitVec k))
+        (GGMHybrid prg (Fin.last n)) (PRF_ideal (BitVec n) (BitVec k)) :=
+    Indistinguishable.of_ObsEq (obsEq_GGMHybrid_last_ideal prg)
+  exact IndistinguishableI.trans _ none h1
+    (IndistinguishableI.trans _ none h2 h3)
 
--- end
+end
