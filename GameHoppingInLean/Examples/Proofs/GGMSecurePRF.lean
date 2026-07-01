@@ -5,6 +5,7 @@ import GameHoppingInLean.Examples.Misc.RF_caching
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 
+
 section
 attribute [-simp] bind_pure_comp
 open scoped IndistinguishableI
@@ -43,6 +44,10 @@ noncomputable def GGMHybrid {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n 
       pure (applyPRGs prg (labels nodeBits) remainingBits)
 
 
+
+attribute [local game_hopping_unfold]
+  GGMHybrid PRF_real GGM PRF_ideal applyPRGs
+
 /-- The real GGM oracle is the first hybrid. -/
 theorem obsEq_real_GGMHybrid_zero {k n : ℕ} (prg : lengthDoublingPRG k) :
     ObsEq (PRF_real (GGM prg n)) (GGMHybrid prg 0) := by
@@ -60,20 +65,14 @@ theorem obsEq_real_GGMHybrid_zero {k n : ℕ} (prg : lengthDoublingPRG k) :
         intro seed
         rfl
     }
-  refine mapStateBijImpliesObsEq (GGMHybrid prg 0) (PRF_real (GGM prg n)) e ?_ ?_
-  · simp [GGMHybrid, PRF_real, GGM]
-    simp only [PMF.map_uniformOfFintype_equiv]
-  · intro query
-    ext seed
-    simp only [RState.mapStateBij, PRF_real, GGMHybrid, GGM, e, StateTSimps,
-      RStateSimplifier, GameHoppingSimplifyPMF, Equiv.coe_fn_mk, Equiv.coe_fn_symm_mk,
-      PMF.pure_map, Fin.val_zero, Nat.sub_zero, BitVec.extractLsb'_eq_self]
+  obs_eq_by_abstraction e
 
 /-- The final GGM hybrid is the ideal random-function oracle. -/
 theorem obsEq_GGMHybrid_last_ideal {k n : ℕ} (prg : lengthDoublingPRG k) :
     ObsEq (GGMHybrid prg (Fin.last n)) (PRF_ideal (BitVec n) (BitVec k)) := by
   apply obsEqReflexive
-  simp [GGMHybrid, PRF_ideal]
+  simp [OracleReductionSimps, StateTSimps, RStateSimplifier,
+    GameHoppingSimplifyPMF, game_hopping_unfold]
   constructor
   · ext f
     simp [PMF.uniformOfFintype_apply]
@@ -164,6 +163,8 @@ noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG
       pure (applyPRGs prg fNodeBits remainingBits)
 
 
+attribute [local game_hopping_unfold]
+  GGMHybrid2 GGMHybrid3 GGMHybridStepReduction2PRG GGMHybridStepReduction2RF
 /-- Consecutive GGM hybrids differ by one use of the underlying PRG. -/
 -- easy
 theorem obsEq_GGMHybrid_reduction_rf {k n : ℕ}
@@ -186,23 +187,10 @@ theorem obsEq_GGMHybrid_reduction_rf {k n : ℕ}
         intro labels
         rfl
     }
-  refine mapStateBijImpliesObsEq
-    ((GGMHybridStepReduction2RF prg i) ◇
-      (PRF_ideal (BitVec i.1) (BitVec k)))
-    (GGMHybrid prg i)
-    e ?_ ?_
-  · simp only [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid, PRF_ideal, e,
-      OracleReductionSimps, StateTSimps, RStateSimplifier, GameHoppingSimplifyPMF,
-      Equiv.coe_fn_mk, PMF.bind_pure]
-    congr 1
-    exact Subsingleton.elim _ _
-  · intro query
-    ext1 st
-    simp only [RState.mapStateBij, OracleReduction.apply, GGMHybridStepReduction2RF,
-      GGMHybrid, PRF_ideal, e, OracleReductionSimps, StateTSimps, RStateSimplifier,
-      GameHoppingSimplifyPMF, SecurePRFSpec, OracleReduction.query, simulateQ_query,
-      OracleQuery.cont_query, OracleQuery.input_query, Equiv.coe_fn_mk, Equiv.coe_fn_symm_mk,
-      id_eq]
+  obs_eq_by_abstraction e
+  simp [e, game_hopping_unfold]
+  congr 1
+  exact Subsingleton.elim _ _
 
 -- easy/medium
 theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
@@ -765,7 +753,7 @@ theorem obsEq_PRF_ideal_cache_batch_flipMsb_GGMHybrid2_Vs_3_batch {k n : ℕ}
     congr
     ext1 b
     congr 2
-    · simp
+    -- · simp
     apply Finmap.ext_lookup
     intro e
     by_cases hex : e = x

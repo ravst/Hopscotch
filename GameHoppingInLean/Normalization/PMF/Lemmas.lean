@@ -218,9 +218,7 @@ theorem bind_uniformOfFintype_equiv {X Y α : Type}
 @[GameHoppingSimplifyPMF]
 theorem map_uniformOfFintype_equiv {X Y : Type}
     [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y] (e : X ≃ Y) :
-    (PMF.uniformOfFintype X).map e = PMF.uniformOfFintype Y := by
-  change (PMF.uniformOfFintype X).bind (fun x => PMF.pure (e x)) =
-    PMF.uniformOfFintype Y
+    (PMF.uniformOfFintype X).bind (fun x => pure (e x)) = PMF.uniformOfFintype Y := by
   simpa using
     (PMF.bind_uniformOfFintype_equiv
       (e := e) (g := (PMF.pure : Y → PMF Y))).symm
