@@ -59,3 +59,11 @@ lemma oracleCompToObject {Z : Type l2} {I : Type l1} (O : OracleSpec.{l1, l2} I)
   let l := simulateQ impl comp
   constructor
   exact l
+
+lemma reductionNonEmpty
+  {I1 : Type _} {O1 : OracleSpec I1}
+  {I2 : Type _} {O2 : OracleSpec I2}
+  (x : OracleReduction O1 O2)
+  (He : forall x : I1, Nonempty (O1 x)):
+  Nonempty x.stateType :=
+    oracleCompToObject _ (implementableWihtPMF _ He) x.initialState

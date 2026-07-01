@@ -280,7 +280,8 @@ noncomputable def long_step_combinator {O : OracleSpec I}
   {Assumptions : IndistinguishabilityAssumptions}
   :
   (a : ℕ) ->
-  (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) -> AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
+  (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) ->
+  AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
 | 0, _ =>
   noAssumptionUse
 | Nat.succ a, Hxx =>
@@ -322,6 +323,8 @@ noncomputable def symbolicSoundnessBound {Assumptions : IndistinguishabilityAssu
 | IndistinguishableI.longSequence a q_b ro Hseq =>
   long_step_combinator a
     (fun j Hq => symbolicSoundnessBound (Hseq j Hq))
+
+
 
 lemma long_Step_proof_induction
   {O : OracleSpec I}

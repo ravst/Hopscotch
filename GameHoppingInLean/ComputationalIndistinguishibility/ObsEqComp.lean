@@ -448,7 +448,7 @@ lemma obsEq_distinquishing_adv (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_
 by
   simp [advantage, pdistancePMF]
   rw [obsEq_distinquishing ro₁ ro₂ q_b]
-  ·  simp []
+  · simp []
   · assumption
   · assumption
 
@@ -461,6 +461,25 @@ by
   · exact le_of_sup_eq' rfl
 
 
+noncomputable def ascToRealFromObsEq {I : Type} {O : OracleSpec I}
+  (distinguisher : OracleComp (withPMFSpec O) Bool)
+  (assumption : SingleAssumption)
+  (x1 x2 : ℕ × (OracleReduction assumption.O O))
+  (H1 : x1.1 = x2.1)
+  (H2 : forall impl, ObsEq (x1.2.apply impl) (x2.2.apply impl))
+  :
+  ascToReal distinguisher assumption x1 = ascToReal distinguisher assumption x2 :=
+by
+  simp [ascToReal]
+  rw [H1]
+  congr 1
+  simp [advantage]
+  repeat rw [<-goodDoubleAction]
+  congr 1
+  · apply obsEq_distinquishing_ub
+    apply H2
+  · apply obsEq_distinquishing_ub
+    apply H2
 -- lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
 --   (ro₁ : QueryImpl O (RState stateType₁))
 --   (ro₂ : QueryImpl O (RState stateType₂))
