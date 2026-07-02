@@ -1,10 +1,9 @@
--- Construction of a PRG from a length-doubling PRG, following the GGM construction.
-
 import GameHoppingInLean.Examples.Schemes.PRG
 import GameHoppingInLean.Examples.Schemes.PRF
 
+-- Construction of a PRG from a length-doubling PRG, following the GGM construction.
 
-/-- First we need to define the first half and the second half of the PRG function --/
+/-- First we need to define the first half and the second half of the PRG function -/
 def PRG.chooseHalfI {k : ℕ} (arg : BitVec (k + k)) (choose : Bool) : BitVec k :=
   if choose then
     BitVec.extractLsb' k k arg
