@@ -96,7 +96,7 @@ lemma addToStateG_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
       case setState stNew =>
         simp [OracleReduction.set, liftM, monadLift, MonadLift.monadLift, PFunctor.FreeM.lift]
         simp [OracleSpec.query, OracleReduction.liftWithPMFAndState, RStateSimplifier,
-          GameHoppingSimplifyPMF]
+          GameHoppingSimplifyPMF, StateT.run_set, PMF.pure_bind, pure_bind]
         simpa using Hind PUnit.unit stNew st.2
 
 
@@ -472,6 +472,8 @@ noncomputable def reductionFromEmpty {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : O
           exact IsEmpty.false y
     }
 
+
+
 noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
   : ℕ × (OracleReduction O1 O2)
@@ -480,8 +482,8 @@ noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Or
   if HO1 : forall x : I1, Nonempty (O1 x) then
     have _x1NoEmpty := reductionNonEmpty x1.2 HO1
     have _x2NoEmpty := reductionNonEmpty x2.2 HO1
-    if x1.1 > 0 then
-      if x2.1 > 0 then
+    if x1.1 >0 then
+      if x2.1 >0 then
         reductionCombiner_nontrivial x1 x2
       else
         x1
@@ -517,92 +519,3 @@ lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
         simp [ascToReal]
         apply Or.inl
         exact Nat.eq_zero_of_not_pos Hx1
-
-structure internal_type {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l : List (OracleReduction O1 O2)) where
-  index : Fin (l.length)
-  value : l[index].stateType
-
-noncomputable def reduction_combiner_list
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l : List (OracleReduction O1 O2))
-  (Hl : l.length > 0)
-  (He : forall x : I1, Nonempty (O1 x))
-  : OracleReduction O1 O2
-  :=
-  have lNoEmpty (x : Fin l.length) : Nonempty l[x].stateType :=
-    oracleCompToObject _ (implementableWihtPMF _ He) l[x].initialState
-  {
-    stateType := internal_type l
-    initialState := (do
-      have X : Nonempty (Fin (l.length)) := by
-        exists 0
-      let x : Fin l.length <- OracleReduction.initSample (PMF.uniformOfFintype (Fin l.length))
-      let init <- l[x].initialState
-      return {index := x, value :=  init}
-    )
-    queries q := (do
-        let x <- orGet!
-        match x with
-        | {index := i, value := v} =>
-          have H0 := lNoEmpty i
-          addToStateG _ (fun x => {index := i, value := x})
-            (fun x => if h : x.index = i then some (h ▸ x.value) else none) (l[i].queries q)
-      )
-  }
-
-noncomputable def reductionCombiner_nontrivial_packed
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (x1 x2 : ℕ × (OracleReduction O1 O2))
-  (He : forall x : I1, Nonempty (O1 x))
-  : ℕ × (OracleReduction O1 O2)
-  :=
-  have _x1NoEmpty := reductionNonEmpty x1.2 He
-  have _x2NoEmpty := reductionNonEmpty x2.2 He
-  reductionCombiner_nontrivial x1 x2
-
-lemma reduction_combiner_list_vs_2
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l1 l2 : List (OracleReduction O1 O2))
-  (Hl1 : l1.length > 0)
-  (Hl2 : l2.length > 0)
-  (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1)
-  :
-  ObsEq
-    ((reduction_combiner_list (l1 ++ l2) (by simp [Hl1, Hl2]) He).apply impl)
-    ((reductionCombiner_nontrivial_packed
-      (l1.length, reduction_combiner_list l1 Hl1 He)
-      (l2.length, reduction_combiner_list l2 Hl2 He)
-      He
-    ).2.apply impl) := by
-
-    simp [reductionCombiner_nontrivial_packed, reductionCombiner_nontrivial]
-    simp [reduction_combiner_list]
-
-    sorry
-
-lemma reduction_combiner_correct
-  {I1 : Type} {O1 : OracleSpec I1}
-  (dist : OracleComp (withPMFSpec O1) Bool)
-  (assumption : SingleAssumption)
-  (l1 l2 : List (OracleReduction assumption.O O1))
-  (Hl1 : l1.length > 0)
-  (Hl2 : l2.length > 0)
-  (He : forall x : assumption.I, Nonempty (assumption.O x))
-  : ascToReal dist assumption (l1.length, reduction_combiner_list l1 Hl1 He) +
-    ascToReal dist assumption (l2.length, reduction_combiner_list l2 Hl2 He) =
-  ascToReal dist assumption (l1.length+l2.length, reduction_combiner_list (l1++l2) (by simp [Hl1, Hl2]) He) :=
-  by
-    have inst1 :  Nonempty (reduction_combiner_list l1 Hl1 He).stateType :=
-       reductionNonEmpty _ He
-    have inst2 :  Nonempty (reduction_combiner_list l2 Hl2 He).stateType :=
-        reductionNonEmpty _ He
-    rw [reductionCombinerCorrect_nontrivial]
-    · apply ascToRealFromObsEq
-      · intro impl
-        simp []
-        apply ObsEq.symm
-        apply reduction_combiner_list_vs_2
-      simp [reductionCombiner_nontrivial]
-    · simp [Hl1, Hl2]

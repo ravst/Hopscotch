@@ -11,6 +11,8 @@ import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.Sums
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
+import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
+
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 import GameHoppingInLean.IndistinguishabilityTactics
 
@@ -20,115 +22,6 @@ import GameHoppingInLean.IndistinguishabilityTactics
 abbrev asUseType (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) (J : Assumptions.Idx) :=
   {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
 
-noncomputable def reduction_combiner_list_full
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l : {x : List (OracleReduction O1 O2) // x.length > 0})
-  : OracleReduction O1 O2 :=
-  open Classical in
-  if H : forall i, Nonempty (O1 i) then
-    reduction_combiner_list l.val l.2 H
-  else
-    reductionFromEmpty H
-
-noncomputable def combine_red
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l : {x : List (OracleReduction O1 O2) // x.length > 0})
-  : ℕ × OracleReduction O1 O2 :=
-    (l.1.length, reduction_combiner_list_full l)
-
-attribute [local game_hopping_unfold] combine_red reduction_combiner_list_full reduction_combiner_list
-
-
-noncomputable def combine_red_singleton
-  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (l : (OracleReduction O1 O2))
-  (H : [l].length > 0)
-  (H2 : forall i, Nonempty (O1 i))
-  (impl : RStateOracle O1)
-  :
-  ObsEq
-    ((reduction_combiner_list_full ⟨[l], H⟩).apply impl)
-    (l.apply impl) := by
-    simp [combine_red, reduction_combiner_list_full, H2]
-    unfold reduction_combiner_list
-    simp [internal_type]
-    apply ObsEq.symm
-    obs_eq_by_abstraction (fun x =>
-      by
-        unfold OracleReduction.apply
-        unfold OracleReduction.apply at x
-        simp at x
-        simp []
-        exact (
-          {
-            index := 0,
-            value := x.1
-          }, x.2)
-      )
-    · intro query
-      ext1 s1
-      ext1 s2
-      have H2 : forall x : Fin [l].length, x=0 := by
-        simp [Fin, List.length]
-      have H3 : forall x : internal_type [l], x.index=0 := by
-        simp [H2]
-      conv =>
-        rhs
-        arg 1
-        arg 2
-        arg 2
-        intro a
-        simp [H3]
-        arg 2
-        arg 2
-        intro x
-        arg 2
-        simp [H2]
-      simp [mapInputState, RStateSimplifier, StateTSimps, internal_type, OracleReductionSimps]
-      -- rw [addToStateG_spec]
-      sorry
-    · sorry
-
-
-def listCombiner (l1 l2 : {x : List X // x.length > 0}) : {x : List X // x.length > 0} :=
-  ⟨l1.1++l2.1, by simp [l1.2, l2.2]⟩
-
-
-lemma reduction_combiner_correct_full
-  {I1 : Type} {O1 : OracleSpec I1}
-  (dist : OracleComp (withPMFSpec O1) Bool)
-  (assumption : SingleAssumption)
-  (l1 l2 : {x : List (OracleReduction assumption.O O1) // x.length > 0})
-  : ascToReal dist assumption (combine_red l1) +
-    ascToReal dist assumption (combine_red l2) =
-  ascToReal dist assumption (combine_red (listCombiner l1 l2)) :=
-by
-    have He := non_trivial_spec assumption.i.1
-    have inst1 :  Nonempty (reduction_combiner_list l1.1 l1.2 He).stateType :=
-       reductionNonEmpty _ He
-    have inst2 :  Nonempty (reduction_combiner_list l2.1 l2.2 He).stateType :=
-        reductionNonEmpty _ He
-    unfold combine_red
-    unfold listCombiner
-    unfold reduction_combiner_list_full
-    simp [He]
-    apply reduction_combiner_correct
-
-
-lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
-  {I2 : Type} (O2 : OracleSpec I2)
-  {I3 : Type} (O3 : OracleSpec I3)
-  (r1 : OracleReduction O2 O3)
-  (l : {x : List (OracleReduction O1 O2) // x.length > 0})
-  (impl : RStateOracle O1) (dist : adversaryT O3):
-  runDinstinguisher dist
-    ((ComplexInitReduction2_compose (reduction_combiner_list_full l) r1).apply impl) =
-  runDinstinguisher dist
-    ((reduction_combiner_list_full ⟨l.val.map (fun x => ComplexInitReduction2_compose x r1),
-      by simp [l.2]
-    ⟩).apply impl)
- :=
-  sorry
 
 -- inductive AssumptionUse {I1 : Type} (O1 : OracleSpec I1) : {I : Type} -> (O: OracleSpec I) -> Type 1
 -- | SingleAssumption {I : Type} {O: OracleSpec I} (r : OracleReduction O1 O) : AssumptionUse O1 O
