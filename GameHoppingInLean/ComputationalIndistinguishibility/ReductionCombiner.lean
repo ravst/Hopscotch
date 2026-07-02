@@ -457,35 +457,38 @@ by
 -- def Prod.natLower (x : NatPlus × X) : (ℕ × X) :=
 --   (x.1.val, x.2)
 
+noncomputable def reductionFromEmpty {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (H : ¬ forall i : I1, Nonempty (O1 i))
+  : (OracleReduction O1 O2) := by
+  simp at H
+  have Hx := Classical.choose_spec H
+  exact {
+    stateType := Unit,
+    initialState := pure (),
+    queries input := do
+        let y <- orQuery(Classical.choose H)
+        by
+          exfalso
+          exact IsEmpty.false y
+    }
+
 noncomputable def reductionCombiner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
   : ℕ × (OracleReduction O1 O2)
   :=
   open Classical in
   if HO1 : forall x : I1, Nonempty (O1 x) then
-    have x1NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x1.2.initialState
-    have x2NoEmpty := oracleCompToObject _ (implementableWihtPMF _ HO1) x2.2.initialState
-    if Hx1 : x1.1 >0 then
-      if Hx2 : x2.1 >0 then
+    have _x1NoEmpty := reductionNonEmpty x1.2 HO1
+    have _x2NoEmpty := reductionNonEmpty x2.2 HO1
+    if x1.1 > 0 then
+      if x2.1 > 0 then
         reductionCombiner_nontrivial x1 x2
       else
         x1
     else
       x2
-  else by
-    simp at HO1
-    have Hx := Classical.choose_spec HO1
-    constructor
-    · exact 0
-    · exact {
-        stateType := Unit,
-        initialState := pure (),
-        queries input := do
-            let y <- orQuery(Classical.choose HO1)
-            by
-              exfalso
-              exact IsEmpty.false y
-        }
+  else
+    (0, reductionFromEmpty HO1)
 
 lemma reductionCombinerCorrect {I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Bool)
@@ -548,13 +551,9 @@ noncomputable def reduction_combiner_list
       )
   }
 
-
-
-
 noncomputable def reductionCombiner_nontrivial_packed
   {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : ℕ × (OracleReduction O1 O2))
-  -- [Nonempty x2.2.stateType] [Nonempty x1.2.stateType]
   (He : forall x : I1, Nonempty (O1 x))
   : ℕ × (OracleReduction O1 O2)
   :=

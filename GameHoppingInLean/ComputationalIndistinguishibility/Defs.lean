@@ -16,9 +16,54 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 -- generic intro. move.
 
 
-
 abbrev asUseType (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) (J : Assumptions.Idx) :=
   ℕ ×  (OracleReduction (Assumptions.assumptions J).O O)
+
+noncomputable def reduction_combiner_list_full
+  {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+  (l : List (OracleReduction O1 O2))
+  (Hl : l.length > 0)
+  : OracleReduction O1 O2 :=
+  open Classical in
+  if H : forall i, Nonempty (O1 i) then
+    reduction_combiner_list l Hl H
+  else
+    reductionFromEmpty H
+
+lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
+  {I2 : Type} (O2 : OracleSpec I2)
+  {I3 : Type} (O3 : OracleSpec I3)
+  (r1 : OracleReduction O2 O3) (l2 : List (OracleReduction O1 O2))
+  (Hl : l2.length > 0)
+  (impl : RStateOracle O1) (dist : adversaryT O3):
+  runDinstinguisher dist
+    ((ComplexInitReduction2_compose (reduction_combiner_list_full l2 Hl) r1).apply impl) =
+  runDinstinguisher dist
+    ((reduction_combiner_list_full (l2.map (fun x => ComplexInitReduction2_compose x r1))
+  (by simp [List.length_map, Hl])).apply impl)
+ :=
+  sorry
+
+-- inductive AssumptionUse {I1 : Type} (O1 : OracleSpec I1) : {I : Type} -> (O: OracleSpec I) -> Type 1
+-- | SingleAssumption {I : Type} {O: OracleSpec I} (r : OracleReduction O1 O) : AssumptionUse O1 O
+-- | Listing {I : Type} {O: OracleSpec I} (n : ℕ) (l : Fin n -> (AssumptionUse O1 O)) (H : n > 0): AssumptionUse O1 O
+-- | Reduction {I2 : Type} {O2: OracleSpec I2} {I3 : Type} {O3: OracleSpec I2}
+--   (r : OracleReduction O2 O3) (x : AssumptionUse O1 O2)
+--   : AssumptionUse O1 O3
+
+-- def toList (T : Type _) (n : ℕ) (l : Fin n -> T) : List T :=
+--   List.ofFn l
+
+
+-- noncomputable def introReduction {I1 : Type} (O1 : OracleSpec I1) {I2 : Type} (O2 : OracleSpec I2) :
+--   (r : AssumptionUse O1 O2) -> OracleReduction O1 O2
+-- | AssumptionUse.SingleAssumption r => r
+-- | AssumptionUse.Listing n l Hn =>
+--   let tl := (List.ofFn (fun i => introReduction O1 O2 (l i)))
+--   reduction_combiner_list_full tl (by
+--     simp [List.length_map, tl, Hn])
+-- | @AssumptionUse.Reduction I1 O1 I2 O2 I3 O3 r x => ComplexInitReduction2_compose (introReduction O1 O2 x) r
+
 structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
   {I : Type} (O : OracleSpec I) where
   subset : Finset Assumptions.Idx
