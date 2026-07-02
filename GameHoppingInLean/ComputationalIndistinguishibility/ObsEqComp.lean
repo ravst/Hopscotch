@@ -452,6 +452,17 @@ by
   · assumption
   · assumption
 
+
+lemma adv_from_bobseq (ro₁ ro₂ : RStateOracle O)
+  (dist1 dist2 : adversaryT O)
+  (Hd : forall impl, runDinstinguisher dist1 impl = runDinstinguisher dist2 impl)
+   :
+    advantage dist1 ro₁ ro₂ = advantage dist2 ro₁ ro₂ :=
+by
+  simp [advantage, pdistancePMF]
+  rw [Hd]
+  rw [Hd]
+
 lemma obsEq_distinquishing_ub (ro₁ ro₂ : RStateOracle O) (obs_eq : ObsEq ro₁ ro₂)
   (dist : adversaryT O) :
     runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
@@ -461,12 +472,12 @@ by
   · exact le_of_sup_eq' rfl
 
 
-noncomputable def ascToRealFromObsEq {I : Type} {O : OracleSpec I}
-  (distinguisher : OracleComp (withPMFSpec O) Bool)
-  (assumption : SingleAssumption)
+lemma ascToRealFromObsEq {I : Type} {O : OracleSpec I}
+  {distinguisher : OracleComp (withPMFSpec O) Bool}
+  {assumption : SingleAssumption}
   (x1 x2 : ℕ × (OracleReduction assumption.O O))
-  (H1 : x1.1 = x2.1)
   (H2 : forall impl, ObsEq (x1.2.apply impl) (x2.2.apply impl))
+  (H1 : x1.1 = x2.1)
   :
   ascToReal distinguisher assumption x1 = ascToReal distinguisher assumption x2 :=
 by
@@ -480,6 +491,8 @@ by
     apply H2
   · apply obsEq_distinquishing_ub
     apply H2
+
+
 -- lemma correctAbstraction2ind_inner {I : Type _} {O : OracleSpec I} {stateType₁ stateType₂ : Type _} (dist : OracleComp O Bool)
 --   (ro₁ : QueryImpl O (RState stateType₁))
 --   (ro₂ : QueryImpl O (RState stateType₂))

@@ -270,6 +270,23 @@ noncomputable def ascToReal {I : Type} {O : OracleSpec I}
       (OracleReduction.applyReductionToAdversary (x).2 distinguisher)
       assumption.i.1 assumption.i.2
 
+noncomputable def ascToReal2 {I : Type} {O : OracleSpec I}
+  (distinguisher : OracleComp (withPMFSpec O) Bool)
+  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) : Real :=
+  (x).1 *
+    advantage
+      distinguisher
+      (x.2.apply assumption.i.1) (x.2.apply assumption.i.2)
+
+lemma ascEqivalence {I : Type} {O : OracleSpec I}
+  (distinguisher : OracleComp (withPMFSpec O) Bool)
+  (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) :
+  ascToReal distinguisher assumption x = ascToReal2 distinguisher assumption x :=
+  by
+    simp [ascToReal, ascToReal2]
+    simp [advantage]
+    simp [goodDoubleAction]
+
 lemma ascReverse {I : Type} {O : OracleSpec I}
   (distinguisher : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) :

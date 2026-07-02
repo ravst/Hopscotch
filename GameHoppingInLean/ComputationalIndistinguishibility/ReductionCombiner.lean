@@ -600,9 +600,9 @@ lemma reduction_combiner_correct
         reductionNonEmpty _ He
     rw [reductionCombinerCorrect_nontrivial]
     · apply ascToRealFromObsEq
-      · simp [reductionCombiner_nontrivial]
-      intro impl
-      simp []
-      apply ObsEq.symm
-      apply reduction_combiner_list_vs_2
+      · intro impl
+        simp []
+        apply ObsEq.symm
+        apply reduction_combiner_list_vs_2
+      simp [reductionCombiner_nontrivial]
     · simp [Hl1, Hl2]
