@@ -54,7 +54,7 @@ noncomputable def proof_constants {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
     :=
-    symbolicSoundnessBound (indCpaRandImpliesIndCpa schemeFam κ)
+    assumptionCounting_low (indCpaRandImpliesIndCpa schemeFam κ)
 
 lemma stupidBoundRewrite {I : Type}
   {Assumptions : IndistinguishabilityAssumptions}
@@ -73,7 +73,7 @@ lemma stupidBoundRewrite {I : Type}
 --     : (proof_constants schemeFam κ).1.values = (fun x => sorry) := by
 --   -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
 --   simp [indCpaRandImpliesIndCpa, proof_constants, IndCpaRandAssumption']
---   simp [transitive_step_val, assumptionJoiner, symbolicSoundnessBound,
+--   simp [transitive_step_val, assumptionJoiner, assumptionCounting_low,
 --     sumJoiner, AssumptionsUseT.empty, finsetSum,
 --     Indistinguishable.of_ObsEq, noAssumptionUse,
 --     empty_union, union_empty

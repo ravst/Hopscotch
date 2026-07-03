@@ -10,17 +10,15 @@ import GameHoppingInLean.Misc.SimpAttrLemmas
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.Sums
-import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
+-- import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
+import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 import GameHoppingInLean.IndistinguishabilityTactics
 
 -- generic intro. move.
 
-
-abbrev asUseType (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) (J : Assumptions.Idx) :=
-  {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
 
 
 -- inductive AssumptionUse {I1 : Type} (O1 : OracleSpec I1) : {I : Type} -> (O: OracleSpec I) -> Type 1
@@ -43,45 +41,7 @@ abbrev asUseType (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O :
 --     simp [List.length_map, tl, Hn])
 -- | @AssumptionUse.Reduction I1 O1 I2 O2 I3 O3 r x => ComplexInitReduction2_compose (introReduction O1 O2 x) r
 
-structure AssumptionsUseT (Assumptions : IndistinguishabilityAssumptions)
-  {I : Type} (O : OracleSpec I) where
-  subset : Finset Assumptions.Idx
-  values : (J : subset) -> (
-    {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
-  )
 
-
-def AssumptionsUseTSimple (Assumptions : IndistinguishabilityAssumptions)
-  {I : Type} (O : OracleSpec I) :=
-  (J : Assumptions.Idx) -> List (OracleReduction (Assumptions.assumptions J).O O)
-
-
-namespace AssumptionsUseT
-
-def empty (Assumptions : IndistinguishabilityAssumptions) {I : Type} (O : OracleSpec I) :
-  AssumptionsUseT Assumptions O :=
-  {
-    subset := ∅,
-    values := fun ⟨x, x2⟩ => by
-      exfalso
-      exact (List.mem_nil_iff x).mp x2
-  }
-
-end AssumptionsUseT
-
--- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)
-def assumptionJoiner {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
-  (val1 val2 : AssumptionsUseT Assumptions O)
-  (joiner : {J : Assumptions.Idx} ->
-    asUseType Assumptions O J ->
-    asUseType Assumptions O J ->
-    asUseType Assumptions O J
-  )
-  : AssumptionsUseT Assumptions O :=
-  {
-    subset := finsetSum val1.subset val2.subset
-    values := fun x => sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner x
-  }
 
 
 def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
@@ -103,8 +63,6 @@ def advBoundQ (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
   forall (distinguisher : adversaryT O),
   advBound Assumptions q_b O ro1 ro2 asc distinguisher
 
-def noAssumptionUse {Assumptions : IndistinguishabilityAssumptions} : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
-  (AssumptionsUseT.empty _ _, AssumptionsUseT.empty _ _)
 
 noncomputable def obse_eq_step2
   {Assumptions : IndistinguishabilityAssumptions}
@@ -131,6 +89,7 @@ noncomputable def obse_eq_step
     apply obsEq_distinquishing_adv
     apply Hb
   ⟩
+
 
 /-- A variant of `sumJoinerCorrect` whose joiner-correctness hypothesis only needs to
 hold for the actual values `val1`/`val2` at indices lying in both `D1` and `D2`
@@ -203,30 +162,6 @@ def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1
   · simp [finsetSum, h1, h2] at hj
 
 
-
-noncomputable def transitive_step_val
-  {Assumptions : IndistinguishabilityAssumptions}
-  {I : Type}
-  {O : OracleSpec I}
-  (asc1 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
-  (asc2 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) :
-  AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
-:=
-  let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1.1 asc2.1 (fun a b => listCombiner a b)
-  let jointr : AssumptionsUseT Assumptions O := assumptionJoiner asc1.2 asc2.2 (fun a b => listCombiner a b)
-  (joint, jointr)
-
-
-noncomputable def transitive_step_val_simple
-  {Assumptions : IndistinguishabilityAssumptions}
-  {I : Type}
-  {O : OracleSpec I}
-  (asc1 : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O)
-  (asc2 : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) :
-  AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
-:=
-  ((fun x => (asc1.1 x)++(asc2.1 x)), fun x => (asc1.2 x)++(asc2.2 x))
-
 noncomputable def transitive_step_proof
   {Assumptions : IndistinguishabilityAssumptions}
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
@@ -268,11 +203,11 @@ noncomputable def transitive_step_proof
       simp []
       apply sub_add_sub_comm
 
-lemma nextInRange {n : ℕ} {x : ℕ} (H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
-by
-  refine Finset.mem_range_succ_iff.mpr ?_
-  simp [Finset.range] at H
-  exact Nat.le_of_succ_le H
+-- lemma nextInRange {n : ℕ} {x : ℕ} (H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
+-- by
+--   refine Finset.mem_range_succ_iff.mpr ?_
+--   simp [Finset.range] at H
+--   exact Nat.le_of_succ_le H
 
 
 -- def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
@@ -315,85 +250,6 @@ by
 --   assumption
 
 
-noncomputable def long_step_combinator {O : OracleSpec I}
-  {Assumptions : IndistinguishabilityAssumptions}
-  :
-  (a : ℕ) ->
-  (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) ->
-  AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
-| 0, _ =>
-  noAssumptionUse
-| Nat.succ a, Hxx =>
-  let long := long_step_combinator a (fun i Hi => Hxx i (Nat.lt_succ_of_lt Hi))
-  transitive_step_val long (Hxx a (Nat.lt_succ_self a))
-
-noncomputable def long_step_combinator_simple_half {O : OracleSpec I}
-  {Assumptions : IndistinguishabilityAssumptions}
-  (a : ℕ)
-  (Hxx : (i : ℕ) → i < a → AssumptionsUseTSimple Assumptions O) :
-  AssumptionsUseTSimple Assumptions O := fun idx =>
-  let l := List.ofFn (fun x => Hxx x.1 x.2 idx)
-  l.flatten
-
-lemma long_step_combinator_simple_half_next {O : OracleSpec I}
-  {Assumptions : IndistinguishabilityAssumptions}
-  (a : ℕ)
-  (Hxx : (i : ℕ) → i < (a + 1) → AssumptionsUseTSimple Assumptions O) :
-long_step_combinator_simple_half (a + 1) Hxx = fun idx =>
-long_step_combinator_simple_half a (fun i Ha => Hxx i (Nat.lt_succ_of_lt Ha)) idx ++
-  (Hxx a (lt_add_one a) idx) := by
-  sorry
-
-noncomputable def long_step_combinator_simple {O : OracleSpec I}
-  {Assumptions : IndistinguishabilityAssumptions}
-  (a : ℕ)
-  (Hxx : (i : ℕ) → i < a → AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) :
-  AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O :=
-  (
-    long_step_combinator_simple_half a (fun x Hx => (Hxx x Hx).1),
-    long_step_combinator_simple_half a (fun x Hx => (Hxx x Hx).2)
-  )
-
-
-noncomputable def symbolicSoundnessBound {Assumptions : IndistinguishabilityAssumptions}
-      {κ : ℕ} {q_b : ENat}
-      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
-      AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
-| IndistinguishableI.assumption idx =>
-  (
-    {subset := {idx}, values := fun xp =>
-      (by
-        have hxp1 : xp.val = idx := Finset.mem_singleton.mp xp.2
-        rw [hxp1]
-        let ret := OracleReduction.identity (Assumptions.assumptions idx).O
-        exact ⟨(List.cons ret List.nil), by simp⟩
-      )
-    }, AssumptionsUseT.empty _ _)
-| IndistinguishableI.obsEqB a b =>
-  noAssumptionUse
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind => by
-    let asc := symbolicSoundnessBound ind
-    exact
-      ({
-        subset := asc.1.subset
-        values := fun x => ⟨(asc.1.values x).1.map (fun x => ComplexInitReduction2_compose x r), by
-        simp [(asc.1.values x).2]⟩
-      },
-      {
-        subset := asc.2.subset
-        values := fun x => ⟨(asc.2.values x).1.map (fun x => ComplexInitReduction2_compose x r), by
-        simp [(asc.2.values x).2]⟩
-      })
-| IndistinguishableI.symm q_b ind  =>
-    let re := symbolicSoundnessBound ind
-    (re.2, re.1)
-| IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_val (symbolicSoundnessBound ind1) (symbolicSoundnessBound ind2)
-| IndistinguishableI.longSequence a q_b ro Hseq =>
-  long_step_combinator a
-    (fun j Hq => symbolicSoundnessBound (Hseq j Hq))
-
 
 
 lemma long_Step_proof_induction
@@ -430,240 +286,14 @@ lemma long_Step_proof_induction
   )
 
 
-noncomputable def symbolicSoundnessBound2 {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
-  AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
-| IndistinguishableI.assumption idx =>
-  (
-    fun xp =>
-      if H : xp = idx then [H ▸ OracleReduction.identity (Assumptions.assumptions idx).O]
-        else []
-  , fun _ => [])
-| IndistinguishableI.obsEqB a b =>
-  (fun _ => [], fun _ => [])
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
-    let asc := symbolicSoundnessBound2 ind
-    (
-      (fun x => (asc.1 x).map (fun x => ComplexInitReduction2_compose x r)),
-      (fun x => (asc.2 x).map (fun x => ComplexInitReduction2_compose x r)),
-    )
-| IndistinguishableI.symm q_b ind  =>
-    let re := symbolicSoundnessBound2 ind
-    (re.2, re.1)
-| IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_val_simple (symbolicSoundnessBound2 ind1) (symbolicSoundnessBound2 ind2)
-| IndistinguishableI.longSequence a q_b ro Hseq =>
-  long_step_combinator_simple a
-    (fun j Hq => symbolicSoundnessBound2 (Hseq j Hq))
-
-def finite_support {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
-  let ret := symbolicSoundnessBound2 ind
-  Fintype {x | ret.1 x ≠ []} ×
-  Fintype {x | ret.2 x ≠ []} := by
-   sorry
-
-def AssumptionsUseTSimple2other {Assumptions : IndistinguishabilityAssumptions}
-  {I : Type} {O : OracleSpec I} (count : AssumptionsUseTSimple Assumptions O)
-  (H : Fintype {i | count i ≠ []})
-  : AssumptionsUseT Assumptions O :=
-  {
-    subset := ({i | count i ≠ []} : Set Assumptions.Idx).toFinset,
-    values a := ⟨count a,
-      by
-        simp [List.length, List.length_pos_iff]
-        grind only [= Set.mem_toFinset, usr Set.mem_setOf_eq]
-      ⟩
-  }
-
-def AssumptionsUseTSimplePair2other {Assumptions : IndistinguishabilityAssumptions}
-  {I : Type} {O : OracleSpec I}
-  (count : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O)
-  (H : Fintype {i | count.1 i ≠ []} × Fintype {i | count.2 i ≠ []})
-  : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
-  (AssumptionsUseTSimple2other count.1 H.1, AssumptionsUseTSimple2other count.2 H.2)
-
-def agreeWithSimp {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
-  (p : AssumptionsUseT Assumptions O)
-  (s : AssumptionsUseTSimple Assumptions O) : Prop :=
-  (∀ i, (i ∈ p.subset ↔ (s i ≠ [])) ∧
-  (∀ (hi : i ∈ p.subset), (p.values ⟨i, hi⟩).1 = s i))
-
-def agreeWithSimp_lemma {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
-  (p : AssumptionsUseT Assumptions O)
-  (s : AssumptionsUseTSimple Assumptions O)
-  (H : agreeWithSimp p s)
-  (d : Fintype {x | s x ≠ []}):
-  AssumptionsUseTSimple2other s d = p
-   := sorry
-
-
-def agreeWithSimpPair {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
-  (p : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
-  (s : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) : Prop :=
-  agreeWithSimp p.1 s.1 ∧ agreeWithSimp p.2 s.2
-
-theorem agree_trans {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
-  (p1 p2 : AssumptionsUseT Assumptions O)
-  (s1 s2 : AssumptionsUseTSimple Assumptions O)
-  (H1 : agreeWithSimp p1 s1) (H2 : agreeWithSimp p2 s2) :
-  agreeWithSimp (assumptionJoiner p1 p2 (fun a b => listCombiner a b)) (fun x => (s1 x)++(s2 x)) := by
-    simp only [agreeWithSimp]
-    intro i
-    simp only [listCombiner, assumptionJoiner, sumJoiner, agreeWithSimp] at *
-    have X : forall {T : Type _} (l1 l2 : List T), l1++l2 ≠ [] ↔ ((l1 ≠ []) ∨ (l2 ≠ [])) := by
-      intro T l1 l2
-      simp []
-      grind
-    constructor
-    · rw [X (s1 i) (s2 i)]
-      rw [<-(H1 i).1]
-      rw [<-(H2 i).1]
-      simp [finsetSum]
-    intro hi
-    simp [finsetSum] at hi
-    if M1 : i ∈ p1.subset then
-      if M2 : i ∈ p2.subset then
-        simp [M1, M2]
-        rw [(H1 i).2 M1, (H2 i).2 M2]
-      else
-        simp [M1, M2]
-        rw [(H1 i).2 M1]
-        simp [(H2 i).1] at M2
-        simp [M2]
-    else
-      if M2 : i ∈ p2.subset then
-        simp [M1, M2]
-        rw [(H2 i).2 M2]
-        simp [(H1 i).1] at M1
-        simp [M1]
-      else
-        simp [M1, M2] at hi
-
-
-lemma simpleCorrect_in {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
-  agreeWithSimpPair
-    (symbolicSoundnessBound ind)
-    (symbolicSoundnessBound2 ind) := by
-  induction ind
-  case assumption a =>
-    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
-    simp [AssumptionsUseT.empty]
-    intro i Hi
-    subst Hi
-    simp []
-  case obsEqB a b c d f =>
-    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
-    simp [noAssumptionUse, AssumptionsUseT.empty]
-  case complexInitReduction a b Hind =>
-    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
-    constructor
-    · intro i
-      constructor
-      · apply (Hind.1 i).1
-      intro Hi
-      rw [(Hind.1 i).2]
-    · intro i
-      constructor
-      · apply (Hind.2 i).1
-      intro Hi
-      rw [(Hind.2 i).2]
-  case symm HInd =>
-    simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
-    constructor <;> simp [HInd.1, HInd.2]
-  case trans a b c d e f Hind1 Hind2 =>
-    simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
-    generalize symbolicSoundnessBound2 e = e2 at *
-    generalize symbolicSoundnessBound e = e1 at *
-    generalize symbolicSoundnessBound2 f = f2 at *
-    generalize symbolicSoundnessBound f = f1 at *
-    simp [transitive_step_val, transitive_step_val_simple]
-    constructor
-    · apply agree_trans
-      · apply Hind1.1
-      apply Hind2.1
-    · apply agree_trans
-      · apply Hind1.2
-      apply Hind2.2
-  case longSequence n q_b c d Hind =>
-    induction n
-    · simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2, agreeWithSimp]
-      simp [long_step_combinator, long_step_combinator_simple, long_step_combinator_simple_half
-        ]
-      constructor
-      · intro i
-        simp [noAssumptionUse, AssumptionsUseT.empty]
-      · intro i
-        simp [noAssumptionUse, AssumptionsUseT.empty]
-    case succ n Hn =>
-      simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
-      simp [long_step_combinator, long_step_combinator_simple, long_step_combinator_simple_half
-        ]
-      simp [transitive_step_val, transitive_step_val_simple, long_step_combinator_simple_half]
-      simp [symbolicSoundnessBound2 , symbolicSoundnessBound] at Hn
-      constructor
-      · rw [long_step_combinator_simple_half_next]
-        apply agree_trans
-        · have X := Hn (fun j => c ⟨j, by
-            simp []
-            cases j
-            case mk a b =>
-              simp [] at b
-              simp [b]
-              exact Nat.le_add_right_of_le b
-            ⟩) (fun j Hj => d j
-              (Nat.lt_add_one_of_lt Hj
-              )) (fun j Hj => Hind j (Nat.lt_add_one_of_lt Hj))
-          have Y := X.1
-          simp at Y
-          apply Y
-        apply (Hind n _).1
-      · rw [long_step_combinator_simple_half_next]
-        apply agree_trans
-        · have X := Hn (fun j => c ⟨j, by
-            simp []
-            cases j
-            case mk a b =>
-              simp [] at b
-              simp [b]
-              exact Nat.le_add_right_of_le b
-            ⟩) (fun j Hj => d j
-              (Nat.lt_add_one_of_lt Hj
-              )) (fun j Hj => Hind j (Nat.lt_add_one_of_lt Hj))
-          have Y := X.2
-          simp at Y
-          apply Y
-        apply (Hind n _).2
-
-lemma simpleCorrect {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
-  AssumptionsUseTSimplePair2other (symbolicSoundnessBound2 ind) (finite_support ind) =
-    symbolicSoundnessBound ind :=
-by
-  simp [AssumptionsUseTSimplePair2other]
-  congr
-  · apply agreeWithSimp_lemma
-    apply (simpleCorrect_in ind).1
-  · apply agreeWithSimp_lemma
-    apply (simpleCorrect_in ind).2
-
-noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
+lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
       {κ : ℕ} {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
-      advBoundQ Assumptions q_b O o₁ o₂ (symbolicSoundnessBound ind)
+      advBoundQ Assumptions q_b O o₁ o₂ (assumptionCounting_low ind)
 | IndistinguishableI.assumption idx =>
   by
-      simp [symbolicSoundnessBound]
+      simp [assumptionCounting_low]
       simp [advBoundQ]
       intro dist
       simp [advBound]
@@ -682,11 +312,11 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       rw [applyComplexInitReduction2_identity]
 | IndistinguishableI.obsEqB a b =>
   by
-    simp [symbolicSoundnessBound]
+    simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
 | @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind => by
-    let Hasc := symbolicSoundness ind
-    simp [advBoundQ, symbolicSoundnessBound]
+    let Hasc := symbolicSoundness_internal ind
+    simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist
     rw [advantage_reduction]
     simp [advBoundQ, advBound] at Hasc
@@ -714,9 +344,9 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       rw [<-goodDoubleAction]
       simp [compose_combine]
 | IndistinguishableI.symm q_b ind  =>
-    let re := symbolicSoundness ind
+    let re := symbolicSoundness_internal ind
     by
-      simp [advBoundQ, advBound, symbolicSoundnessBound]
+      simp [advBoundQ, advBound, assumptionCounting_low]
       intro dist
       rw [advantageReverse]
       intro Hdist
@@ -724,16 +354,25 @@ noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptio
       · simp []
       · assumption
 | IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_proof rm _ _ (symbolicSoundness ind1) (symbolicSoundness ind2)
+    transitive_step_proof rm _ _ (symbolicSoundness_internal ind1) (symbolicSoundness_internal ind2)
 | IndistinguishableI.longSequence a q_b ro Hseq => by
-  simp [symbolicSoundnessBound]
+  simp [assumptionCounting_low]
   let Hxx := fun (i : ℕ) (Hi : i < a) =>
-    symbolicSoundnessBound (Hseq i Hi)
-  let HxxInd := (fun (i : ℕ) (Hi : i < a) => symbolicSoundness (Hseq i Hi))
+    assumptionCounting_low (Hseq i Hi)
+  let HxxInd := (fun (i : ℕ) (Hi : i < a) => symbolicSoundness_internal (Hseq i Hi))
   have X := long_Step_proof_induction Hxx (
       by
-        simp [Hxx, symbolicSoundnessBound]
+        simp [Hxx, assumptionCounting_low]
         apply HxxInd
       )
   apply X
   exact lt_add_one a
+
+lemma symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
+      {κ : ℕ} {q_b : ENat}
+      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+      advBoundQ Assumptions q_b O o₁ o₂ (assumptionCountLower (assumptionCountingFin ind)) :=
+by
+  rw [simpleCorrect]
+  apply symbolicSoundness_internal
