@@ -116,5 +116,5 @@ def IndCcaIFam
     {K : ℕ → Type} {C : ℕ → ℕ → Type}
     [∀ κ n, DecidableEq (C κ n)] (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) none _
+    IndistinguishableI (Assumptions κ) none
       (IndCcaL (schemeFam.scheme κ)) (IndCcaR (schemeFam.scheme κ))

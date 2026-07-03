@@ -213,7 +213,7 @@ noncomputable def transitive_step_proof
 -- def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
 --       {q_b : ENat}
 --       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
---       (ind : IndistinguishableI Assumptions q_b O o₁ o₂) -> ℕ
+--       (ind : IndistinguishableI Assumptions q_b o₁ o₂) -> ℕ
 -- | IndistinguishableI.assumption idx =>
 --   0
 -- | IndistinguishableI.obsEqB a b =>
@@ -289,7 +289,7 @@ lemma long_Step_proof_induction
 lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions q_b O o₁ o₂) ->
+      (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCounting_low ind)
 | IndistinguishableI.assumption idx =>
   by
@@ -371,7 +371,7 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
 lemma symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-      (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
+      (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCountLower (assumptionCountingFin ind)) :=
 by
   rw [simpleCorrect]

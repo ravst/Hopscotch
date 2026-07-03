@@ -17,8 +17,8 @@ any assumption set. -/
 noncomputable def liftEmptyAssumptions
     {Assumptions : IndistinguishabilityAssumptions}
     {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
-    (h : IndistinguishableI IndistinguishabilityAssumptions.empty q_b O ro₁ ro₂) :
-    IndistinguishableI Assumptions q_b O ro₁ ro₂ := by
+    (h : IndistinguishableI IndistinguishabilityAssumptions.empty q_b ro₁ ro₂) :
+    IndistinguishableI Assumptions q_b ro₁ ro₂ := by
   induction h with
   | assumption i => exact i.elim
   | obsEqB q hObs => exact IndistinguishableI.obsEqB q hObs
@@ -799,7 +799,6 @@ noncomputable def indistinguishableI_GGMHybrid2_Vs_3
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
     :
     IndistinguishableI IndistinguishabilityAssumptions.empty none
-      (SecurePRFSpec (BitVec n) (BitVec k))
       (GGMHybrid2 prg i.succ)
       (GGMHybrid3 prg i) := by
   game_hopping [
