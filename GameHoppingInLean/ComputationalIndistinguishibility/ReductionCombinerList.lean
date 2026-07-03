@@ -606,6 +606,189 @@ by
     apply reduction_combiner_correct
 
 
+/-- Pull an initial uniform (or arbitrary `PMF`) sample outside of `runDinstinguisher`. -/
+lemma runDinstinguisher_initSample {I : Type} {O : OracleSpec I} {α : Type}
+    (impl : RStateOracle O) (p : PMF α) (k : α → adversaryT O) :
+    runDinstinguisher (OracleReduction.initSample p >>= k) impl
+      = p.bind (fun x => runDinstinguisher (k x) impl) := by
+  simp only [runDinstinguisher]
+  have h : ∀ init : impl.stateType,
+      PMF.map (fun x => x.1)
+          (simulateQ (addPMFtoImpl impl.queries) (OracleReduction.initSample p >>= k) init)
+        = p.bind (fun x =>
+            PMF.map (fun y => y.1)
+              (StateT.run (simulateQ (addPMFtoImpl impl.queries) (k x)) init)) := by
+    intro init
+    rw [show simulateQ (addPMFtoImpl impl.queries) (OracleReduction.initSample p >>= k) init
+        = StateT.run (simulateQ (addPMFtoImpl impl.queries) (OracleReduction.initSample p >>= k))
+            init from rfl]
+    rw [simulateQ_initSample_run, PMF.map_bind]
+  simp only [h]
+  rw [show (impl.initialState >>= fun init =>
+        p.bind fun x =>
+          PMF.map (fun y => y.1) (StateT.run (simulateQ (addPMFtoImpl impl.queries) (k x)) init))
+      = impl.initialState.bind (fun init =>
+          p.bind fun x =>
+            PMF.map (fun y => y.1) (StateT.run (simulateQ (addPMFtoImpl impl.queries) (k x)) init))
+      from rfl]
+  rw [PMF.bind_comm]
+  rfl
+
+/-- `defaultImpl` analogue of `addToStateG_spec`: relabelling the reduction state
+by `f` (with left inverse `f_rev`) commutes with lowering by `defaultImpl`. -/
+lemma addToStateG_defaultImpl_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
+    [Ns1 : Nonempty s1] {output : Type}
+    (f : s1 -> s2) (f_rev : s2 -> Option s1)
+    (f_ret : forall x, (f_rev (f x)) = some x)
+    (comp : OracleReduction.SRReductionComp O s1 output) :
+    forall (st : s1),
+    simulateQ OracleReduction.defaultImpl (addToStateG s2 f f_rev comp) (f st) =
+      (fun p => (p.1, f p.2)) <$> simulateQ OracleReduction.defaultImpl comp st := by
+  induction comp with
+  | pure x =>
+    intro st
+    change pure (x, f st) =
+        (fun p => (p.1, f p.2)) <$> (pure (x, st) : OracleComp (withPMFSpec O) (output × s1))
+    simp only [map_pure]
+  | roll query cont Hind =>
+    intro st
+    conv_lhs => rw [addToStateG.eq_def]
+    cases query with
+    | oracle q =>
+      simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
+        OracleReduction.set, OracleReduction.modify]
+      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier]
+      apply bind_congr; intro a; exact Hind a st
+    | sample p =>
+      simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
+        OracleReduction.set, OracleReduction.modify]
+      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier]
+      apply bind_congr; intro a; exact Hind a st
+    | getState =>
+      simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
+        OracleReduction.set, OracleReduction.modify]
+      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        f_ret]
+      exact Hind st st
+    | setState stNew =>
+      simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
+        OracleReduction.set, OracleReduction.modify]
+      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        f_ret]
+      exact Hind PUnit.unit stNew
+
+/-- A single combiner query from state `{index := i, value := v}` runs `l[i]`'s
+query, keeping the index fixed. -/
+lemma combiner_query_step {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
+    (l : List (OracleReduction O1 O2)) (Hl : l.length > 0)
+    (He : forall x : I1, Nonempty (O1 x))
+    (i : Fin l.length) (tt : I2) (v : l[i].stateType) :
+    simulateQ OracleReduction.defaultImpl ((reduction_combiner_list l Hl He).queries tt)
+        ({index := i, value := v} : internal_type l)
+      = (fun p => (p.1, ({index := i, value := p.2} : internal_type l))) <$>
+          simulateQ OracleReduction.defaultImpl ((l[i]).queries tt) v := by
+  haveI : Nonempty (l[i]).stateType := reductionNonEmpty _ He
+  exact addToStateG_defaultImpl_spec
+      (fun y => ({index := i, value := y} : internal_type l))
+      (fun z => if h : z.index = i then some (h ▸ z.value) else none)
+      (by intro x; simp) (l[i].queries tt) v
+
+/-- Inner state-tracking lemma: running the combiner's lowered query interpretation
+from a state `{index := i, value := v}` behaves exactly like running the `i`-th
+reduction from state `v`, with the index component held fixed at `i`. -/
+lemma combiner_inner {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {X : Type}
+    (l : List (OracleReduction O1 O2)) (Hl : l.length > 0)
+    (He : forall x : I1, Nonempty (O1 x))
+    (i : Fin l.length) (D : OracleComp (withPMFSpec O2) X) :
+    forall (v : l[i].stateType),
+    simulateQ OracleReduction.defaultImpl
+        (simulateQ (OracleReduction.addPMFtoImpl2 (reduction_combiner_list l Hl He).queries) D)
+        ({index := i, value := v} : internal_type l)
+      = (fun p => (p.1, ({index := i, value := p.2} : internal_type l))) <$>
+          simulateQ OracleReduction.defaultImpl
+            (simulateQ (OracleReduction.addPMFtoImpl2 (l[i]).queries) D) v := by
+  haveI : Nonempty (l[i]).stateType := reductionNonEmpty _ He
+  induction D using OracleComp.inductionOn with
+  | pure x =>
+    intro v
+    simp only [simulateQ_pure]
+    change pure (x, ({index := i, value := v} : internal_type l)) =
+        (fun p => (p.1, ({index := i, value := p.2} : internal_type l))) <$>
+          (pure (x, v) : OracleComp (withPMFSpec O1) (X × l[i].stateType))
+    simp only [map_pure]
+  | query_bind t mx ih =>
+    intro v
+    cases t with
+    | oracle tt =>
+      rw [simulateQ_query_bind, simulateQ_query_bind]
+      change simulateQ OracleReduction.defaultImpl
+          ((reduction_combiner_list l Hl He).queries tt >>= fun u =>
+            simulateQ (OracleReduction.addPMFtoImpl2 (reduction_combiner_list l Hl He).queries) (mx u))
+          {index := i, value := v} =
+        (fun p => (p.1, ({index := i, value := p.2} : internal_type l))) <$>
+          simulateQ OracleReduction.defaultImpl
+            (l[i].queries tt >>= fun u =>
+              simulateQ (OracleReduction.addPMFtoImpl2 l[i].queries) (mx u)) v
+      rw [simulateQ_bind, simulateQ_bind]
+      simp only [bind, StateT.bind, StateT.run]
+      rw [combiner_query_step]
+      simp only [← PFunctor.FreeM.monad_bind_def, map_eq_bind_pure_comp, bind_assoc, pure_bind,
+        Function.comp]
+      apply bind_congr
+      intro d
+      simp only [map_eq_bind_pure_comp, Function.comp] at ih
+      exact ih d.1 d.2
+    | sample p =>
+      rw [simulateQ_query_bind, simulateQ_query_bind]
+      change simulateQ OracleReduction.defaultImpl
+          (OracleReduction.sample p >>= fun u =>
+            simulateQ (OracleReduction.addPMFtoImpl2 (reduction_combiner_list l Hl He).queries) (mx u))
+          {index := i, value := v} =
+        (fun p => (p.1, ({index := i, value := p.2} : internal_type l))) <$>
+          simulateQ OracleReduction.defaultImpl
+            (OracleReduction.sample p >>= fun u =>
+              simulateQ (OracleReduction.addPMFtoImpl2 l[i].queries) (mx u)) v
+      rw [simulateQ_bind, simulateQ_bind]
+      simp only [bind, StateT.bind, StateT.run]
+      have hsample : simulateQ OracleReduction.defaultImpl
+            (OracleReduction.sample (O := O1) (s := internal_type l) p)
+            ({index := i, value := v} : internal_type l)
+          = (fun q => (q.1, ({index := i, value := q.2} : internal_type l))) <$>
+              simulateQ OracleReduction.defaultImpl
+                (OracleReduction.sample (O := O1) (s := l[i].stateType) p) v := by
+        simp [OracleReduction.sample, simulateQ_query, OracleReduction.defaultImpl, OracleSpec.query,
+          OracleQuery.input, OracleQuery.cont, Functor.map, StateT.map, StateT.lift, StateT.run,
+          bind, map_bind, Function.comp, pure]
+      rw [hsample]
+      simp only [← PFunctor.FreeM.monad_bind_def, map_eq_bind_pure_comp, bind_assoc, pure_bind,
+        Function.comp]
+      apply bind_congr
+      intro d
+      simp only [map_eq_bind_pure_comp, Function.comp] at ih
+      exact ih d.1 d.2
+
+/-- Applying the list-combiner reduction to an adversary is the same as first
+sampling a uniform index `i` and then applying the `i`-th reduction of the list.
+The combiner samples its index once at initialization and never changes it, so
+the whole computation is equivalent to picking the index up front. -/
+lemma combiner_apply_uniform {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {X : Type}
+  (l : List (OracleReduction O1 O2)) (Hl : l.length > 0)
+  (He : forall x : I1, Nonempty (O1 x))
+  (D : OracleComp (withPMFSpec O2) X) :
+  (reduction_combiner_list l Hl He).applyReductionToAdversary D =
+    (do
+      let i <- OracleReduction.initSample
+        (@PMF.uniformOfFintype (Fin l.length) _ (⟨⟨0, Hl⟩⟩))
+      (l[i]).applyReductionToAdversary D) := by
+  have hinit : (reduction_combiner_list l Hl He).initialState =
+      (do
+        let x <- OracleReduction.initSample (@PMF.uniformOfFintype (Fin l.length) _ (⟨⟨0, Hl⟩⟩))
+        let init <- l[x].initialState
+        pure ({index := x, value := init} : internal_type l)) := rfl
+  simp only [OracleReduction.applyReductionToAdversary, hinit, bind_assoc, pure_bind]
+  simp only [combiner_inner]
+  simp [Functor.mapRev, ← comp_map, Function.comp]
+
 lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
   {I2 : Type} (O2 : OracleSpec I2)
   {I3 : Type} (O3 : OracleSpec I3)
@@ -619,4 +802,19 @@ lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
       by simp [l.2]
     ⟩).apply impl)
  :=
-  sorry
+  by
+    have He : forall i, Nonempty (O1 i) := non_trivial_spec impl
+    simp only [reduction_combiner_list_full, dif_pos He]
+    rw [goodDoubleAction, goodDoubleAction, ComplexInitReduction2_compose_apply]
+    rw [combiner_apply_uniform l.val l.2 He, combiner_apply_uniform _ _ He]
+    rw [runDinstinguisher_initSample, runDinstinguisher_initSample]
+    have hmap : (l.val.map (fun x => ComplexInitReduction2_compose x r1)).length = l.val.length := by
+      simp
+    haveI : Nonempty (Fin l.val.length) := ⟨⟨0, l.2⟩⟩
+    erw [uniform_reindex (finCongr hmap).symm]
+    congr 1
+    funext a
+    have hget : (List.map (fun x => ComplexInitReduction2_compose x r1) l.val)[(finCongr hmap).symm a]
+        = ComplexInitReduction2_compose (l.val[a]) r1 := by
+      simp [List.getElem_map]
+    rw [hget, ComplexInitReduction2_compose_apply]
