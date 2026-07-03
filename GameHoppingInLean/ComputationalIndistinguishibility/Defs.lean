@@ -335,6 +335,15 @@ noncomputable def long_step_combinator_simple_half {O : OracleSpec I}
   let l := List.ofFn (fun x => Hxx x.1 x.2 idx)
   l.flatten
 
+lemma long_step_combinator_simple_half_next {O : OracleSpec I}
+  {Assumptions : IndistinguishabilityAssumptions}
+  (a : ℕ)
+  (Hxx : (i : ℕ) → i < (a + 1) → AssumptionsUseTSimple Assumptions O) :
+long_step_combinator_simple_half (a + 1) Hxx = fun idx =>
+long_step_combinator_simple_half a (fun i Ha => Hxx i (Nat.lt_succ_of_lt Ha)) idx ++
+  (Hxx a (lt_add_one a) idx) := by
+  sorry
+
 noncomputable def long_step_combinator_simple {O : OracleSpec I}
   {Assumptions : IndistinguishabilityAssumptions}
   (a : ℕ)
@@ -455,7 +464,8 @@ def finite_support {Assumptions : IndistinguishabilityAssumptions}
   (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
   let ret := symbolicSoundnessBound2 ind
   Fintype {x | ret.1 x ≠ []} ×
-  Fintype {x | ret.2 x ≠ []} := sorry
+  Fintype {x | ret.2 x ≠ []} := by
+   sorry
 
 def AssumptionsUseTSimple2other {Assumptions : IndistinguishabilityAssumptions}
   {I : Type} {O : OracleSpec I} (count : AssumptionsUseTSimple Assumptions O)
@@ -477,6 +487,160 @@ def AssumptionsUseTSimplePair2other {Assumptions : IndistinguishabilityAssumptio
   : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
   (AssumptionsUseTSimple2other count.1 H.1, AssumptionsUseTSimple2other count.2 H.2)
 
+def agreeWithSimp {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (p : AssumptionsUseT Assumptions O)
+  (s : AssumptionsUseTSimple Assumptions O) : Prop :=
+  (∀ i, (i ∈ p.subset ↔ (s i ≠ [])) ∧
+  (∀ (hi : i ∈ p.subset), (p.values ⟨i, hi⟩).1 = s i))
+
+def agreeWithSimp_lemma {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (p : AssumptionsUseT Assumptions O)
+  (s : AssumptionsUseTSimple Assumptions O)
+  (H : agreeWithSimp p s)
+  (d : Fintype {x | s x ≠ []}):
+  AssumptionsUseTSimple2other s d = p
+   := sorry
+
+
+def agreeWithSimpPair {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (p : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+  (s : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) : Prop :=
+  agreeWithSimp p.1 s.1 ∧ agreeWithSimp p.2 s.2
+
+theorem agree_trans {Assumptions : IndistinguishabilityAssumptions} {I : Type} {O : OracleSpec I}
+  (p1 p2 : AssumptionsUseT Assumptions O)
+  (s1 s2 : AssumptionsUseTSimple Assumptions O)
+  (H1 : agreeWithSimp p1 s1) (H2 : agreeWithSimp p2 s2) :
+  agreeWithSimp (assumptionJoiner p1 p2 (fun a b => listCombiner a b)) (fun x => (s1 x)++(s2 x)) := by
+    simp only [agreeWithSimp]
+    intro i
+    simp only [listCombiner, assumptionJoiner, sumJoiner, agreeWithSimp] at *
+    have X : forall {T : Type _} (l1 l2 : List T), l1++l2 ≠ [] ↔ ((l1 ≠ []) ∨ (l2 ≠ [])) := by
+      intro T l1 l2
+      simp []
+      grind
+    constructor
+    · rw [X (s1 i) (s2 i)]
+      rw [<-(H1 i).1]
+      rw [<-(H2 i).1]
+      simp [finsetSum]
+    intro hi
+    simp [finsetSum] at hi
+    if M1 : i ∈ p1.subset then
+      if M2 : i ∈ p2.subset then
+        simp [M1, M2]
+        rw [(H1 i).2 M1, (H2 i).2 M2]
+      else
+        simp [M1, M2]
+        rw [(H1 i).2 M1]
+        simp [(H2 i).1] at M2
+        simp [M2]
+    else
+      if M2 : i ∈ p2.subset then
+        simp [M1, M2]
+        rw [(H2 i).2 M2]
+        simp [(H1 i).1] at M1
+        simp [M1]
+      else
+        simp [M1, M2] at hi
+
+
+lemma simpleCorrect_in {Assumptions : IndistinguishabilityAssumptions}
+  {κ : ℕ} {q_b : ENat}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  agreeWithSimpPair
+    (symbolicSoundnessBound ind)
+    (symbolicSoundnessBound2 ind) := by
+  induction ind
+  case assumption a =>
+    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
+    simp [AssumptionsUseT.empty]
+    intro i Hi
+    subst Hi
+    simp []
+  case obsEqB a b c d f =>
+    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
+    simp [noAssumptionUse, AssumptionsUseT.empty]
+  case complexInitReduction a b Hind =>
+    simp [agreeWithSimpPair, agreeWithSimp, symbolicSoundnessBound, symbolicSoundnessBound2]
+    constructor
+    · intro i
+      constructor
+      · apply (Hind.1 i).1
+      intro Hi
+      rw [(Hind.1 i).2]
+    · intro i
+      constructor
+      · apply (Hind.2 i).1
+      intro Hi
+      rw [(Hind.2 i).2]
+  case symm HInd =>
+    simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
+    constructor <;> simp [HInd.1, HInd.2]
+  case trans a b c d e f Hind1 Hind2 =>
+    simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
+    generalize symbolicSoundnessBound2 e = e2 at *
+    generalize symbolicSoundnessBound e = e1 at *
+    generalize symbolicSoundnessBound2 f = f2 at *
+    generalize symbolicSoundnessBound f = f1 at *
+    simp [transitive_step_val, transitive_step_val_simple]
+    constructor
+    · apply agree_trans
+      · apply Hind1.1
+      apply Hind2.1
+    · apply agree_trans
+      · apply Hind1.2
+      apply Hind2.2
+  case longSequence n q_b c d Hind =>
+    induction n
+    · simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2, agreeWithSimp]
+      simp [long_step_combinator, long_step_combinator_simple, long_step_combinator_simple_half
+        ]
+      constructor
+      · intro i
+        simp [noAssumptionUse, AssumptionsUseT.empty]
+      · intro i
+        simp [noAssumptionUse, AssumptionsUseT.empty]
+    case succ n Hn =>
+      simp [agreeWithSimpPair, symbolicSoundnessBound, symbolicSoundnessBound2]
+      simp [long_step_combinator, long_step_combinator_simple, long_step_combinator_simple_half
+        ]
+      simp [transitive_step_val, transitive_step_val_simple, long_step_combinator_simple_half]
+      simp [symbolicSoundnessBound2 , symbolicSoundnessBound] at Hn
+      constructor
+      · rw [long_step_combinator_simple_half_next]
+        apply agree_trans
+        · have X := Hn (fun j => c ⟨j, by
+            simp []
+            cases j
+            case mk a b =>
+              simp [] at b
+              simp [b]
+              exact Nat.le_add_right_of_le b
+            ⟩) (fun j Hj => d j
+              (Nat.lt_add_one_of_lt Hj
+              )) (fun j Hj => Hind j (Nat.lt_add_one_of_lt Hj))
+          have Y := X.1
+          simp at Y
+          apply Y
+        apply (Hind n _).1
+      · rw [long_step_combinator_simple_half_next]
+        apply agree_trans
+        · have X := Hn (fun j => c ⟨j, by
+            simp []
+            cases j
+            case mk a b =>
+              simp [] at b
+              simp [b]
+              exact Nat.le_add_right_of_le b
+            ⟩) (fun j Hj => d j
+              (Nat.lt_add_one_of_lt Hj
+              )) (fun j Hj => Hind j (Nat.lt_add_one_of_lt Hj))
+          have Y := X.2
+          simp at Y
+          apply Y
+        apply (Hind n _).2
 
 lemma simpleCorrect {Assumptions : IndistinguishabilityAssumptions}
   {κ : ℕ} {q_b : ENat}
@@ -485,7 +649,12 @@ lemma simpleCorrect {Assumptions : IndistinguishabilityAssumptions}
   AssumptionsUseTSimplePair2other (symbolicSoundnessBound2 ind) (finite_support ind) =
     symbolicSoundnessBound ind :=
 by
-  sorry
+  simp [AssumptionsUseTSimplePair2other]
+  congr
+  · apply agreeWithSimp_lemma
+    apply (simpleCorrect_in ind).1
+  · apply agreeWithSimp_lemma
+    apply (simpleCorrect_in ind).2
 
 noncomputable def symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
       {κ : ℕ} {q_b : ENat}
