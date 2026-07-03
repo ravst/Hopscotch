@@ -50,34 +50,26 @@ noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ �
     IndCpaR (schemeFam.scheme κ)
   ]
 
-noncomputable def proof_constants {K : ℕ → Type} {C : ℕ → ℕ → Type}
+
+/-- how to see bounds that we proved? The best way it to write
+"assumptionCounting (indCpaRandImpliesIndCpa schemeFam κ) = sorry"
+abd then to simplify as below. Do not simplify reduction names!
+Then replace sorry with resulting term. -/
+noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
-    :=
-    assumptionCounting_low (indCpaRandImpliesIndCpa schemeFam κ)
-
-lemma stupidBoundRewrite {I : Type}
-  {Assumptions : IndistinguishabilityAssumptions}
-  {O : OracleSpec I}
-  (x : AssumptionsUseT Assumptions O) :
-  x = {subset := x.subset, values := (fun t => x.values t)} :=
-    by simp
-
-
--- lemma empty_union (x : Finset X) [DecidableEq X] : x ∪ ∅ = x := by simp []
--- lemma union_empty (x : Finset X) [DecidableEq X] : ∅ ∪ x = x := by simp []
-
--- noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
---     (schemeFam : SymEncSchemeFamily K C)
---     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] (κ : ℕ)
---     : (proof_constants schemeFam κ).1.values = (fun x => sorry) := by
---   -- rw [stupidBoundRewrite (proof_constants schemeFam κ).1]
---   simp [indCpaRandImpliesIndCpa, proof_constants, IndCpaRandAssumption']
---   simp [transitive_step_val, assumptionJoiner, assumptionCounting_low,
---     sumJoiner, AssumptionsUseT.empty, finsetSum,
---     Indistinguishable.of_ObsEq, noAssumptionUse,
---     empty_union, union_empty
---   ]
---   funext x
---   simp [] at x
---   sorry
+    :
+    assumptionCounting (indCpaRandImpliesIndCpa schemeFam κ) =
+    (fun _x ↦
+      [rcompose
+        (OracleReduction.identity (IndCpaRandSpec (C κ)))
+        IndCpaRand_to_IndCpaL]
+    , fun _x ↦
+      [rcompose
+        (OracleReduction.identity (IndCpaRandSpec (C κ)))
+        IndCpaRand_to_IndCpaR]
+  ) := by
+  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumption', IndCpaRandAssumptionFull]
+  simp [transitive_step_val_simple, assumptionCounting,
+    Indistinguishable.of_ObsEq,
+  ]

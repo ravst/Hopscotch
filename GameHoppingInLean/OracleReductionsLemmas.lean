@@ -76,7 +76,7 @@ The combined state is `r2.stateType × r1.stateType`.  The initial state runs
 `r1`'s initialization, then `r2`'s initialization with its `O₂` queries answered
 by `r1`.  Each `O₃` query is answered by running `r2`'s query implementation with
 its `O₂` queries answered by `r1`. -/
-def ComplexInitReduction2_compose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+def rcompose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
     (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃) : OracleReduction O₁ O₃ where
   stateType := r2.stateType × r1.stateType
   initialState := r1.initialState >>= fun s1 =>
@@ -147,7 +147,7 @@ with `r2`'s queries first and then `combineImpl`. Proved by induction. -/
 lemma addPMF_compose_fusion {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
     (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
     (dist : OracleComp (withPMFSpec O₃) Output) :
-    simulateQ (addPMFtoImpl2 (ComplexInitReduction2_compose r1 r2).queries) dist
+    simulateQ (addPMFtoImpl2 (rcompose r1 r2).queries) dist
       = simulateQ (combineImpl r1 r2.stateType) (simulateQ (addPMFtoImpl2 r2.queries) dist) := by
   induction dist using OracleComp.inductionOn with
   | pure x => simp
@@ -156,7 +156,7 @@ lemma addPMF_compose_fusion {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I�
     | oracle i =>
         simp only [simulateQ_roll, simulateQ_bind, simulateQ_query, OracleQuery.cont_query,
           OracleQuery.input_query, id_map, addPMFtoImpl2]
-        rw [show (ComplexInitReduction2_compose r1 r2).queries i
+        rw [show (rcompose r1 r2).queries i
               = simulateQ (combineImpl r1 r2.stateType) (r2.queries i) from rfl]
         apply bind_congr; intro x; exact ih x
     | sample p =>
@@ -170,7 +170,7 @@ lemma astep_compose {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O�
     (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
     (dist : OracleComp (withPMFSpec O₃) Output) (s2 : r2.stateType) (s1 : r1.stateType) :
     simulateQ defaultImpl
-        (simulateQ (addPMFtoImpl2 (ComplexInitReduction2_compose r1 r2).queries) dist) (s2, s1)
+        (simulateQ (addPMFtoImpl2 (rcompose r1 r2).queries) dist) (s2, s1)
       = (fun w => (w.1.1, (w.1.2, w.2))) <$>
           simulateQ defaultImpl (simulateQ (addPMFtoImpl2 r1.queries)
             (simulateQ defaultImpl (simulateQ (addPMFtoImpl2 r2.queries) dist) s2)) s1 := by
@@ -180,14 +180,14 @@ lemma astep_compose {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O�
 set_option maxHeartbeats 1000000 in -- monad-homomorphism rewriting over the reduction state
 /-- Applying the composed reduction to an adversary computation equals applying
 `r2` and then `r1`. -/
-lemma ComplexInitReduction2_compose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
+lemma rcompose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂} {O₃ : OracleSpec I₃}
     (r1 : OracleReduction O₁ O₂) (r2 : OracleReduction O₂ O₃)
     (dist : OracleComp (withPMFSpec O₃) Output) :
-    applyReductionToAdversary (ComplexInitReduction2_compose r1 r2) dist =
+    applyReductionToAdversary (rcompose r1 r2) dist =
     applyReductionToAdversary r1 (applyReductionToAdversary r2 dist)
        := by
   simp only [applyReductionToAdversary]
-  conv_lhs => rw [show (ComplexInitReduction2_compose r1 r2).initialState
+  conv_lhs => rw [show (rcompose r1 r2).initialState
       = r1.initialState >>= fun s1 =>
           simulateQ defaultImpl (simulateQ (addPMFtoImpl2 r1.queries) r2.initialState) s1 from rfl]
   simp only [bind_assoc, Functor.mapRev, simulateQ_bind, simulateQ_map, statefulOracleComp_bind,

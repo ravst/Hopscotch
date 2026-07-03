@@ -796,25 +796,25 @@ lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
   (l : {x : List (OracleReduction O1 O2) // x.length > 0})
   (impl : RStateOracle O1) (dist : adversaryT O3) :
   runDinstinguisher dist
-    ((ComplexInitReduction2_compose (reduction_combiner_list_full l) r1).apply impl) =
+    ((rcompose (reduction_combiner_list_full l) r1).apply impl) =
   runDinstinguisher dist
-    ((reduction_combiner_list_full ⟨l.val.map (fun x => ComplexInitReduction2_compose x r1),
+    ((reduction_combiner_list_full ⟨l.val.map (fun x => rcompose x r1),
       by simp [l.2]
     ⟩).apply impl)
  :=
   by
     have He : forall i, Nonempty (O1 i) := non_trivial_spec impl
     simp only [reduction_combiner_list_full, dif_pos He]
-    rw [goodDoubleAction, goodDoubleAction, ComplexInitReduction2_compose_apply]
+    rw [goodDoubleAction, goodDoubleAction, rcompose_apply]
     rw [combiner_apply_uniform l.val l.2 He, combiner_apply_uniform _ _ He]
     rw [runDinstinguisher_initSample, runDinstinguisher_initSample]
-    have hmap : (l.val.map (fun x => ComplexInitReduction2_compose x r1)).length = l.val.length := by
+    have hmap : (l.val.map (fun x => rcompose x r1)).length = l.val.length := by
       simp
     haveI : Nonempty (Fin l.val.length) := ⟨⟨0, l.2⟩⟩
     erw [uniform_reindex (finCongr hmap).symm]
     congr 1
     funext a
-    have hget : (List.map (fun x => ComplexInitReduction2_compose x r1) l.val)[(finCongr hmap).symm a]
-        = ComplexInitReduction2_compose (l.val[a]) r1 := by
+    have hget : (List.map (fun x => rcompose x r1) l.val)[(finCongr hmap).symm a]
+        = rcompose (l.val[a]) r1 := by
       simp [List.getElem_map]
-    rw [hget, ComplexInitReduction2_compose_apply]
+    rw [hget, rcompose_apply]

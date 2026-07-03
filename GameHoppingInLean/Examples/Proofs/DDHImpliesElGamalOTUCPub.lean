@@ -6,6 +6,8 @@ import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.IndistinguishabilityTactics
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.Group.Simprocs
+import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
+
 
 open OracleReduction
 
@@ -231,3 +233,24 @@ noncomputable def ddhImpliesElGamalOTUCPubFam (Γ : GroupGeneratorFamily) :
   · by_rand_abstraction ← (G4toG3Abstraction g)
   · by_abstraction (fun x => ⟨x.A, x.eavesdropDone⟩)
     simp [GH_group_random_exp, GH_group_norm]
+
+
+
+/-- how to see bounds that we proved? The best way it to write
+"assumptionCounting (indCpaRandImpliesIndCpa schemeFam κ) = sorry"
+abd then to simplify as below. Do not simplify reduction names!
+Then replace sorry with resulting term. -/
+noncomputable def DDH_proof_constants_simp (Γ : GroupGeneratorFamily) (κ : ℕ)
+    :
+    assumptionCounting (ddhImpliesElGamalOTUCPubFam Γ κ) =
+     (fun _x ↦
+      [rcompose
+        (identity (DecisionalDHAssumptionFull (Γ.gen κ)).O)
+        (DDHToElGamalOTUCPubReduction (Γ.G κ))]
+    , fun _x ↦
+      []
+    ) := by
+  simp [ddhImpliesElGamalOTUCPubFam, DecisionalDHAssumptionFam, DecisionalDHAssumption']
+  simp [transitive_step_val_simple, assumptionCounting,
+    Indistinguishable.of_ObsEq, List.map
+  ]

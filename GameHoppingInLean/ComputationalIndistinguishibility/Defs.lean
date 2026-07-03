@@ -39,7 +39,7 @@ import GameHoppingInLean.IndistinguishabilityTactics
 --   let tl := (List.ofFn (fun i => introReduction O1 O2 (l i)))
 --   reduction_combiner_list_full tl (by
 --     simp [List.length_map, tl, Hn])
--- | @AssumptionUse.Reduction I1 O1 I2 O2 I3 O3 r x => ComplexInitReduction2_compose (introReduction O1 O2 x) r
+-- | @AssumptionUse.Reduction I1 O1 I2 O2 I3 O3 r x => rcompose (introReduction O1 O2 x) r
 
 
 
@@ -329,7 +329,7 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
       apply Or.inl
       apply adv_from_bobseq
       intro impl
-      rw [<-ComplexInitReduction2_compose_apply]
+      rw [<-rcompose_apply]
       rw [<-goodDoubleAction]
       rw [<-goodDoubleAction]
       simp [compose_combine]
@@ -339,7 +339,7 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
       apply Or.inl
       apply adv_from_bobseq
       intro impl
-      rw [<-ComplexInitReduction2_compose_apply]
+      rw [<-rcompose_apply]
       rw [<-goodDoubleAction]
       rw [<-goodDoubleAction]
       simp [compose_combine]

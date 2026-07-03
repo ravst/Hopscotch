@@ -87,8 +87,8 @@ noncomputable def assumptionCounting {Assumptions : IndistinguishabilityAssumpti
 | @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
     let asc := assumptionCounting ind
     (
-      (fun x => (asc.1 x).map (fun x => ComplexInitReduction2_compose x r)),
-      (fun x => (asc.2 x).map (fun x => ComplexInitReduction2_compose x r)),
+      (fun x => (asc.1 x).map (fun x => rcompose x r)),
+      (fun x => (asc.2 x).map (fun x => rcompose x r)),
     )
 | IndistinguishableI.symm q_b ind  =>
     let re := assumptionCounting ind
@@ -172,12 +172,12 @@ noncomputable def assumptionCounting_low {Assumptions : IndistinguishabilityAssu
     exact
       ({
         subset := asc.1.subset
-        values := fun x => ⟨(asc.1.values x).1.map (fun x => ComplexInitReduction2_compose x r), by
+        values := fun x => ⟨(asc.1.values x).1.map (fun x => rcompose x r), by
         simp [(asc.1.values x).2]⟩
       },
       {
         subset := asc.2.subset
-        values := fun x => ⟨(asc.2.values x).1.map (fun x => ComplexInitReduction2_compose x r), by
+        values := fun x => ⟨(asc.2.values x).1.map (fun x => rcompose x r), by
         simp [(asc.2.values x).2]⟩
       })
 | IndistinguishableI.symm q_b ind  =>
@@ -189,7 +189,7 @@ noncomputable def assumptionCounting_low {Assumptions : IndistinguishabilityAssu
   long_step_combinator a
     (fun j Hq => assumptionCounting_low (Hseq j Hq))
 
--- below we prove that these two function are eqivalent:
+-- below we prove that these two function are equivalent:
 
 lemma assumptionCounting_finite {Assumptions : IndistinguishabilityAssumptions}
   {κ : ℕ} {q_b : ENat}
