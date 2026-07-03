@@ -108,6 +108,6 @@ def OneTimeSecrecyIFam
     {PubK SecK M C : ℕ → Type} [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (OneTimeSecrecyL (schemeFam.scheme κ))
       (OneTimeSecrecyR (schemeFam.scheme κ))

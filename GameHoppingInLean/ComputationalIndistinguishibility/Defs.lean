@@ -211,14 +211,14 @@ noncomputable def transitive_step_proof
 
 
 -- def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
---       {κ : ℕ} {q_b : ENat}
+--       {q_b : ENat}
 --       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
---       (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) -> ℕ
+--       (ind : IndistinguishableI Assumptions q_b O o₁ o₂) -> ℕ
 -- | IndistinguishableI.assumption idx =>
 --   0
 -- | IndistinguishableI.obsEqB a b =>
 --   0
--- | @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
+-- | @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
 --   1 + lengthOfIndI ind
 -- | IndistinguishableI.symm q_b ind  =>
 --   1 + lengthOfIndI ind
@@ -287,9 +287,9 @@ lemma long_Step_proof_induction
 
 
 lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
-      {κ : ℕ} {q_b : ENat}
+      {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
+      (ind : IndistinguishableI Assumptions q_b O o₁ o₂) ->
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCounting_low ind)
 | IndistinguishableI.assumption idx =>
   by
@@ -314,7 +314,7 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
   by
     simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind => by
+| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind => by
     let Hasc := symbolicSoundness_internal ind
     simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist
@@ -369,9 +369,9 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
   exact lt_add_one a
 
 lemma symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
-      {κ : ℕ} {q_b : ENat}
+      {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+      (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCountLower (assumptionCountingFin ind)) :=
 by
   rw [simpleCorrect]

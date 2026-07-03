@@ -62,5 +62,5 @@ def SecurePRGIFam
     (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
     {k l : ℕ → ℕ} (prgFam : PRGFamily k l) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (PRG_real (prgFam.prg κ)) (PRG_rand (k κ) (l κ))

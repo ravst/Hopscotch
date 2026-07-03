@@ -93,6 +93,6 @@ def IndCpaRandPubIFam
     {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (IndCpaRandPubReal (schemeFam.scheme κ))
       (IndCpaRandPubRand (schemeFam.scheme κ))

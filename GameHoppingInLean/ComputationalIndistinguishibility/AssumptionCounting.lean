@@ -72,9 +72,9 @@ noncomputable def long_step_combinator_simple {O : OracleSpec I}
   )
 
 noncomputable def assumptionCounting {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) ->
   AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
 | IndistinguishableI.assumption idx =>
   (
@@ -84,7 +84,7 @@ noncomputable def assumptionCounting {Assumptions : IndistinguishabilityAssumpti
   , fun _ => [])
 | IndistinguishableI.obsEqB a b =>
   (fun _ => [], fun _ => [])
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind =>
+| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
     let asc := assumptionCounting ind
     (
       (fun x => (asc.1 x).map (fun x => rcompose x r)),
@@ -151,9 +151,9 @@ noncomputable def long_step_combinator {O : OracleSpec I}
 
 
 noncomputable def assumptionCounting_low {Assumptions : IndistinguishabilityAssumptions}
-      {κ : ℕ} {q_b : ENat}
+      {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
-      (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) ->
+      (ind : IndistinguishableI Assumptions q_b O o₁ o₂) ->
       AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
 | IndistinguishableI.assumption idx =>
   (
@@ -167,7 +167,7 @@ noncomputable def assumptionCounting_low {Assumptions : IndistinguishabilityAssu
     }, AssumptionsUseT.empty _ _)
 | IndistinguishableI.obsEqB a b =>
   noAssumptionUse
-| @IndistinguishableI.complexInitReduction Assumptions κ I1 I2 O1 O2 r ro1 o₁ b ind => by
+| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind => by
     let asc := assumptionCounting_low ind
     exact
       ({
@@ -192,9 +192,9 @@ noncomputable def assumptionCounting_low {Assumptions : IndistinguishabilityAssu
 -- below we prove that these two function are equivalent:
 
 lemma assumptionCounting_finite {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
   {x | (assumptionCounting ind).1 x ≠ []}.Finite ∧
   {x | (assumptionCounting ind).2 x ≠ []}.Finite := by
   induction ind with
@@ -269,16 +269,16 @@ abbrev assumptionCountType (Assumptions : IndistinguishabilityAssumptions)
 
 
 noncomputable def assumptionCountingFin {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
   assumptionCountType Assumptions O :=
   ⟨assumptionCounting ind, assumptionCounting_finite ind⟩
 
 noncomputable def finite_support {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
   let ret := assumptionCounting ind
   Fintype {x | ret.1 x ≠ []} ×
   Fintype {x | ret.2 x ≠ []} :=
@@ -376,9 +376,9 @@ theorem agree_trans {Assumptions : IndistinguishabilityAssumptions} {I : Type} {
 
 
 lemma simpleCorrect_in {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
   agreeWithSimpPair
     (assumptionCounting_low ind)
     (assumptionCounting ind) := by
@@ -473,9 +473,9 @@ lemma simpleCorrect_in {Assumptions : IndistinguishabilityAssumptions}
         apply (Hind n _).2
 
 lemma simpleCorrect {Assumptions : IndistinguishabilityAssumptions}
-  {κ : ℕ} {q_b : ENat}
+  {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
-  (ind : IndistinguishableI Assumptions κ q_b O o₁ o₂) :
+  (ind : IndistinguishableI Assumptions q_b O o₁ o₂) :
   assumptionCountLower (assumptionCountingFin ind) =
     assumptionCounting_low ind :=
 by

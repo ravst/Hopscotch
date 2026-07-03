@@ -75,5 +75,5 @@ def DecisionalDHIFam
     letI := Γ.group κ
     letI := Γ.fintype κ
     letI := Γ.nontrivial κ
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (dhReal (Γ.gen κ)) (dhRand (Γ.gen κ))

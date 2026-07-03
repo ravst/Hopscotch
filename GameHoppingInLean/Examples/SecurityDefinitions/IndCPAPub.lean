@@ -97,7 +97,7 @@ def IndCpaPubIFam
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (IndCpaPubL (schemeFam.scheme κ))
       (IndCpaPubR (schemeFam.scheme κ))
 
@@ -105,6 +105,6 @@ def IndCpaPubBoundedIFam
     (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
-  ∀ κ, ∀ (b : ℕ), IndistinguishableI (Assumptions κ) κ b _
+  ∀ κ, ∀ (b : ℕ), IndistinguishableI (Assumptions κ) b _
       (IndCpaPubL (schemeFam.scheme κ))
       (IndCpaPubR (schemeFam.scheme κ))

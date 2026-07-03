@@ -67,7 +67,6 @@ noncomputable def indistinguishable_PRF_ideal_PRF_ideal2 (X Y : Type)
     [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y] :
     Indistinguishable IndistinguishabilityAssumptions.empty
       (PRF_ideal X Y) (PRF_ideal2 X Y) := by
-  intro κ
   exact Indistinguishable.of_ObsEq (obsEq_PRF_ideal_PRF_ideal2 X Y)
 
 

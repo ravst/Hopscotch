@@ -15,10 +15,10 @@ open scoped OracleReduction
 /-- Any indistinguishability that holds under the empty assumption set holds under
 any assumption set. -/
 noncomputable def liftEmptyAssumptions
-    {Assumptions : IndistinguishabilityAssumptions} {κ : ℕ}
+    {Assumptions : IndistinguishabilityAssumptions}
     {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
-    (h : IndistinguishableI IndistinguishabilityAssumptions.empty κ q_b O ro₁ ro₂) :
-    IndistinguishableI Assumptions κ q_b O ro₁ ro₂ := by
+    (h : IndistinguishableI IndistinguishabilityAssumptions.empty q_b O ro₁ ro₂) :
+    IndistinguishableI Assumptions q_b O ro₁ ro₂ := by
   induction h with
   | assumption i => exact i.elim
   | obsEqB q hObs => exact IndistinguishableI.obsEqB q hObs
@@ -208,7 +208,6 @@ noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
     Indistinguishable IndistinguishabilityAssumptions.empty
       (GGMHybrid prg i)
       (GGMHybrid2 prg i) := by
-  intro κ
   game_hopping [
     GGMHybrid prg i,
     (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
@@ -216,7 +215,7 @@ noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
     GGMHybrid2 prg i]
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid_reduction_rf prg i)
   · exact IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i) none
-      (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.1) (BitVec k) κ)
+      (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.1) (BitVec k))
   · exact Indistinguishable.symmetric
       (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i))
 
@@ -798,9 +797,8 @@ the stateful reduction that embeds the depth-`i+1` random function into the oute
 game. -/
 noncomputable def indistinguishableI_GGMHybrid2_Vs_3
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
-    (κ : ℕ)
     :
-    IndistinguishableI IndistinguishabilityAssumptions.empty κ none
+    IndistinguishableI IndistinguishabilityAssumptions.empty none
       (SecurePRFSpec (BitVec n) (BitVec k))
       (GGMHybrid2 prg i.succ)
       (GGMHybrid3 prg i) := by
@@ -817,7 +815,7 @@ noncomputable def indistinguishableI_GGMHybrid2_Vs_3
   · refine IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none ?_
     exact IndistinguishableI.trans _ none
       (Indistinguishable.symmetric
-        (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.succ.1) (BitVec k) κ))
+        (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.succ.1) (BitVec k)))
       (Indistinguishable.of_ObsEq
         (obsEq_PRF_ideal_PRF_ideal_cache_pair (BitVec i.succ.1) (BitVec k)
           (GGMHybrid2_Vs_3_batch i) (GGMHybrid2_Vs_3_batch_self i)))
@@ -913,7 +911,6 @@ noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
     Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid2 prg i.castSucc)
       (GGMHybrid2 prg i.succ) := by
-  intro κ
   game_hopping [
     GGMHybrid2 prg i.castSucc,
     (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
@@ -925,7 +922,7 @@ noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
   · exact Indistinguishable.symmetric
       (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_applyStepReduction_real prg i))
   · exact Indistinguishable.symmetric
-      (liftEmptyAssumptions (indistinguishableI_GGMHybrid2_Vs_3 prg i κ))
+      (liftEmptyAssumptions (indistinguishableI_GGMHybrid2_Vs_3 prg i))
 
 /-- One GGM hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
@@ -933,16 +930,15 @@ noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
     Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid prg i.castSucc)
       (GGMHybrid prg i.succ) := by
-  intro κ
   game_hopping [
     GGMHybrid prg i.castSucc,
     GGMHybrid2 prg i.castSucc,
     GGMHybrid2 prg i.succ,
     GGMHybrid prg i.succ]
-  · exact liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.castSucc κ)
-  · exact GGMHybrid2_step_indistinguishable_of_securePRG prg i κ
+  · exact liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.castSucc)
+  · exact GGMHybrid2_step_indistinguishable_of_securePRG prg i
   · exact Indistinguishable.symmetric
-      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.succ κ))
+      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.succ))
 
 /-- All GGM hybrids are indistinguishable assuming the length-doubling PRG is secure. -/
 noncomputable def GGMHybrids_indistinguishable_of_securePRG
@@ -950,7 +946,6 @@ noncomputable def GGMHybrids_indistinguishable_of_securePRG
     Indistinguishable (SecurePRGAssumption' prg)
       (GGMHybrid prg 0)
       (GGMHybrid prg (Fin.last n)) := by
-  intro κ
   refine Indistinguishable.long_step n
     (fun j => GGMHybrid prg ⟨j.1, ?_⟩)
     (GGMHybrid prg 0)
@@ -961,20 +956,19 @@ noncomputable def GGMHybrids_indistinguishable_of_securePRG
   · exact Finset.mem_range.mp j.2
   · intro i hi
     simp [ro_seq_fixed]
-    exact GGMHybrid_step_indistinguishable_of_securePRG prg ⟨i, hi⟩ κ
+    exact GGMHybrid_step_indistinguishable_of_securePRG prg ⟨i, hi⟩
 
 /-- GGM is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def secureGGM_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) :
     SecurePRFDef (SecurePRGAssumption' prg) (GGM prg n) := by
-  intro κ
   game_hopping [
     PRF_real (GGM prg n),
     GGMHybrid prg 0,
     GGMHybrid prg (Fin.last n),
     PRF_ideal (BitVec n) (BitVec k)]
   · exact Indistinguishable.of_ObsEq (obsEq_real_GGMHybrid_zero prg)
-  · exact GGMHybrids_indistinguishable_of_securePRG prg κ
+  · exact GGMHybrids_indistinguishable_of_securePRG prg
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid_last_ideal prg)
 
 end

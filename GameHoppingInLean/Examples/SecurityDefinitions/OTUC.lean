@@ -71,5 +71,5 @@ def OTUCIFam
     {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (OTUC_Real (schemeFam.scheme κ)) (OTUC_Rand (schemeFam.scheme κ))

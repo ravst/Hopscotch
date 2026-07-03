@@ -101,5 +101,5 @@ def MACUFIFam
     {K Tag : ℕ → Type} [∀ κ, DecidableEq (Tag κ)]
     (schemeFam : MACSchemeFamily K Tag) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (MACUFReal (schemeFam.scheme κ)) (MACUFIdeal (schemeFam.scheme κ))

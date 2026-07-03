@@ -63,5 +63,5 @@ def IndCpaIFam
     (Assumptions : (κ : ℕ) -> IndistinguishabilityAssumptions)
     {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
   forall κ,
-  IndistinguishableI (Assumptions κ) κ none _
+  IndistinguishableI (Assumptions κ) none _
     (IndCpaL (schemeFam.scheme κ)) (IndCpaR (schemeFam.scheme κ))

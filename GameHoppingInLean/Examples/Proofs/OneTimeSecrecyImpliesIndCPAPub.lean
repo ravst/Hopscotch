@@ -68,7 +68,6 @@ def OTSHybridsIndistinguishable {PubK SecK M C : Type} [Inhabited C]
      :
     Indistinguishable (OneTimeSecrecyAssumption' scheme)
     (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) := by
-    intro κ
     refine (Indistinguishable.long_step i (fun j => OTSToIndCpaHybrid scheme j) (OTSToIndCpaHybrid scheme 0) (OTSToIndCpaHybrid scheme i) (by rfl) (by rfl) ?_)
     intro i hi
     game_hopping [

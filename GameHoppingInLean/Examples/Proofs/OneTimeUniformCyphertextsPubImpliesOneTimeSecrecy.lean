@@ -35,7 +35,6 @@ noncomputable def otucPubImpliesOTS
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C)
     : OneTimeSecrecyDef (OneTimeUniformCyphertextsPubAssumption' scheme) scheme := by
-  intro κ
   game_hopping [
     (OneTimeSecrecyL scheme),
     OTUCPubToOTSL ◇ (OneTimeUniformCyphertextsPubReal scheme),

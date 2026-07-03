@@ -118,6 +118,6 @@ def OneTimeUniformCyphertextsPubIFam
     {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,
-    IndistinguishableI (Assumptions κ) κ none _
+    IndistinguishableI (Assumptions κ) none _
       (OneTimeUniformCyphertextsPubReal (schemeFam.scheme κ))
       (OneTimeUniformCyphertextsPubRand (schemeFam.scheme κ))
