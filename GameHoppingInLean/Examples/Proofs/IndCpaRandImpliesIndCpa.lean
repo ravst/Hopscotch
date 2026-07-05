@@ -70,7 +70,7 @@ noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → T
         (OracleReduction.identity (IndCpaRandSpec (C κ)))
         IndCpaRand_to_IndCpaR]
   ) := by
-  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumptionFam, IndCpaRandAssumptionFull]
+  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumptionFam, IndCpaRandSingleAssumption]
   simp [transitive_step_val_simple, assumptionCounting,
     Indistinguishable.of_ObsEq,
   ]
