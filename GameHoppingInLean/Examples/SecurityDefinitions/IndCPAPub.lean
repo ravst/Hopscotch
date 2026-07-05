@@ -68,8 +68,6 @@ noncomputable def IndCpaPubAssumption {PubK SecK M C : Type}
 noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
     SingleAssumption where
-  I := IndCpaPubQ M
-  O := IndCpaPubSpec PubK M C
   i := IndCpaPubAssumption scheme
 
 noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}

@@ -78,8 +78,6 @@ noncomputable def OneTimeSecrecyAssumption {PubK SecK M C : Type}
 noncomputable def OneTimeSecrecyAssumptionFull {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
   SingleAssumption where
-  I := IndCpaPubQ M
-  O := OneTimeSecrecySpec PubK M C
   i := OneTimeSecrecyAssumption scheme
 
 noncomputable def OneTimeSecrecyAssumption' {PubK SecK M C : Type}

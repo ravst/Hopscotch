@@ -89,7 +89,7 @@ noncomputable def IndCcaAssumption {K : Type} {C : ℕ → Type} [∀ n, Decidab
 
 noncomputable def IndCcaAssumptionFull {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
     (scheme : SymEncScheme K C) : SingleAssumption :=
-  ⟨IndCcaQ C, IndCcaSpec C, IndCcaAssumption scheme⟩
+  { i := IndCcaAssumption scheme }
 
 noncomputable def IndCcaAssumption' {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
     (scheme : SymEncScheme K C) : IndAssumptions where

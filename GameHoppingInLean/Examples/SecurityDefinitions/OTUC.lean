@@ -42,7 +42,7 @@ noncomputable def OTUCAssumption {K : Type} {C : ℕ → Type}
 noncomputable def OTUCAssumptionFull {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
     SingleAssumption :=
-  ⟨OTUCDomain, OTUCSpec C, OTUCAssumption scheme⟩
+  { i := OTUCAssumption scheme }
 
 noncomputable def OTUCAssumption' {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :

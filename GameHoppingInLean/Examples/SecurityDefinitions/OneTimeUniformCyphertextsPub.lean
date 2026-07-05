@@ -87,8 +87,6 @@ noncomputable def OneTimeUniformCyphertextsPubAssumption {PubK SecK M C : Type}
 noncomputable def OneTimeUniformCyphertextsPubAssumptionFull {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
     SingleAssumption where
-  I := OneTimeUniformCyphertextsPubQ M
-  O := OneTimeUniformCyphertextsPubSpec PubK M C
   i := OneTimeUniformCyphertextsPubAssumption scheme
 
 noncomputable def OneTimeUniformCyphertextsPubAssumption' {PubK SecK M C : Type}

@@ -7,8 +7,8 @@ import GameHoppingInLean.OracleReductions
 and a pair of oracles of that specifications, which we assume to be indistinguishable.
 -/
 structure SingleAssumption where
-  I : Type
-  O : OracleSpec I
+  {I : Type}
+  {O : OracleSpec I}
   i : RStateOracle O × RStateOracle O
 
 def SingleAssumption.reverse (x : SingleAssumption) : SingleAssumption :=

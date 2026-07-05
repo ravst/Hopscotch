@@ -61,8 +61,6 @@ noncomputable def IndCpaRandPubAssumption {PubK SecK M C : Type}
 noncomputable def IndCpaRandPubAssumptionFull {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
     SingleAssumption where
-  I := OneTimeUniformCyphertextsPubQ M
-  O := IndCpaRandPubSpec PubK M C
   i := IndCpaRandPubAssumption scheme
 
 noncomputable def IndCpaRandPubAssumption' {PubK SecK M C : Type}

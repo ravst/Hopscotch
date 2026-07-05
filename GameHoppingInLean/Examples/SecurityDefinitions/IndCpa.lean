@@ -42,7 +42,7 @@ noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEn
 
 noncomputable def IndCpaAssumptionFull {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
     SingleAssumption :=
-  ⟨IndCpaDomain, IndCpaSpec C, IndCpaAssumption scheme⟩
+  { i := IndCpaAssumption scheme }
 
 noncomputable def IndCpaAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C) : IndAssumptionsFam :=

@@ -74,7 +74,7 @@ noncomputable def MACUFAssumption {K Tag : Type} [DecidableEq Tag] (scheme : MAC
 
 noncomputable def MACUFAssumptionFull {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
     SingleAssumption :=
-  ⟨MACUFQ Tag, MACUFSpec Tag, MACUFAssumption scheme⟩
+  { i := MACUFAssumption scheme }
 
 noncomputable def MACUFAssumption' {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
     IndAssumptions where

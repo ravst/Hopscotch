@@ -46,7 +46,7 @@ noncomputable def DecisionalDHAssumption {G : Type}
 noncomputable def DecisionalDHAssumptionFull {G : Type}
     [Group G] [Fintype G] [Nontrivial G] (g : G) :
     SingleAssumption :=
-  ⟨DecisionalDHQ, DecisionalDHSpec G, DecisionalDHAssumption g⟩
+  { i := DecisionalDHAssumption g }
 
 noncomputable def DecisionalDHAssumption' {G : Type}
     [Group G] [Fintype G] [Nontrivial G] (g : G) :

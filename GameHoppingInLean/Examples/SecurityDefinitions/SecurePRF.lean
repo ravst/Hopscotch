@@ -48,7 +48,7 @@ noncomputable def SecurePRFAssumption {K X Y : Type}
 noncomputable def SecurePRFAssumptionFull {K X Y : Type}
     [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) :
     SingleAssumption :=
-  ⟨X, SecurePRFSpec X Y, SecurePRFAssumption prf⟩
+  { i := SecurePRFAssumption prf }
 
 noncomputable def SecurePRFAssumption' {K X Y : Type}
     [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) :

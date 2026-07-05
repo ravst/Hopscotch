@@ -38,7 +38,7 @@ noncomputable def SecurePRGAssumption {k l : ℕ} (prg : PRG k l) :
 
 noncomputable def SecurePRGAssumptionFull {k l : ℕ} (prg : PRG k l) :
     SingleAssumption :=
-  ⟨Unit, SecurePRGSpec k l, SecurePRGAssumption prg⟩
+  { i := SecurePRGAssumption prg }
 
 noncomputable def SecurePRGAssumption' {k l : ℕ} (prg : PRG k l) :
     IndAssumptions where
