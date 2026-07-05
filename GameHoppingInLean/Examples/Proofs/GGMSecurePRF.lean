@@ -15,9 +15,9 @@ open scoped OracleReduction
 /-- Any indistinguishability that holds under the empty assumption set holds under
 any assumption set. -/
 noncomputable def liftEmptyAssumptions
-    {Assumptions : IndistinguishabilityAssumptions}
+    {Assumptions : IndAssumptions}
     {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
-    (h : IndistinguishableI IndistinguishabilityAssumptions.empty q_b ro₁ ro₂) :
+    (h : IndistinguishableI IndAssumptions.empty q_b ro₁ ro₂) :
     IndistinguishableI Assumptions q_b ro₁ ro₂ := by
   induction h with
   | assumption i => exact i.elim
@@ -205,7 +205,7 @@ theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
 /-- Replacing the embedded PRG call with uniform randomness advances the hybrid by one level. -/
 noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
-    Indistinguishable IndistinguishabilityAssumptions.empty
+    IndistinguishableSingle IndAssumptions.empty
       (GGMHybrid prg i)
       (GGMHybrid2 prg i) := by
   game_hopping [
@@ -798,7 +798,7 @@ game. -/
 noncomputable def indistinguishableI_GGMHybrid2_Vs_3
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
     :
-    IndistinguishableI IndistinguishabilityAssumptions.empty none
+    IndistinguishableI IndAssumptions.empty none
       (GGMHybrid2 prg i.succ)
       (GGMHybrid3 prg i) := by
   game_hopping [
@@ -907,7 +907,7 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
 /-- One hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
-    Indistinguishable (SecurePRGAssumption' prg)
+    IndistinguishableSingle (SecurePRGAssumption' prg)
       (GGMHybrid2 prg i.castSucc)
       (GGMHybrid2 prg i.succ) := by
   game_hopping [
@@ -926,7 +926,7 @@ noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
 /-- One GGM hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
-    Indistinguishable (SecurePRGAssumption' prg)
+    IndistinguishableSingle (SecurePRGAssumption' prg)
       (GGMHybrid prg i.castSucc)
       (GGMHybrid prg i.succ) := by
   game_hopping [
@@ -942,7 +942,7 @@ noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
 /-- All GGM hybrids are indistinguishable assuming the length-doubling PRG is secure. -/
 noncomputable def GGMHybrids_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) :
-    Indistinguishable (SecurePRGAssumption' prg)
+    IndistinguishableSingle (SecurePRGAssumption' prg)
       (GGMHybrid prg 0)
       (GGMHybrid prg (Fin.last n)) := by
   refine Indistinguishable.long_step n

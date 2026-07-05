@@ -67,7 +67,7 @@ noncomputable def IndCpaRandPubAssumptionFull {PubK SecK M C : Type}
 
 noncomputable def IndCpaRandPubAssumption' {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    IndistinguishabilityAssumptions where
+    IndAssumptions where
   Idx := Unit
   assumptions := fun _ => IndCpaRandPubAssumptionFull scheme
 
@@ -75,21 +75,21 @@ noncomputable def IndCpaRandPubAssumptionFam
     {PubK SecK M C : ℕ → Type}
     [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
-    IndistinguishabilityAssumptions :=
+    IndAssumptions :=
   IndCpaRandPubAssumption' (schemeFam.scheme κ)
 
 /-- Public-key IND-CPA-rand security definition as an instance of
 `Indistinguishable`. -/
 def IndCpaRandPubDef
-    (Assumptions : IndistinguishabilityAssumptions)
+    (Assumptions : IndAssumptions)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
-  Indistinguishable Assumptions
+  IndistinguishableSingle Assumptions
     (IndCpaRandPubReal scheme)
     (IndCpaRandPubRand scheme)
 
 def IndCpaRandPubIFam
-    (Assumptions : (κ : ℕ) → IndistinguishabilityAssumptions)
+    (Assumptions : (κ : ℕ) → IndAssumptions)
     {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,

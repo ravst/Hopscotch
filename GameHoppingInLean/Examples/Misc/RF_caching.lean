@@ -65,7 +65,7 @@ theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
 /-- Lift the cached random-function equivalence to indistinguishability. -/
 noncomputable def indistinguishable_PRF_ideal_PRF_ideal2 (X Y : Type)
     [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y] :
-    Indistinguishable IndistinguishabilityAssumptions.empty
+    IndistinguishableSingle IndAssumptions.empty
       (PRF_ideal X Y) (PRF_ideal2 X Y) := by
   exact Indistinguishable.of_ObsEq (obsEq_PRF_ideal_PRF_ideal2 X Y)
 

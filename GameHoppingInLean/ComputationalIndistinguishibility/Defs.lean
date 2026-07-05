@@ -44,7 +44,7 @@ import GameHoppingInLean.IndistinguishabilityTactics
 
 
 
-def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+def advBound (Assumptions : IndAssumptions) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   (distinguisher : adversaryT O)
@@ -56,7 +56,7 @@ def advBound (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
     - ∑ j : { x // x ∈ asc.2.subset },
        ascToReal distinguisher ((Assumptions.assumptions j)) (combine_red (asc.2.values j))
 
-def advBoundQ (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
+def advBoundQ (Assumptions : IndAssumptions) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   : Prop :=
@@ -65,7 +65,7 @@ def advBoundQ (Assumptions : IndistinguishabilityAssumptions) (q_b : ENat)
 
 
 noncomputable def obse_eq_step2
-  {Assumptions : IndistinguishabilityAssumptions}
+  {Assumptions : IndAssumptions}
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : RStateOracle O)
   (Hb : ObsEqBounded o₁ o₂ a)
@@ -78,7 +78,7 @@ noncomputable def obse_eq_step2
 
 
 noncomputable def obse_eq_step
-  {Assumptions : IndistinguishabilityAssumptions}
+  {Assumptions : IndAssumptions}
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : RStateOracle O)
   (Hb : ObsEqBounded o₁ o₂ a)
@@ -163,7 +163,7 @@ def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1
 
 
 noncomputable def transitive_step_proof
-  {Assumptions : IndistinguishabilityAssumptions}
+  {Assumptions : IndAssumptions}
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
   {o₁ o₂ : RStateOracle O} (rm : RStateOracle O)
   (asc1 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -210,7 +210,7 @@ noncomputable def transitive_step_proof
 --   exact Nat.le_of_succ_le H
 
 
--- def lengthOfIndI {Assumptions : IndistinguishabilityAssumptions}
+-- def lengthOfIndI {Assumptions : IndAssumptions}
 --       {q_b : ENat}
 --       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
 --       (ind : IndistinguishableI Assumptions q_b o₁ o₂) -> ℕ
@@ -254,7 +254,7 @@ noncomputable def transitive_step_proof
 
 lemma long_Step_proof_induction
   {O : OracleSpec I}
-  {Assumptions : IndistinguishabilityAssumptions}
+  {Assumptions : IndAssumptions}
   {q_b : ENat} {a : ℕ}
   {ro : Finset.range (a + 1) -> RStateOracle O}
   (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -286,7 +286,7 @@ lemma long_Step_proof_induction
   )
 
 
-lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
+lemma symbolicSoundness_internal {Assumptions : IndAssumptions}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
@@ -368,7 +368,7 @@ lemma symbolicSoundness_internal {Assumptions : IndistinguishabilityAssumptions}
   apply X
   exact lt_add_one a
 
-lemma symbolicSoundness {Assumptions : IndistinguishabilityAssumptions}
+lemma symbolicSoundness {Assumptions : IndAssumptions}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) :

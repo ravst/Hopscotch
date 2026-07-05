@@ -39,15 +39,16 @@ noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ �
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
     :
-    IndCpaIFam (IndCpaRandAssumption' schemeFam) schemeFam := by
+    IndCpaDefF (IndCpaRandAssumptionFam schemeFam) schemeFam := by
   intro κ
+  let Enc := schemeFam.scheme κ
   game_hopping [
-    IndCpaL (schemeFam.scheme κ),
-    (IndCpaRand_to_IndCpaL) ◇ (IndCpaRandReal (schemeFam.scheme κ)),
-    (IndCpaRand_to_IndCpaL) ◇ (IndCpaRandRand (schemeFam.scheme κ)),
-    (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandRand (schemeFam.scheme κ)),
-    (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandReal (schemeFam.scheme κ)),
-    IndCpaR (schemeFam.scheme κ)
+    IndCpaL Enc,
+    (IndCpaRand_to_IndCpaL) ◇ (IndCpaRandReal Enc),
+    (IndCpaRand_to_IndCpaL) ◇ (IndCpaRandRand Enc),
+    (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandRand Enc),
+    (IndCpaRand_to_IndCpaR) ◇ (IndCpaRandReal Enc),
+    IndCpaR Enc
   ]
 
 
@@ -69,7 +70,7 @@ noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → T
         (OracleReduction.identity (IndCpaRandSpec (C κ)))
         IndCpaRand_to_IndCpaR]
   ) := by
-  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumption', IndCpaRandAssumptionFull]
+  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumptionFam, IndCpaRandAssumptionFull]
   simp [transitive_step_val_simple, assumptionCounting,
     Indistinguishable.of_ObsEq,
   ]

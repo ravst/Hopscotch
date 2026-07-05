@@ -48,18 +48,33 @@ noncomputable def IndCpaRandAssumptionFull {K : Type} {C : ℕ → Type}
     SingleAssumption :=
   ⟨IndCpaRandDomain, IndCpaRandSpec C, IndCpaRandAssumption scheme⟩
 
-noncomputable def IndCpaRandAssumption' {K : ℕ → Type} {C : ℕ → ℕ → Type}
+noncomputable def IndCpaRandAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
-    (κ : ℕ) :
-    IndistinguishabilityAssumptions where
+    : IndAssumptionsFam :=
+    fun κ =>
+    {
     Idx := Unit
     assumptions := fun _ => IndCpaRandAssumptionFull (schemeFam.scheme κ)
+    }
 
 /-- IND-CPA-rand security definition as an instance of `Indistinguishable`. -/
 def IndCpaRandDef
-    (Assumptions : IndistinguishabilityAssumptions)
+    (Assumptions : IndAssumptions)
     {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
-  Indistinguishable Assumptions
+  IndistinguishableSingle Assumptions
     (IndCpaRandReal scheme) (IndCpaRandRand scheme)
+
+/-- IND-CPA-rand security definition for a security-parameter family. -/
+def IndCpaRandIFam
+    (Assumptions : IndAssumptionsFam)
+    {K : ℕ → Type} {C : ℕ → ℕ → Type}
+    [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
+    (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
+  Indistinguishable
+    (I := fun _ => IndCpaRandDomain)
+    (O := fun κ => IndCpaRandSpec (C κ))
+    Assumptions
+    (fun κ => (IndCpaRandReal (schemeFam.scheme κ) : RStateOracle (IndCpaRandSpec (C κ))))
+    (fun κ => (IndCpaRandRand (schemeFam.scheme κ) : RStateOracle (IndCpaRandSpec (C κ))))

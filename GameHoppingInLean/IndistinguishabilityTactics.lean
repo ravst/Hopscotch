@@ -167,7 +167,7 @@ private def closeGameHoppingAssumptionGoal : TacticM Unit := do
       let Assumptions := args[0]
       let q_b := args[1]
       let idxType ← withTransparency .all <|
-        whnf (← mkAppM ``IndistinguishabilityAssumptions.Idx #[Assumptions])
+        whnf (← mkAppM ``IndAssumptions.Idx #[Assumptions])
       for idx in ← gameHoppingIndexCandidates idxType do
         let proof ← withTransparency .all <|
           mkAppOptM ``IndistinguishableI.assumption #[some Assumptions, some q_b, some idx]
