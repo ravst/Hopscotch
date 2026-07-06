@@ -51,16 +51,17 @@ noncomputable def IndCpaRandSingleAssumption {K : Type} {C : ℕ → Type}
 noncomputable def IndCpaRandAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
-    : IndAssumptionsFam :=
-    fun κ => {
-    Idx := Unit
+    : IndAssumptionsFam := {
+  Idx := Unit
+  val := fun κ => {
     assumptions := fun _ => {
         i := (IndCpaRandReal (schemeFam.scheme κ), IndCpaRandRand (schemeFam.scheme κ))
     }}
+}
 
 /-- IND-CPA-rand security definition as an instance of `Indistinguishable`. -/
 def IndCpaRandDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) : Type 1 :=
   IndistinguishableSingle Assumptions

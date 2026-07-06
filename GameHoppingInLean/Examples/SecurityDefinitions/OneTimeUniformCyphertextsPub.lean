@@ -91,20 +91,19 @@ noncomputable def OneTimeUniformCyphertextsPubAssumptionFull {PubK SecK M C : Ty
 
 noncomputable def OneTimeUniformCyphertextsPubAssumption' {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    IndAssumptions where
-  Idx := Unit
+    IndAssumptions Unit where
   assumptions := fun _ => OneTimeUniformCyphertextsPubAssumptionFull scheme
 
 noncomputable def OneTimeUniformCyphertextsPubAssumptionFam
     {PubK SecK M C : ℕ → Type}
     [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
-    IndAssumptions :=
+    IndAssumptions Unit :=
   OneTimeUniformCyphertextsPubAssumption' (schemeFam.scheme κ)
 
 /-- One-time uniform-ciphertexts public-key security definition as an instance of `Indistinguishable`. -/
 def OneTimeUniformCyphertextsPubDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     {PubK SecK M C : Type} [Fintype C] [Inhabited C]
     (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   IndistinguishableSingle Assumptions
@@ -112,7 +111,7 @@ def OneTimeUniformCyphertextsPubDef
     (OneTimeUniformCyphertextsPubRand scheme)
 
 def OneTimeUniformCyphertextsPubIFam
-    (Assumptions : (κ : ℕ) → IndAssumptions)
+    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
     {PubK SecK M C : ℕ → Type} [∀ κ, Fintype (C κ)] [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,

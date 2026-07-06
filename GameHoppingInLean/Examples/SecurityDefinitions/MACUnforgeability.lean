@@ -77,13 +77,12 @@ noncomputable def MACUFAssumptionFull {K Tag : Type} [DecidableEq Tag] (scheme :
   { i := MACUFAssumption scheme }
 
 noncomputable def MACUFAssumption' {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
-    IndAssumptions where
-  Idx := Unit
+    IndAssumptions Unit where
   assumptions := fun _ => MACUFAssumptionFull scheme
 
 /-- MAC unforgeability security definition as an instance of `Indistinguishable`. -/
 def MACUFDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) : Type 1 :=
   IndistinguishableSingle Assumptions
    (MACUFReal scheme) (MACUFIdeal scheme)
@@ -92,12 +91,12 @@ def MACUFDef
 noncomputable def MACUFAssumptionFam {K Tag : ℕ → Type}
     [∀ κ, DecidableEq (Tag κ)]
     (schemeFam : MACSchemeFamily K Tag) (κ : ℕ) :
-    IndAssumptions :=
+    IndAssumptions Unit :=
   MACUFAssumption' (schemeFam.scheme κ)
 
 /-- MAC unforgeability for a MAC family. -/
 def MACUFIFam
-    (Assumptions : (κ : ℕ) → IndAssumptions)
+    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
     {K Tag : ℕ → Type} [∀ κ, DecidableEq (Tag κ)]
     (schemeFam : MACSchemeFamily K Tag) : Type 1 :=
   ∀ κ,

@@ -44,7 +44,7 @@ import GameHoppingInLean.IndistinguishabilityTactics
 
 
 
-def advBound (Assumptions : IndAssumptions) (q_b : ENat)
+def advBound {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   (distinguisher : adversaryT O)
@@ -56,7 +56,7 @@ def advBound (Assumptions : IndAssumptions) (q_b : ENat)
     - ∑ j : { x // x ∈ asc.2.subset },
        ascToReal distinguisher ((Assumptions.assumptions j)) (combine_red (asc.2.values j))
 
-def advBoundQ (Assumptions : IndAssumptions) (q_b : ENat)
+def advBoundQ {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : RStateOracle O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   : Prop :=
@@ -65,7 +65,7 @@ def advBoundQ (Assumptions : IndAssumptions) (q_b : ENat)
 
 
 noncomputable def obse_eq_step2
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : RStateOracle O)
   (Hb : ObsEqBounded o₁ o₂ a)
@@ -78,7 +78,7 @@ noncomputable def obse_eq_step2
 
 
 noncomputable def obse_eq_step
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : RStateOracle O)
   (Hb : ObsEqBounded o₁ o₂ a)
@@ -163,7 +163,7 @@ def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1
 
 
 noncomputable def transitive_step_proof
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
   {o₁ o₂ : RStateOracle O} (rm : RStateOracle O)
   (asc1 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -172,6 +172,7 @@ noncomputable def transitive_step_proof
   (Hasc2 : advBoundQ Assumptions q_b O rm o₂ asc2) :
   advBoundQ Assumptions q_b O o₁ o₂ (transitive_step_val asc1 asc2)
 := by
+      classical
       let joint : AssumptionsUseT Assumptions O := assumptionJoiner asc1.1 asc2.1 (fun a b => listCombiner a b)
       let jointr : AssumptionsUseT Assumptions O := assumptionJoiner asc1.2 asc2.2 (fun a b => listCombiner a b)
       simp [advBoundQ, transitive_step_val]
@@ -179,6 +180,7 @@ noncomputable def transitive_step_proof
       simp [advBound]
       intro Hdepth
       simp [joint, jointr, assumptionJoiner]
+      let _X := Assumptions.decEq
       have HHx := sumJoinerCorrect' (fun J => asUseType Assumptions O J)
         asc1.1.values asc2.1.values (fun a b => listCombiner a b)
         (fun x => ascToReal dist _ (combine_red x)) (by
@@ -210,7 +212,7 @@ noncomputable def transitive_step_proof
 --   exact Nat.le_of_succ_le H
 
 
--- def lengthOfIndI {Assumptions : IndAssumptions}
+-- def lengthOfIndI {Idx : Type} {Assumptions : IndAssumptions Idx}
 --       {q_b : ENat}
 --       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
 --       (ind : IndistinguishableI Assumptions q_b o₁ o₂) -> ℕ
@@ -254,7 +256,7 @@ noncomputable def transitive_step_proof
 
 lemma long_Step_proof_induction
   {O : OracleSpec I}
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat} {a : ℕ}
   {ro : Finset.range (a + 1) -> RStateOracle O}
   (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -286,7 +288,7 @@ lemma long_Step_proof_induction
   )
 
 
-lemma symbolicSoundness_internal {Assumptions : IndAssumptions}
+lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
@@ -314,7 +316,7 @@ lemma symbolicSoundness_internal {Assumptions : IndAssumptions}
   by
     simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
-| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind => by
+| IndistinguishableI.complexInitReduction r b ind => by
     let Hasc := symbolicSoundness_internal ind
     simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist
@@ -368,7 +370,7 @@ lemma symbolicSoundness_internal {Assumptions : IndAssumptions}
   apply X
   exact lt_add_one a
 
-lemma symbolicSoundness {Assumptions : IndAssumptions}
+lemma symbolicSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) :

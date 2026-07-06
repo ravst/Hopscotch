@@ -163,14 +163,14 @@ private def closeGameHoppingAssumptionGoal : TacticM Unit := do
     unless target.getAppFn.constName? == some ``IndistinguishableI do
       throwError "game_hopping_reduce_assumption expected an IndistinguishableI goal"
     let args := target.getAppArgs
-    if h : 1 < args.size then
-      let Assumptions := args[0]
-      let q_b := args[1]
-      let idxType ← withTransparency .all <|
-        whnf (← mkAppM ``IndAssumptions.Idx #[Assumptions])
+    if h : 2 < args.size then
+      let Assumptions := args[1]
+      let q_b := args[2]
+      let assumptionsType ← withTransparency .all <| whnf (← inferType Assumptions)
+      let idxType := (assumptionsType.getAppArgs)[0]!
       for idx in ← gameHoppingIndexCandidates idxType do
         let proof ← withTransparency .all <|
-          mkAppOptM ``IndistinguishableI.assumption #[some Assumptions, some q_b, some idx]
+          mkAppOptM ``IndistinguishableI.assumption #[none, some Assumptions, some q_b, some idx]
         if ← withTransparency .all <| isDefEq (← inferType proof) target then
           return proof
       throwError "game_hopping_reduce_assumption could not find a matching assumption index"
@@ -202,9 +202,9 @@ private def checkGameHoppingEndpoints (first last : TSyntax `term) : TacticM Uni
     unless target.getAppFn.constName? == some ``IndistinguishableI do
       throwError "game_hopping expected an IndistinguishableI goal"
     let args := target.getAppArgs
-    if h : 5 < args.size then
-      let roStart := args[4]
-      let roEnd := args[5]
+    if h : 6 < args.size then
+      let roStart := args[5]
+      let roEnd := args[6]
       let firstExpr ← Term.elabTermEnsuringType first (← inferType roStart)
       unless ← withTransparency .all <| isDefEq firstExpr roStart do
         throwError "game_hopping first oracle does not match the current goal"

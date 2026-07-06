@@ -41,25 +41,24 @@ noncomputable def SecurePRGAssumptionFull {k l : ℕ} (prg : PRG k l) :
   { i := SecurePRGAssumption prg }
 
 noncomputable def SecurePRGAssumption' {k l : ℕ} (prg : PRG k l) :
-    IndAssumptions where
-  Idx := Unit
+    IndAssumptions Unit where
   assumptions := fun _ => SecurePRGAssumptionFull prg
 
 /-- PRG security definition as an instance of `Indistinguishable`. -/
 def SecurePRGDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     {k l : ℕ} (prg : PRG k l) : Type 1 :=
   IndistinguishableSingle Assumptions
     (PRG_real prg) (PRG_rand k l)
 
 /-- Pointwise PRG assumptions for a PRG family. -/
 noncomputable def SecurePRGAssumptionFam {k l : ℕ → ℕ}
-    (prgFam : PRGFamily k l) (κ : ℕ) : IndAssumptions :=
+    (prgFam : PRGFamily k l) (κ : ℕ) : IndAssumptions Unit :=
   SecurePRGAssumption' (prgFam.prg κ)
 
 /-- PRG security for a PRG family. -/
 def SecurePRGIFam
-    (Assumptions : (κ : ℕ) → IndAssumptions)
+    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
     {k l : ℕ → ℕ} (prgFam : PRGFamily k l) : Type 1 :=
   ∀ κ,
     IndistinguishableI (Assumptions κ) none

@@ -3,25 +3,25 @@ import GameHoppingInLean.ComputationalIndistinguishibility.Sums
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
 
 
-abbrev asUseType (Assumptions : IndAssumptions) {I : Type} (O : OracleSpec I) (J : Assumptions.Idx) :=
+abbrev asUseType {Idx : Type} (Assumptions : IndAssumptions Idx) {I : Type} (O : OracleSpec I) (J : Idx) :=
   {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
 
-structure AssumptionsUseT (Assumptions : IndAssumptions)
+structure AssumptionsUseT {Idx : Type} (Assumptions : IndAssumptions Idx)
   {I : Type} (O : OracleSpec I) where
-  subset : Finset Assumptions.Idx
+  subset : Finset Idx
   values : (J : subset) -> (
     {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
   )
 
 
-def AssumptionsUseTSimple (Assumptions : IndAssumptions)
+def AssumptionsUseTSimple {Idx : Type} (Assumptions : IndAssumptions Idx)
   {I : Type} (O : OracleSpec I) :=
-  (J : Assumptions.Idx) -> List (OracleReduction (Assumptions.assumptions J).O O)
+  (J : Idx) -> List (OracleReduction (Assumptions.assumptions J).O O)
 
 
 namespace AssumptionsUseT
 
-def empty (Assumptions : IndAssumptions) {I : Type} (O : OracleSpec I) :
+def empty {Idx : Type} (Assumptions : IndAssumptions Idx) {I : Type} (O : OracleSpec I) :
   AssumptionsUseT Assumptions O :=
   {
     subset := ∅,
@@ -33,7 +33,7 @@ def empty (Assumptions : IndAssumptions) {I : Type} (O : OracleSpec I) :
 end AssumptionsUseT
 
 noncomputable def transitive_step_val_simple
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {I : Type}
   {O : OracleSpec I}
   (asc1 : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O)
@@ -43,7 +43,7 @@ noncomputable def transitive_step_val_simple
   ((fun x => (asc1.1 x)++(asc2.1 x)), fun x => (asc1.2 x)++(asc2.2 x))
 
 noncomputable def long_step_combinator_simple_half {O : OracleSpec I}
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   (a : ℕ)
   (Hxx : (i : ℕ) → i < a → AssumptionsUseTSimple Assumptions O) :
   AssumptionsUseTSimple Assumptions O := fun idx =>
@@ -51,7 +51,7 @@ noncomputable def long_step_combinator_simple_half {O : OracleSpec I}
   l.flatten
 
 lemma long_step_combinator_simple_half_next {O : OracleSpec I}
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   (a : ℕ)
   (Hxx : (i : ℕ) → i < (a + 1) → AssumptionsUseTSimple Assumptions O) :
 long_step_combinator_simple_half (a + 1) Hxx = fun idx =>
@@ -62,7 +62,7 @@ long_step_combinator_simple_half a (fun i Ha => Hxx i (Nat.lt_succ_of_lt Ha)) id
     List.flatten_cons, List.flatten_nil, List.append_nil, Fin.val_castSucc, Fin.val_last]
 
 noncomputable def long_step_combinator_simple {O : OracleSpec I}
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   (a : ℕ)
   (Hxx : (i : ℕ) → i < a → AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) :
   AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O :=
@@ -71,47 +71,51 @@ noncomputable def long_step_combinator_simple {O : OracleSpec I}
     long_step_combinator_simple_half a (fun x Hx => (Hxx x Hx).2)
   )
 
-noncomputable def assumptionCounting {Assumptions : IndAssumptions}
+noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
   AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
-| IndistinguishableI.assumption idx =>
-  (
-    fun xp =>
-      if H : xp = idx then [H ▸ OracleReduction.identity (Assumptions.assumptions idx).O]
-        else []
-  , fun _ => [])
-| IndistinguishableI.obsEqB a b =>
-  (fun _ => [], fun _ => [])
-| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
-    let asc := assumptionCounting ind
+:= 
+  haveI : DecidableEq Idx := Assumptions.decEq
+  fun ind => match ind with
+  | IndistinguishableI.assumption idx =>
     (
-      (fun x => (asc.1 x).map (fun x => rcompose x r)),
-      (fun x => (asc.2 x).map (fun x => rcompose x r)),
-    )
-| IndistinguishableI.symm q_b ind  =>
-    let re := assumptionCounting ind
-    (re.2, re.1)
-| IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_val_simple (assumptionCounting ind1) (assumptionCounting ind2)
-| IndistinguishableI.longSequence a q_b ro Hseq =>
-  long_step_combinator_simple a
-    (fun j Hq => assumptionCounting (Hseq j Hq))
+      fun xp =>
+        if H : xp = idx then [H ▸ OracleReduction.identity (Assumptions.assumptions idx).O]
+          else []
+    , fun _ => [])
+  | IndistinguishableI.obsEqB a b =>
+    (fun _ => [], fun _ => [])
+  | IndistinguishableI.complexInitReduction r b ind =>
+      let asc := assumptionCounting ind
+      (
+        (fun x => (asc.1 x).map (fun x => rcompose x r)),
+        (fun x => (asc.2 x).map (fun x => rcompose x r)),
+      )
+  | IndistinguishableI.symm q_b ind  =>
+      let re := assumptionCounting ind
+      (re.2, re.1)
+  | IndistinguishableI.trans rm q_b ind1 ind2 =>
+      transitive_step_val_simple (assumptionCounting ind1) (assumptionCounting ind2)
+  | IndistinguishableI.longSequence a q_b ro Hseq =>
+    long_step_combinator_simple a
+      (fun j Hq => assumptionCounting (Hseq j Hq))
 
 
 
 -- for the soundness proof, it is more convient to use different assumption function counting function, defined below:
 
 -- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)
-def assumptionJoiner {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
+def assumptionJoiner {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (val1 val2 : AssumptionsUseT Assumptions O)
-  (joiner : {J : Assumptions.Idx} ->
+  (joiner : {J : Idx} ->
     asUseType Assumptions O J ->
     asUseType Assumptions O J ->
     asUseType Assumptions O J
   )
   : AssumptionsUseT Assumptions O :=
+  haveI : DecidableEq Idx := Assumptions.decEq
   {
     subset := finsetSum val1.subset val2.subset
     values := fun x => sumJoiner (fun J => asUseType Assumptions O J) val1.values val2.values joiner x
@@ -120,7 +124,7 @@ def assumptionJoiner {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I
 
 
 noncomputable def transitive_step_val
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   {I : Type}
   {O : OracleSpec I}
   (asc1 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -134,11 +138,11 @@ noncomputable def transitive_step_val
 
 
 
-def noAssumptionUse {Assumptions : IndAssumptions} : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
+def noAssumptionUse {Idx : Type} {Assumptions : IndAssumptions Idx} : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
   (AssumptionsUseT.empty _ _, AssumptionsUseT.empty _ _)
 
 noncomputable def long_step_combinator {O : OracleSpec I}
-  {Assumptions : IndAssumptions}
+  {Idx : Type} {Assumptions : IndAssumptions Idx}
   :
   (a : ℕ) ->
   (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O) ->
@@ -150,7 +154,7 @@ noncomputable def long_step_combinator {O : OracleSpec I}
   transitive_step_val long (Hxx a (Nat.lt_succ_self a))
 
 
-noncomputable def assumptionCounting_low {Assumptions : IndAssumptions}
+noncomputable def assumptionCounting_low {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
@@ -167,7 +171,7 @@ noncomputable def assumptionCounting_low {Assumptions : IndAssumptions}
     }, AssumptionsUseT.empty _ _)
 | IndistinguishableI.obsEqB a b =>
   noAssumptionUse
-| @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind => by
+| IndistinguishableI.complexInitReduction r b ind => by
     let asc := assumptionCounting_low ind
     exact
       ({
@@ -191,7 +195,7 @@ noncomputable def assumptionCounting_low {Assumptions : IndAssumptions}
 
 -- below we prove that these two function are equivalent:
 
-lemma assumptionCounting_finite {Assumptions : IndAssumptions}
+lemma assumptionCounting_finite {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
@@ -262,20 +266,20 @@ lemma assumptionCounting_finite {Assumptions : IndAssumptions}
       simp only [Set.mem_iUnion, Set.mem_setOf_eq]
       exact ⟨j, by rw [hj]; exact hne⟩
 
-abbrev assumptionCountType (Assumptions : IndAssumptions)
+abbrev assumptionCountType {Idx : Type} (Assumptions : IndAssumptions Idx)
   {I : Type} (O : OracleSpec I) :=
   {x : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O //
     Set.Finite {i | x.1 i ≠ []} ∧ Set.Finite {i | x.2 i ≠ []} }
 
 
-noncomputable def assumptionCountingFin {Assumptions : IndAssumptions}
+noncomputable def assumptionCountingFin {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   assumptionCountType Assumptions O :=
   ⟨assumptionCounting ind, assumptionCounting_finite ind⟩
 
-noncomputable def finite_support {Assumptions : IndAssumptions}
+noncomputable def finite_support {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
@@ -285,12 +289,12 @@ noncomputable def finite_support {Assumptions : IndAssumptions}
   ((assumptionCounting_finite ind).1.fintype,
    (assumptionCounting_finite ind).2.fintype)
 
-def AssumptionsUseTSimple2other {Assumptions : IndAssumptions}
+def AssumptionsUseTSimple2other {Idx : Type} {Assumptions : IndAssumptions Idx}
   {I : Type} {O : OracleSpec I} (count : AssumptionsUseTSimple Assumptions O)
   (H : Fintype {i | count i ≠ []})
   : AssumptionsUseT Assumptions O :=
   {
-    subset := ({i | count i ≠ []} : Set Assumptions.Idx).toFinset,
+    subset := ({i | count i ≠ []} : Set Idx).toFinset,
     values a := ⟨count a,
       by
         simp [List.length, List.length_pos_iff]
@@ -298,19 +302,19 @@ def AssumptionsUseTSimple2other {Assumptions : IndAssumptions}
       ⟩
   }
 
-noncomputable def assumptionCountLower {Assumptions : IndAssumptions}
+noncomputable def assumptionCountLower {Idx : Type} {Assumptions : IndAssumptions Idx}
   {I : Type} {O : OracleSpec I}
   (count : assumptionCountType Assumptions O)
   : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O :=
   (AssumptionsUseTSimple2other count.1.1 count.2.1.fintype, AssumptionsUseTSimple2other count.1.2 count.2.2.fintype)
 
-def agreeWithSimp {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
+def agreeWithSimp {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (p : AssumptionsUseT Assumptions O)
   (s : AssumptionsUseTSimple Assumptions O) : Prop :=
   (∀ i, (i ∈ p.subset ↔ (s i ≠ [])) ∧
   (∀ (hi : i ∈ p.subset), (p.values ⟨i, hi⟩).1 = s i))
 
-def agreeWithSimp_lemma {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
+def agreeWithSimp_lemma {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (p : AssumptionsUseT Assumptions O)
   (s : AssumptionsUseTSimple Assumptions O)
   (H : agreeWithSimp p s)
@@ -319,7 +323,7 @@ def agreeWithSimp_lemma {Assumptions : IndAssumptions} {I : Type} {O : OracleSpe
    := by
   obtain ⟨ps, pv⟩ := p
   simp only [agreeWithSimp] at H
-  have hsub : ({i | s i ≠ []} : Set Assumptions.Idx).toFinset = ps := by
+  have hsub : ({i | s i ≠ []} : Set Idx).toFinset = ps := by
     ext i
     simp only [Set.mem_toFinset, Set.mem_setOf_eq]
     exact (H i).1.symm
@@ -332,12 +336,12 @@ def agreeWithSimp_lemma {Assumptions : IndAssumptions} {I : Type} {O : OracleSpe
   exact ((H a.1).2 a.2).symm
 
 
-def agreeWithSimpPair {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
+def agreeWithSimpPair {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (p : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
   (s : AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O) : Prop :=
   agreeWithSimp p.1 s.1 ∧ agreeWithSimp p.2 s.2
 
-theorem agree_trans {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
+theorem agree_trans {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (p1 p2 : AssumptionsUseT Assumptions O)
   (s1 s2 : AssumptionsUseTSimple Assumptions O)
   (H1 : agreeWithSimp p1 s1) (H2 : agreeWithSimp p2 s2) :
@@ -375,13 +379,14 @@ theorem agree_trans {Assumptions : IndAssumptions} {I : Type} {O : OracleSpec I}
         simp [M1, M2] at hi
 
 
-lemma simpleCorrect_in {Assumptions : IndAssumptions}
+lemma simpleCorrect_in {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   agreeWithSimpPair
     (assumptionCounting_low ind)
     (assumptionCounting ind) := by
+  haveI : DecidableEq Idx := Assumptions.decEq
   induction ind
   case assumption a =>
     simp [agreeWithSimpPair, agreeWithSimp, assumptionCounting_low, assumptionCounting]
@@ -472,7 +477,7 @@ lemma simpleCorrect_in {Assumptions : IndAssumptions}
           apply Y
         apply (Hind n _).2
 
-lemma simpleCorrect {Assumptions : IndAssumptions}
+lemma simpleCorrect {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :

@@ -167,7 +167,7 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     (encFam : SymEncSchemeFamily KEnc (fun _ => BitVec))
     (macFam : MACSchemeFamily KMac Tag) :
     IndCcaIFam
-      (fun κ => IndCpaAssumptionFam encFam κ ⊕ MACUFAssumption' (macFam.scheme κ))
+      (fun κ => (IndCpaAssumptionFam encFam).val κ ⊕ MACUFAssumption' (macFam.scheme κ))
       (encryptThenMacFamily encFam macFam) := by
   intro κ
   let enc := encFam.scheme κ

@@ -15,7 +15,7 @@ open scoped OracleReduction
 /-- Any indistinguishability that holds under the empty assumption set holds under
 any assumption set. -/
 noncomputable def liftEmptyAssumptions
-    {Assumptions : IndAssumptions}
+    {Idx : Type} {Assumptions : IndAssumptions Idx}
     {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
     (h : IndistinguishableI IndAssumptions.empty q_b ro₁ ro₂) :
     IndistinguishableI Assumptions q_b ro₁ ro₂ := by

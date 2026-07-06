@@ -72,26 +72,25 @@ noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}
 
 noncomputable def IndCpaPubAssumption' {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    IndAssumptions where
-  Idx := Unit
+    IndAssumptions Unit where
   assumptions := fun _ => IndCpaPubAssumptionFull scheme
 
 noncomputable def IndCpaPubAssumptionFam
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
-    IndAssumptions :=
+    IndAssumptions Unit :=
   IndCpaPubAssumption' (schemeFam.scheme κ)
 
 /-- Public-key IND-CPA security definition as an instance of `Indistinguishable`. -/
 def IndCpaPubDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) : Type 1 :=
   IndistinguishableSingle Assumptions
     (IndCpaPubL scheme)
     (IndCpaPubR scheme)
 
 def IndCpaPubIFam
-    (Assumptions : (κ : ℕ) → IndAssumptions)
+    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ,
@@ -100,7 +99,7 @@ def IndCpaPubIFam
       (IndCpaPubR (schemeFam.scheme κ))
 
 def IndCpaPubBoundedIFam
-    (Assumptions : (κ : ℕ) → IndAssumptions)
+    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
   ∀ κ, ∀ (b : ℕ), IndistinguishableI (Assumptions κ) b

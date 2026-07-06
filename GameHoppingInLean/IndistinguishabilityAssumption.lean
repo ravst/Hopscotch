@@ -17,42 +17,52 @@ def SingleAssumption.reverse (x : SingleAssumption) : SingleAssumption :=
 /- Indistinguishability Assumptions are modeled as an indexed family of single assumptions.
 The index type is arbitrary, but we require it to be decidable, so that it is easier to
 count how many times each assumption is used in a proof. -/
-structure IndAssumptions where
-  Idx : Type
+structure IndAssumptions (Idx : Type) where
   [decEq : DecidableEq Idx]
   assumptions : Idx -> SingleAssumption
 
-abbrev IndAssumptionsFam :=
-  (κ : ℕ) → IndAssumptions
+structure IndAssumptionsFam where
+  Idx : Type
+  val : (κ : ℕ) → IndAssumptions Idx
 
 namespace IndAssumptions
 
-def empty : IndAssumptions := {
-  Idx := Empty,
+def empty : IndAssumptions Empty := {
   assumptions := fun x => Empty.elim x
   }
 
-instance {A : IndAssumptions} : DecidableEq A.Idx := A.decEq
 
-
+/- Local instance: use `haveI : DecidableEq Idx := Assumptions.decEq` in functions
+that need it, rather than relying on global typeclass search, to avoid loops. -/
+instance {Idx : Type} {A : IndAssumptions Idx} : DecidableEq Idx := A.decEq
 
 /-- Disjoint union of two assumption families. The resulting index type is the sum of the
 original index types, and each side is selected by `Sum.inl` or `Sum.inr`. -/
-def oplus (A B : IndAssumptions) : IndAssumptions where
-  Idx := Sum A.Idx B.Idx
+def oplus {AIdx BIdx : Type} (A : IndAssumptions AIdx) (B : IndAssumptions BIdx) :
+  IndAssumptions (Sum AIdx BIdx) where
   assumptions := fun
     | Sum.inl i => A.assumptions i
     | Sum.inr i => B.assumptions i
+  decEq :=
+    have _X : DecidableEq AIdx := A.decEq
+    have _Y : DecidableEq BIdx := B.decEq
+    inferInstance
+
+def oplusFam (A B : IndAssumptionsFam) : IndAssumptionsFam where
+  Idx := Sum A.Idx B.Idx
+  val κ := oplus (A.val κ) (B.val κ)
 
 end IndAssumptions
+
+
 
 class OPlus (α : Type u) where
   oplus : α → α → α
 
-instance : OPlus IndAssumptions where
-  oplus := IndAssumptions.oplus
+-- instance : OPlus IndAssumptions where
+--   oplus := IndAssumptions.oplus
 
 instance : OPlus IndAssumptionsFam where
-  oplus A B := fun κ => OPlus.oplus (A κ) (B κ)
+  oplus A B := IndAssumptions.oplusFam A B
 
-infixl:65 " ⊕ " => OPlus.oplus
+infixl:65 " ⊕ " => IndAssumptions.oplus

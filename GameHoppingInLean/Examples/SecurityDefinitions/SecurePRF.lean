@@ -52,13 +52,12 @@ noncomputable def SecurePRFAssumptionFull {K X Y : Type}
 
 noncomputable def SecurePRFAssumption' {K X Y : Type}
     [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) :
-    IndAssumptions where
-  Idx := Unit
+    IndAssumptions Unit where
   assumptions := fun _ => SecurePRFAssumptionFull prf
 
 /-- PRF security definition as an instance of `Indistinguishable`. -/
 def SecurePRFDef
-    (Assumptions : IndAssumptions)
+    {Idx : Type} (Assumptions : IndAssumptions Idx)
     -- (Reductions : IndistinguishabilityReductions)
     {K X Y : Type} [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) : Type 1 :=
   IndistinguishableSingle Assumptions
