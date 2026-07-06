@@ -201,6 +201,12 @@ being produced by replaying the chronological queries `(τ.reverse).map input`. 
 def reachT {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) : Prop :=
   ∃ p ∈ (runQueries2 o ((τ.reverse).map QueryWithResult.input)).support, p.1 = τ.reverse
 
+def reachT2 {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) : Prop :=
+  τ.reverse ∈ (runQueriesOnlyOut o ((τ.reverse).map QueryWithResult.input)).support
+
+lemma reachT_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) :
+  reachT o τ = reachT2 o τ := by sorry
+
 /-- The empty transcript is reachable. -/
 lemma reachT_nil {I : Type} {O : OracleSpec I} (o : RStateOracle O) : reachT o [] := by
   unfold reachT
@@ -408,6 +414,105 @@ lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : RStateOracle O
       o.initialState.bind (fun s => (simulateQ (addPMFtoImpl (o.queries)) (dist) s).map Prod.fst) := by
   simp only [runDinstinguisher]
   congr 1
+
+
+
+-- noncomputable def withInvariant3_correct {I : Type} {O : I → Type} {T : Type}
+--   (q_b : ℕ∞)
+--   (ostep : (i : I) → T → PMF (O i × T))
+--   (lvl : T → ℕ∞)
+--   (reach : T → Prop)
+--   (Hstep_reach : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
+--     ∀ p ∈ (ostep i τ).support, lvl p.2 = lvl τ + 1 ∧ reach p.2)
+--   (start : T)
+--   (reach_unit : reach start)
+--   (lvl_start : lvl start = 0)
+--   (okernel : (i : I) → S → PMF (O i × S))
+--   (init : PMF S)
+--   (cs : T → PMF S)
+--   (HSTEP : ∀ (i : I) (τ : T), reach τ → lvl τ + 1 ≤ q_b →
+--       (cs τ).bind (okernel i) =
+--         (ostep i τ).bind (fun p => (cs p.2).map (fun s' => (p.1, s'))))
+--   (hStart : cs start = init)
+--   :
+--     correctAbstractionBindBound (withInvariant2 q_b ostep lvl reach Hstep_reach start reach_unit)
+--       (withInv3 okernel init)
+
+noncomputable def behavioralRestricted {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) : RStateOracle O :=
+  withInvariant2 q_b ((rState2Rstate q_b o).queries)
+    (fun τ => (τ.length : ℕ∞)) (reachT o) (Hstep_reach o q_b) []
+    ⟨by simp [],  reachT_nil o⟩
+
+noncomputable def behavioralRestricted_val {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+  (behavioralRestricted o q_b).stateType -> ENat :=
+    fun x => by
+      simp [behavioralRestricted, withInvariant2] at x
+      exact q_b - x.1.length
+
+
+def rState2Rstate_ob_seq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+ correctAbstractionBindBound (behavioralRestricted o q_b) o
+  (fun x => condState o (x.1)) (behavioralRestricted_val o q_b) q_b
+ := by
+  simp [behavioralRestricted]
+  unfold behavioralRestricted_val
+  apply withInvariant3_correct q_b o
+      ((rState2Rstate q_b o).queries) (condState o) (fun τ => (τ.length : ℕ∞))
+      (reachT o) (Hstep_reach o q_b) (hstep o q_b) [] ⟨by simp [],  reachT_nil o⟩ (by simp []) (condState_nil o)
+
+lemma reach_calc {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) (q_b: ENat)
+  (H : ObsEqBounded o1 o2 q_b)
+  (x : { x // ↑(List.length x) ≤ q_b ∧ reachT o1 x })
+  : reachT o2 x := by
+    rw [reachT_eq]
+    simp [reachT2]
+    cases x
+    case mk xval Hx =>
+
+    rw [<-H]
+    · simp []
+      rw [reachT_eq] at Hx
+      have Z := Hx.2
+      simp [reachT2] at Z
+      apply Z
+    simp []
+    apply Hx.1
+
+
+def behavioralToRestrictedEq {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) (q_b : ENat)
+  (H : ObsEqBounded o1 o2 q_b) :
+  correctAbstractionBound
+    (behavioralRestricted o1 q_b)
+    (behavioralRestricted o2 q_b)
+    (fun x => by
+      simp [behavioralRestricted, withInvariant2]
+      simp [behavioralRestricted, withInvariant2] at x
+      exact ⟨x.1, ⟨x.2.1, reach_calc o1 o2 q_b H x⟩⟩)
+    (fun x => q_b - x.1.length) q_b
+    := by
+  have Z : rState2Rstate q_b o1 = rState2Rstate q_b o2 := by
+    simp [rState2Rstate]
+    rw [behavioral_eq_from_obsEq o1 o2 q_b H]
+  constructor
+  · constructor
+    · simp [behavioralRestricted, withInvariant2, PMF.map]
+    constructor
+    · simp [goodValuation]
+      intro query s
+      simp [behavioralRestricted, withInvariant2]
+
+      sorry
+    simp [behavioralRestricted, PMF.map]
+    simp [correctAbstractionBound_step]
+    intro query s Hs
+    simp [withInvariant2, withInvariant]
+    simp [mapInputState, mapOutputState]
+    simp [StateT.run]
+
+    sorry
+  simp [behavioralRestricted, withInvariant2]
+
+
 
 /- This lemma states that passing an adversary through the behavioural-oracle round trip
 `rState2Rstate` does not change its output distribution, provided the adversary asks at most `q_b`
