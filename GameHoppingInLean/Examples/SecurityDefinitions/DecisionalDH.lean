@@ -53,12 +53,14 @@ noncomputable def DecisionalDHAssumption' {G : Type}
     IndAssumptions Unit where
   assumptions := fun _ => DecisionalDHAssumptionFull g
 
-noncomputable def DecisionalDHAssumptionFam (Γ : GroupGeneratorFamily) (κ : ℕ) :
-    IndAssumptions Unit := by
-  letI := Γ.group κ
-  letI := Γ.fintype κ
-  letI := Γ.nontrivial κ
-  exact DecisionalDHAssumption' (Γ.gen κ)
+noncomputable def DecisionalDHAssumptionFam (Γ : GroupGeneratorFamily) :
+    IndAssumptionsFam where
+  Idx := Unit
+  val κ := by
+    letI := Γ.group κ
+    letI := Γ.fintype κ
+    letI := Γ.nontrivial κ
+    exact DecisionalDHAssumption' (Γ.gen κ)
 
 /-- DDH security definition as an instance of `Indistinguishable`. -/
 def DecisionalDHDef
