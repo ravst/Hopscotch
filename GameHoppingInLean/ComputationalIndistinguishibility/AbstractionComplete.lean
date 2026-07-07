@@ -386,11 +386,174 @@ def behavioralToRestrictedEq {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle
       (Hstep_reach o2 q_b) Zq query t2
   simp [behavioralRestricted, withInvariant2]
 
-  -- for any two o1 o2 that have obsEqBOunded, we have
-  --1- correctAbstractionBound: (behavioralRestricted o1 q_b) --> (behavioralRestricted o2 q_b)
-  --2- correctAbstractionBindBound: (behavioralRestricted o1 q_b) -> o1
-  --3- correctAbstractionBindBound: (behavioralRestricted o2 q_b) -> o2
-  -- composing (1) and (3) we got: (behavioralRestricted o1 q_b) -> o2
--- prove that
--- 1. there is correctAbstractionBindBound from (behavioralRestricted o1 q_b) to o2 by using approprite composition lemma
--- 2. formulate completness in on theorem, i.e. that for any o1 o2 with bosEqBOunded that from (behavioralRestricted o1 q_b) correct abstraction to both o1 and o2.
+/-- Composition of a (map-based) bounded abstraction `A → B` with a (bind-based) bounded
+abstraction `B → C` yields a bind-based bounded abstraction `A → C`.
+The valuation of `A` is reused, and the hypothesis `hval` states that the valuation only
+increases along `f` (so that positivity of `valA s` transfers to positivity of `valB (f s)`,
+which is what the step condition of the second abstraction needs). -/
+lemma correctAbstractionBound_comp_BindBound {I : Type} {O : OracleSpec I}
+    (A B C : RStateOracle O)
+    (f : A.stateType → B.stateType) (valA : A.stateType → ENat)
+    (g : B.stateType → PMF C.stateType) (valB : B.stateType → ENat)
+    (b : ENat)
+    (hval : ∀ s, valA s ≤ valB (f s))
+    (HAB : correctAbstractionBound A B f valA b)
+    (HBC : correctAbstractionBindBound B C g valB b) :
+    correctAbstractionBindBound A C (fun x => g (f x)) valA b := by
+  obtain ⟨⟨hInitAB, hGoodA, hStepAB⟩, hBoundA⟩ := HAB
+  obtain ⟨⟨hInitBC, hGoodB, hStepBC⟩, hBoundB⟩ := HBC
+  refine ⟨⟨?_, hGoodA, ?_⟩, hBoundA⟩
+  · -- initial state
+    rw [← hInitBC, ← hInitAB]
+    simp [PMF.map_eq_bind_pure, PMF.bind_bind, PMF.pure_bind]
+  · -- step condition
+    intro query s hs
+    have hsB : valB (f s) > 0 := lt_of_lt_of_le hs (hval s)
+    have hAB := hStepAB query s hs
+    have hBC := hStepBC query (f s) hsB
+    simp only [mapOutputState, mapInputState] at hAB
+    simp only [bindOutputState, bindInputState] at hBC ⊢
+    rw [← hBC, ← hAB, PMF.map_eq_bind_pure, PMF.bind_bind]
+    congr 1
+    funext p
+    rw [PMF.pure_bind]
+    simp [bindSecond, mapSecond]
+
+/-- For observationally-equivalent (up to `q_b` queries) oracles `o1` and `o2`,
+the behaviorally-restricted oracle of `o1` is a correct (bind, bounded) abstraction of `o2`.
+Obtained by composing the map-abstraction `behavioralRestricted o1 → behavioralRestricted o2`
+with the bind-abstraction `behavioralRestricted o2 → o2`. -/
+noncomputable def behavioralRestrictedToOther {I : Type} {O : OracleSpec I}
+    (o1 o2 : RStateOracle O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
+    correctAbstractionBindBound (behavioralRestricted o1 q_b) o2
+      (fun x => condState o2 x.1) (behavioralRestricted_val o1 q_b) q_b := by
+  have hcomp := correctAbstractionBound_comp_BindBound
+    (behavioralRestricted o1 q_b) (behavioralRestricted o2 q_b) o2
+    (fun x => ⟨x.1, ⟨x.2.1, reach_calc o1 o2 q_b H x⟩⟩)
+    (behavioralRestricted_val o1 q_b)
+    (fun x => condState o2 x.1)
+    (behavioralRestricted_val o2 q_b)
+    q_b
+    (fun s => le_of_eq (by rfl))
+    (behavioralToRestrictedEq o1 o2 q_b H)
+    (rState2Rstate_ob_seq o2 q_b)
+  exact hcomp
+
+/-- Completeness: for any two oracles `o1` and `o2` that are observationally equivalent
+up to `q_b` queries, the behaviorally-restricted oracle of `o1` is a correct (bind, bounded)
+abstraction of *both* `o1` and `o2`. -/
+noncomputable def behavioralRestricted_complete {I : Type} {O : OracleSpec I}
+    (o1 o2 : RStateOracle O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
+    correctAbstractionBindBound (behavioralRestricted o1 q_b) o1
+        (fun x => condState o1 x.1) (behavioralRestricted_val o1 q_b) q_b ∧
+    correctAbstractionBindBound (behavioralRestricted o1 q_b) o2
+        (fun x => condState o2 x.1) (behavioralRestricted_val o1 q_b) q_b :=
+  ⟨rState2Rstate_ob_seq o1 q_b, behavioralRestrictedToOther o1 o2 q_b H⟩
+
+/- ## Completeness of distinguishing advantage for observational equivalence
+
+The following develops the converse direction to `obsEq_distinquishing`: if *every*
+distinguisher has zero advantage separating two oracles `o1` and `o2`, then the two oracles
+are observationally equivalent (`ObsEq o1 o2`).
+
+The idea is that a fixed list of queries `ql`, together with a boolean predicate `P` on the
+resulting transcript, can be turned into a distinguisher `mkDist ql P`.  Its output
+distribution is exactly `(runQueriesOnlyOut o ql).map P`.  Since zero advantage forces the
+two output distributions to coincide, choosing `P` to be the indicator of a single transcript
+recovers pointwise equality of `runQueriesOnlyOut o1 ql` and `runQueriesOnlyOut o2 ql`. -/
+
+open OracleReduction in
+/-- The distinguisher-side computation that replays a fixed list of queries `ql` against the
+oracle and records the full transcript (each input paired with the oracle's answer). -/
+noncomputable def collectComp {I : Type} {O : OracleSpec I} (ql : List I) :
+    OracleComp (withPMFSpec O) (List (QueryWithResult O)) :=
+  match ql with
+  | [] => pure []
+  | q :: qs => do
+      let out ← initQuery q
+      let rest ← collectComp qs
+      return ({input := q, output := out} : QueryWithResult O) :: rest
+
+/-- Simulating `collectComp ql` against `o` reproduces the transcript distribution
+`runQueries2Aux o.queries ql`. -/
+theorem collectComp_simulateQ_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+    (ql : List I) :
+    ∀ s, simulateQ (addPMFtoImpl o.queries) (collectComp (O := O) ql) s
+      = runQueries2Aux o.queries ql s := by
+  induction ql with
+  | nil =>
+    intro s
+    simp only [collectComp, runQueries2Aux, simulateQ_pure]
+    rfl
+  | cons q qs ih =>
+    intro s
+    conv_lhs => rw [collectComp]
+    rw [simulateQ_query_bind]
+    conv_rhs => rw [runQueries2Aux]
+    change ((o.queries q) s).bind
+        (fun d => simulateQ (addPMFtoImpl o.queries)
+          (collectComp qs >>= fun rest => pure (⟨q, d.1⟩ :: rest)) d.2) = _
+    simp only [simulateQ_bind, simulateQ_pure]
+    congr 1
+    funext d
+    change ((simulateQ (addPMFtoImpl o.queries) (collectComp qs) d.2).bind
+        (fun p => PMF.pure (⟨q, d.1⟩ :: p.1, p.2))) = _
+    rw [ih d.2]
+    simp only [bind, StateT.bind]
+    rfl
+
+/-- The distinguisher obtained from a query list `ql` and a boolean predicate `P` on
+transcripts: replay `ql` and output `P` of the observed transcript. -/
+noncomputable def mkDist {I : Type} {O : OracleSpec I} (ql : List I)
+    (P : List (QueryWithResult O) → Bool) : adversaryT O :=
+  collectComp ql >>= fun t => pure (P t)
+
+/-- The output distribution of `mkDist ql P` against `o` is exactly the push-forward of the
+transcript distribution `runQueriesOnlyOut o ql` along `P`. -/
+theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+    (ql : List I) (P : List (QueryWithResult O) → Bool) :
+    runDinstinguisher (mkDist ql P) o = (runQueriesOnlyOut o ql).map P := by
+  rw [runDinstinguisher_unfold, runQueriesOnlyOut, runQueries2]
+  simp only [PMF.map_comp, ← PMF.bind_map]
+  rw [show (o.initialState >>= runQueries2Aux o.queries ql)
+      = o.initialState.bind (runQueries2Aux o.queries ql) from rfl]
+  rw [PMF.map_bind]
+  congr 1
+  funext s
+  rw [mkDist]
+  simp only [simulateQ_bind, simulateQ_pure]
+  change PMF.map Prod.fst ((simulateQ (addPMFtoImpl o.queries) (collectComp ql) s).bind
+      (fun d => PMF.pure (P d.1, d.2))) = _
+  rw [PMF.map_bind, collectComp_simulateQ_eq]
+  simp only [PMF.map_comp, PMF.map_pure_eq_pure, Function.comp]
+  rw [PMF.map_eq_bind_pure]
+  rfl
+
+/-- **Charactarizing of the ObsEq as distinguishing advantage.**  If every distinguisher achieves zero
+advantage separating `o1` and `o2`, then `o1` and `o2` are observationally equivalent. -/
+theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O)
+    (H : ∀ d : adversaryT O, advantage d o1 o2 = 0) : ObsEq o1 o2 := by
+  classical
+  have Hd : ∀ d : adversaryT O, runDinstinguisher d o1 = runDinstinguisher d o2 :=
+    fun d => distanceOnBoolIrreflexive _ _ (H d)
+  intro ql
+  apply PMF.ext
+  intro target
+  have h := Hd (mkDist ql (fun x => decide (x = target)))
+  rw [runDinstinguisher_mkDist, runDinstinguisher_mkDist] at h
+  have h2 := congrArg (fun (p : PMF Bool) => p true) h
+  simp only [PMF.map_apply] at h2
+  rw [tsum_eq_single target, tsum_eq_single target] at h2
+  · simpa using h2
+  · intro b hb; simp [hb]
+  · intro b hb; simp [hb]
+
+-- eqivalence
+theorem obsEq_eq_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) :
+     ObsEq o1 o2 ↔ ∀ d : adversaryT O, advantage d o1 o2 = 0 := by
+    constructor
+    · intro H d
+      simp [advantage, pdistancePMF]
+      rw [obsEq_distinquishing_ub o1 o2 H]
+      simp []
+    · apply obsEq_of_advantage_zero
