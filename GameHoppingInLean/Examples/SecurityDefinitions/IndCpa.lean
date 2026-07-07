@@ -33,38 +33,19 @@ noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
           let key <- get
           scheme.encrypt key m₁
 
+noncomputable def IndCpaRFam {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) :
+    (κ : ℕ) → RStateOracle (IndCpaSpec (C κ)) :=
+  fun κ => IndCpaR (schemeFam.scheme κ)
 
-/-- The oracle pair corresponding to the IND-CPA security definition, for use in an
-`Assumptions` set. -/
-noncomputable def IndCpaAssumption {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    RStateOracle (IndCpaSpec C) × RStateOracle (IndCpaSpec C) :=
-  (IndCpaL scheme, IndCpaR scheme)
-
-noncomputable def IndCpaAssumptionFull {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    SingleAssumption :=
-  { i := IndCpaAssumption scheme }
+noncomputable def IndCpaLFam {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) :
+    (κ : ℕ) → RStateOracle (IndCpaSpec (C κ)) :=
+  fun κ => IndCpaL (schemeFam.scheme κ)
 
 noncomputable def IndCpaAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C) : IndAssumptionsFam := {
   Idx := Unit
   val := fun κ => {
-  assumptions := fun _ => IndCpaAssumptionFull (schemeFam.scheme κ)
+  assumptions := fun _ =>
+    ⟨ (IndCpaL (schemeFam.scheme κ), IndCpaR (schemeFam.scheme κ))⟩
   }
 }
-
-/-- IND-CPA security definition as an instance of `Indistinguishable`. -/
-def IndCpaDef
-    {Idx : Type} (Assumptions : IndAssumptions Idx)
-    {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) : Type 1 :=
-  IndistinguishableSingle Assumptions
-    (IndCpaL scheme) (IndCpaR scheme)
-
-
-/-- IND-CPA security definition as an instance of `Indistinguishable`. -/
-def IndCpaDefF
-    (Assumptions : IndAssumptionsFam)
-    {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
-  Indistinguishable
-    Assumptions
-    (fun κ => (IndCpaL (schemeFam.scheme κ) ))
-    (fun κ => (IndCpaR (schemeFam.scheme κ) ))
