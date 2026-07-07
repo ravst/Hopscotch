@@ -18,6 +18,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
 import GameHoppingInLean.ComputationalIndistinguishibility.Defs
+import GameHoppingInLean.ComputationalIndistinguishibility.AbstractionComplete
 
 import GameHoppingInLean.Examples.Misc.RF_caching
 import GameHoppingInLean.Examples.Proofs.GGMSecurePRF
