@@ -13,7 +13,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.Defs
 
 open scoped OracleReduction
 
-attribute [local game_hopping_unfold] IndCpaL IndCpaR IndCpaRandReal IndCpaRandRand
+attribute [local game_hopping_unfold] IndCpaL IndCpaR IndCpaLFam IndCpaRFam IndCpaRandReal IndCpaRandRand
 
 /-- Simple reduction from the single-message `ctxt` oracle to the left IND-CPA oracle:
 on input `(m₀, m₁)` query `ctxt(m₀)`. -/
@@ -39,7 +39,10 @@ noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ �
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
     :
-    IndCpaDefF (IndCpaRandAssumptionFam schemeFam) schemeFam := by
+    Indistinguishable
+      (IndCpaRandAssumptionFam schemeFam)
+      (IndCpaLFam schemeFam)
+      (IndCpaRFam schemeFam) := by
   intro κ
   let Enc := schemeFam.scheme κ
   game_hopping [
@@ -70,7 +73,7 @@ noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → T
         (OracleReduction.identity (IndCpaRandSpec (C κ)))
         IndCpaRand_to_IndCpaR]
   ) := by
-  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumptionFam, IndCpaRandSingleAssumption]
+  simp [indCpaRandImpliesIndCpa, IndCpaRandAssumptionFam]
   simp [transitive_step_val_simple, assumptionCounting,
     Indistinguishable.of_ObsEq,
   ]
