@@ -65,4 +65,4 @@ class OPlus (α : Type u) where
 instance : OPlus IndAssumptionsFam where
   oplus A B := IndAssumptions.oplusFam A B
 
-infixl:65 " ⊕ " => IndAssumptions.oplus
+infixl:65 " ⊕ " => IndAssumptions.oplusFam

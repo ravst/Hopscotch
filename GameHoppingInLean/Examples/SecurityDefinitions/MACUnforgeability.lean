@@ -90,9 +90,10 @@ def MACUFDef
 /-- Pointwise MAC-UF assumptions for a MAC family. -/
 noncomputable def MACUFAssumptionFam {K Tag : ℕ → Type}
     [∀ κ, DecidableEq (Tag κ)]
-    (schemeFam : MACSchemeFamily K Tag) (κ : ℕ) :
-    IndAssumptions Unit :=
-  MACUFAssumption' (schemeFam.scheme κ)
+    (schemeFam : MACSchemeFamily K Tag) :
+    IndAssumptionsFam where
+    Idx := Unit
+    val κ := MACUFAssumption' (schemeFam.scheme κ)
 
 /-- MAC unforgeability for a MAC family. -/
 def MACUFIFam

@@ -160,14 +160,15 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
 attribute [local game_hopping_unfold] EtMFromMACLReduction EtMFromMACRReduction
   EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR
   IndCpaL IndCpaR IndCcaL IndCcaR MACUFReal MACUFIdeal MACScheme.check
+  IndCcaLFam  IndCcaRFam
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security and MAC unforgeability,
 family version. The generated hop obligations are intentionally left for future proof work. -/
 noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     {KEnc KMac Tag : ℕ → Type} [∀ κ, DecidableEq (Tag κ)]
     (encFam : SymEncSchemeFamily KEnc (fun _ => BitVec))
     (macFam : MACSchemeFamily KMac Tag) :
-    IndCcaIFam
-      (fun κ => (IndCpaAssumptionFam encFam).val κ ⊕ MACUFAssumption' (macFam.scheme κ))
+    IndCcaIFam2
+      ((IndCpaAssumptionFam encFam) ⊕ MACUFAssumptionFam macFam)
       (encryptThenMacFamily encFam macFam) := by
   intro κ
   let enc := encFam.scheme κ
