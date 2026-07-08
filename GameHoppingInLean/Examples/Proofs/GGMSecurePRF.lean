@@ -162,6 +162,37 @@ noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG
       let remainingBits : BitVec (n - i.1) := BitVec.extractLsb' i.1 (n - i.1) x
       pure (applyPRGs prg fNodeBits remainingBits)
 
+/-
+We want to do the follwoing sequence:
+[
+    PRF_real (GGM prg n),
+    GGMHybrid prg 0,
+    GGMHybrid2 prg 0,
+    ...
+    GGMHybrid2 prg i,
+    ...
+    GGMHybrid2 prg (Fin.last n),
+    GGMHybrid prg (Fin.last n),
+    PRF_ideal (BitVec n) (BitVec k)]
+
+step (..) is justified by long_step. To do this we need the following sequence:
+
+game_hopping [
+    GGMHybrid2 prg i.castSucc,
+    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
+    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
+    GGMHybrid3 prg i,
+    GGMHybrid2 prg i.succ]
+
+Move from GGMHybrid to GGMHybrid2 uses the following:
+GGMHybrid prg i,
+    (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
+    (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)),
+    GGMHybrid2 prg i]
+
+Note, that only application of assumption is under reduction (GGMHybridStepReduction2PRG prg i). This reduction is clearly polynomial!
+It is interesting that some hybrids in this proof and even left side of thesis (PRF_ideal) are *not* polynomial. That does not affect correctness, because soundness theorem only cares about reduction used above application of assumption (only GGMHybridStepReduction2PRG).
+-/
 
 attribute [local game_hopping_unfold]
   GGMHybrid2 GGMHybrid3 GGMHybridStepReduction2PRG GGMHybridStepReduction2RF
@@ -247,164 +278,6 @@ noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ) :
           StateT.set (c.insert x' (v2 ++ v1))
         return v1
 
-noncomputable def finmap_map {X Y Z : Type} (m : Finmap (fun (_ : X) => Y)) (f : Y -> Z) [Fintype X] [DecidableEq X] : Finmap (fun (_ : X) => Z) :=
-  FinmapFromOptionFun (fun x => (m.lookup x).map f)
-
-lemma finmap_map_lookup {X Y Z : Type} (m : Finmap (fun (_ : X) => Y)) (f : Y -> Z)
-  [Fintype X] [DecidableEq X] (e : X) :
-  (finmap_map m f).lookup e = (m.lookup e).map f := by
-  simp [finmap_map]
-
-
-lemma finmap_map_insert {X Y Z : Type} (m : Finmap (fun (_ : X) => Y)) (f : Y -> Z)
-  [Fintype X] [DecidableEq X] (e : X) (z : Y) :
-  finmap_map (m.insert e z) f =
-  (finmap_map m f).insert e (f z) := by
-  simp [finmap_map]
-  apply Finmap.ext_lookup
-  intro a
-  simp []
-  if H : a = e then
-    subst a
-    simp [Finmap.lookup_insert]
-  else
-    rw [Finmap.lookup_insert_of_ne]
-    · rw [Finmap.lookup_insert_of_ne]
-      · simp []
-      simp [H]
-    simp [H]
-
-attribute [local game_hopping_unfold] finmap_map_lookup PRF_ideal_cache_batch_pairs
-
-lemma extractFlat : BitVec.extractLsb' 0 i (BitVec.extractLsb' 0 (i+j) x) = BitVec.extractLsb' 0 i x := by
-  apply BitVec.extractLsb'_zero_extractLsb'_zero
-  exact Nat.le_add_right i j
-
-/-- Final bridge from the batch-cached random function view to the paired-label
-`GGMHybrid3` view. This is the remaining randomization-shift lemma: the batch relation
-will eventually cache both children of a depth-`i` node, and this lemma will identify
-that cache with the `BitVec (k + k)` parent-label cache. -/
-theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
-    (prg : lengthDoublingPRG k) (i : Fin n) :
-    ObsEq
-      ((GGMHybridStepReduction2RF prg i.succ) ◇
-        (PRF_ideal_cache_batch_pairs i (BitVec k)))
-      (GGMHybrid3 prg i) := by
-  simp [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid3, PRF_ideal_cache_batch_flipMsb2]
-  refine correctAbstractionImpliesObsEq _ _
-     (fun (a,b) => finmap_map b (fun (x, y) => (x++y))) ?_
-  solveCorrectAbstraction[]
-  -- constructor
-  ·   next q1 q2 q3 Haa =>
-    -- if Haa :  BitVec.extractLsb' 0 ↑i { toFin := q1 } ∈ w.keys then
-      -- simp [Haa]
-      have ⟨z , Hz⟩ := Finmap.mem_iff.mp Haa
-      rw [extractFlat]
-      rw [Hz]
-      simp []
-      simp [RStateSimplifier, GameHoppingSimplifyPMF]
-      congr 3
-      · simp [choosePair, PRG.chooseHalfI]
-        congr
-        · simp [BitVec.extractLsb'_append_eq_left]
-        · simp [BitVec.extractLsb'_append_eq_right]
-      apply Eq.symm
-      apply BitVec.extractLsb'_extractLsb'
-      apply le_of_eq
-      have : i < n := i.isLt
-      refine Nat.add_sub_of_le ?_
-      refine Nat.le_sub_of_add_le' ?_
-      exact Order.add_one_le_iff.mpr this
-    -- else
-  ·   next q1 q2 Haa q =>
-      --simp [Haa]
-      have Hz := Finmap.lookup_eq_none.mpr Haa
-      rw [Hz]
-      simp []
-      simp [RStateSimplifier]
-      -- if L : (q1.val).testBit ↑i then (
-      conv =>
-        rhs
-        rw [bind_uniformOfFintype_bitVec_append_rev]
-      simp []
-      congr
-      ext1 a
-      congr
-      ext1 b
-      unfold StateT.set
-      simp [PRG.chooseHalfI]
-      -- simp [L]
-      congr 3
-      · simp [BitVec.extractLsb'_append_eq_left]
-      · apply Eq.symm
-        apply BitVec.extractLsb'_extractLsb'
-        have : i < n := i.isLt
-        grind
-      · apply finmap_map_insert
-
-  ·   next q1 q2 Haa q =>
-      --simp [Haa]
-      have Hz := Finmap.lookup_eq_none.mpr Haa
-      rw [Hz]
-      simp []
-      simp [RStateSimplifier]
-      -- if L : (q1.val).testBit ↑i then (
-      conv =>
-        rhs
-        rw [bind_uniformOfFintype_bitVec_append_rev]
-      simp []
-      congr
-      ext1 a
-      congr
-      ext1 b
-      unfold StateT.set
-      simp [PRG.chooseHalfI]
-      -- simp [L]
-      congr 3
-      · simp [BitVec.extractLsb'_append_eq_right]
-      · apply Eq.symm
-        apply BitVec.extractLsb'_extractLsb'
-        have : i < n := i.isLt
-        grind
-      · apply finmap_map_insert
-  · simp [finmap_map]
-
-/-- The `GGMHybrid2`/`GGMHybrid3` bridge as a symbolic indistinguishability object.
-
-This is intentionally phrased as an `IndistinguishableI` chain rather than a direct
-`ObsEq`, so the step can be assembled from the cached-random-function equivalences and
-the stateful reduction that embeds the depth-`i+1` random function into the outer PRF
-game. -/
-noncomputable def indistinguishableI_GGMHybrid2_Vs_3
-    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
-    :
-    IndistinguishableI IndAssumptions.empty none
-      (GGMHybrid2 prg i.succ)
-      (GGMHybrid3 prg i) := by
-  game_hopping [
-    GGMHybrid2 prg i.succ,
-    (GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal2 (BitVec i.succ.1) (BitVec k)),
-    (GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal_cache_batch_pairs i (BitVec k)),
-    GGMHybrid3 prg i]
-  · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i.succ)
-  · apply IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none
-    apply Indistinguishable.of_ObsEq
-    apply obsEq_PRF_ideal_PRF_ideal_cache_pairs
-  · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_Vs_3_batch_bridge prg i)
-
-
--- easy, just definition
--- swap PMF.uniform (BitVec k k) into ideal prg randomness
-theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
-    (prg : lengthDoublingPRG k) (i : Fin n) :
-    ObsEq (GGMHybrid3 prg i)
-      ( (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k)) := by
-  obs_eq_by_abstraction (fun labels => (labels, ()))
-  split <;>
-    simp_all [set, MonadState.set, MonadStateOf.set, StateT.set,
-      correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF,
-      OracleReductionSimps, StateTSimps]
-
 def Finmap.mapKeys (s : Finmap (fun _ : α => β)) (f : β → γ) : Finmap (fun _ : α => γ) where
   entries := s.entries.map (fun x => ⟨x.1, f x.2⟩)
   nodupKeys := by
@@ -433,6 +306,92 @@ theorem Finmap.mapKeys_insert [DecidableEq α]
   · subst y
     simp
   · simp [h]
+
+attribute [local game_hopping_unfold] PRF_ideal_cache_batch_pairs
+
+lemma extractFlat : BitVec.extractLsb' 0 i (BitVec.extractLsb' 0 (i+j) x) = BitVec.extractLsb' 0 i x := by
+  apply BitVec.extractLsb'_zero_extractLsb'_zero
+  exact Nat.le_add_right i j
+
+/-- Final bridge from the batch-cached random function view to the paired-label
+`GGMHybrid3` view. This is the remaining randomization-shift lemma: the batch relation
+will eventually cache both children of a depth-`i` node, and this lemma will identify
+that cache with the `BitVec (k + k)` parent-label cache. -/
+theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
+    (prg : lengthDoublingPRG k) (i : Fin n) :
+    ObsEq
+      ((GGMHybridStepReduction2RF prg i.succ) ◇
+        (PRF_ideal_cache_batch_pairs i (BitVec k)))
+      (GGMHybrid3 prg i) := by
+  simp [OracleReduction.apply, GGMHybridStepReduction2RF, GGMHybrid3, PRF_ideal_cache_batch_flipMsb2]
+  refine correctAbstractionImpliesObsEq _ _
+     (fun (a,b) => Finmap.mapKeys b (fun (x, y) => (x++y))) ?_
+  solveCorrectAbstractionBasic[]
+  -- constructor
+  · next q1 q2 q3 w =>
+    if Haa :  BitVec.extractLsb' 0 ↑i { toFin := q1 } ∈ w.keys then
+      simp [Haa]
+      have ⟨z , Hz⟩ := Finmap.mem_iff.mp Haa
+      rw [extractFlat]
+      rw [Hz]
+      simp []
+      simp [RStateSimplifier, GameHoppingSimplifyPMF]
+      congr 3
+      · simp [choosePair, PRG.chooseHalfI]
+        congr
+        · simp [BitVec.extractLsb'_append_eq_left]
+        · simp [BitVec.extractLsb'_append_eq_right]
+      apply Eq.symm
+      apply BitVec.extractLsb'_extractLsb'
+      apply le_of_eq
+      have : i < n := i.isLt
+      refine Nat.add_sub_of_le ?_
+      refine Nat.le_sub_of_add_le' ?_
+      exact Order.add_one_le_iff.mpr this
+    else
+      simp [Haa]
+      have Hz := Finmap.lookup_eq_none.mpr Haa
+      rw [Hz]
+      simp [RStateSimplifier]
+      conv =>
+          rhs
+          rw [bind_uniformOfFintype_bitVec_append_rev]
+      simp [PRG.chooseHalfI]
+      split_ifs <;> (
+      -- if L : (q1.val).testBit ↑i then (
+        simp [GameHoppingSimplifyPMF]
+        congr
+        ext1 a
+        congr
+        ext1 b
+        unfold StateT.set
+        simp []
+        congr 3
+        · simp [BitVec.extractLsb'_append_eq_left, BitVec.extractLsb'_append_eq_right]
+        · apply Eq.symm
+          apply BitVec.extractLsb'_extractLsb'
+          have : i < n := i.isLt
+          grind
+        )
+
+/-- The `GGMHybrid2`/`GGMHybrid3`/`GGMHybrid2 (+1)` bridge as a symbolic indistinguishability object.
+
+This is intentionally phrased as an `IndistinguishableI` chain rather than a direct
+`ObsEq`, so the step can be assembled from the cached-random-function equivalences and
+the stateful reduction that embeds the depth-`i+1` random function into the outer PRF
+game. -/
+
+-- easy, just definition
+-- swap PMF.uniform (BitVec k k) into ideal prg randomness
+theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
+    (prg : lengthDoublingPRG k) (i : Fin n) :
+    ObsEq (GGMHybrid3 prg i)
+      ( (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k)) := by
+  obs_eq_by_abstraction (fun labels => (labels, ()))
+  split <;>
+    simp_all [set, MonadState.set, MonadStateOf.set, StateT.set,
+      correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF,
+      OracleReductionSimps, StateTSimps]
 
 /-- One expansion step of `applyPRGs`, stated for a non-literal positive length. -/
 lemma applyPRGs_step {k q : ℕ} (prg : PRG k k) (s : BitVec k) (bits : BitVec q) (hq : 0 < q) :
@@ -472,54 +431,44 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
     IndistinguishableSingle (SecurePRGAssumption' prg)
+      (GGMHybrid2 prg i.succ)
       (GGMHybrid2 prg i.castSucc)
-      (GGMHybrid2 prg i.succ) := by
+      := by
   game_hopping [
-    GGMHybrid2 prg i.castSucc,
-    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
-    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
-    GGMHybrid3 prg i,
-    GGMHybrid2 prg i.succ]
-  · exact Indistinguishable.symmetric
-      (Indistinguishable.of_ObsEq (obsEq_applyStepReduction_rand_GGMHybrid2 prg i))
-  · exact Indistinguishable.symmetric
-      (Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_applyStepReduction_real prg i))
-  · exact Indistinguishable.symmetric
-      (liftEmptyAssumptions (indistinguishableI_GGMHybrid2_Vs_3 prg i))
-
-/-- One GGM hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
-noncomputable def GGMHybrid_step_indistinguishable_of_securePRG
-    {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
-    IndistinguishableSingle (SecurePRGAssumption' prg)
-      (GGMHybrid prg i.castSucc)
-      (GGMHybrid prg i.succ) := by
-  game_hopping [
-    GGMHybrid prg i.castSucc,
-    GGMHybrid2 prg i.castSucc,
     GGMHybrid2 prg i.succ,
-    GGMHybrid prg i.succ]
-  · exact liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.castSucc)
-  · exact GGMHybrid2_step_indistinguishable_of_securePRG prg i
-  · exact Indistinguishable.symmetric
-      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg i.succ))
+    (GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal2 (BitVec i.succ.1) (BitVec k)),
+    (GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal_cache_batch_pairs i (BitVec k)),
+    GGMHybrid3 prg i,
+    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
+    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
+    GGMHybrid2 prg i.castSucc
+    ]
+  · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i.succ)
+  · apply IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none
+    exact Indistinguishable.of_ObsEq (obsEq_PRF_ideal_PRF_ideal_cache_pairs (BitVec k))
+  · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_Vs_3_batch_bridge prg i)
+  · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_applyStepReduction_real prg i)
+  · exact Indistinguishable.of_ObsEq (obsEq_applyStepReduction_rand_GGMHybrid2 prg i)
+
 
 /-- All GGM hybrids are indistinguishable assuming the length-doubling PRG is secure. -/
 noncomputable def GGMHybrids_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) :
     IndistinguishableSingle (SecurePRGAssumption' prg)
-      (GGMHybrid prg 0)
-      (GGMHybrid prg (Fin.last n)) := by
+      (GGMHybrid2 prg 0)
+      (GGMHybrid2 prg (Fin.last n)) := by
   refine Indistinguishable.long_step n
-    (fun j => GGMHybrid prg ⟨j.1, ?_⟩)
-    (GGMHybrid prg 0)
-    (GGMHybrid prg (Fin.last n))
+    (fun j => GGMHybrid2 prg ⟨j.1, ?_⟩)
+    (GGMHybrid2 prg 0)
+    (GGMHybrid2 prg (Fin.last n))
     (by rfl)
     (by rfl)
     ?_
   · exact Finset.mem_range.mp j.2
   · intro i hi
     simp [ro_seq_fixed]
-    exact GGMHybrid_step_indistinguishable_of_securePRG prg ⟨i, hi⟩
+    apply Indistinguishable.symmetric
+    exact GGMHybrid2_step_indistinguishable_of_securePRG prg ⟨i, hi⟩
 
 /-- GGM is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def secureGGM_of_securePRG
@@ -528,10 +477,15 @@ noncomputable def secureGGM_of_securePRG
   game_hopping [
     PRF_real (GGM prg n),
     GGMHybrid prg 0,
+    GGMHybrid2 prg 0,
+    GGMHybrid2 prg (Fin.last n),
     GGMHybrid prg (Fin.last n),
     PRF_ideal (BitVec n) (BitVec k)]
   · exact Indistinguishable.of_ObsEq (obsEq_real_GGMHybrid_zero prg)
+  · exact liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg 0)
   · exact GGMHybrids_indistinguishable_of_securePRG prg
+  · exact Indistinguishable.symmetric
+      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg ((Fin.last n))))
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid_last_ideal prg)
 
 end
