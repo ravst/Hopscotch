@@ -197,7 +197,7 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     {KEnc KMac Tag : ℕ → Type} [∀ κ, DecidableEq (Tag κ)]
     (encFam : SymEncSchemeFamily KEnc (fun _ => BitVec))
     (macFam : MACSchemeFamily KMac Tag) :
-    IndCcaIFam
+    IndCcaProof
       ((IndCpaAssumptionFam encFam) ⊕ MACUFAssumptionFam macFam)
       (encryptThenMacFamily encFam macFam) := by
   intro κ
@@ -207,10 +207,10 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     IndCcaL (encryptThenMac enc mac),
     (EtMFromMACLReduction enc) ◇ (MACUFReal mac),
     (EtMFromMACLReduction enc) ◇ (MACUFIdeal mac),
-    EtMGameMacIdealL enc mac,
+    -- EtMGameMacIdealL enc mac,
     (EtMFromIndCpaReduction mac) ◇ (IndCpaL enc),
     (EtMFromIndCpaReduction mac) ◇ (IndCpaR enc),
-    EtMGameMacIdealR enc mac,
+    -- EtMGameMacIdealR enc mac,
     (EtMFromMACRReduction enc) ◇ (MACUFIdeal mac),
     (EtMFromMACRReduction enc) ◇ (MACUFReal mac),
     IndCcaR (encryptThenMac enc mac)
