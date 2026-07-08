@@ -6,7 +6,7 @@ import GameHoppingInLean.IndistinguishabilityTactics
 
 open scoped OracleReduction
 
-attribute [local game_hopping_unfold] encryptThenMac encryptThenMacFamily
+
 
 abbrev EtMC (Tag : Type) (n : ℕ) := BitVec n × Tag
 abbrev EtMSpec (Tag : Type) : OracleSpec (IndCcaQ (fun n => EtMC Tag n)) :=
@@ -157,10 +157,40 @@ noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
         else
           pure (some (BitVec.zero n))
 
+/-- Abstraction from the left MAC reduction state to the left IND-CCA EtM state. -/
+@[local game_hopping_unfold]
+abbrev EtMIndCcaLToMacLAbstraction {KEnc KMac Tag : Type}
+    (s : EtMFromMacState KEnc Tag × KMac) :
+    IndCcaState (KMac × KEnc) (fun n => EtMC Tag n) :=
+  { key := (s.2, s.1.encKey), seen := s.1.seen }
+
+/-- Abstraction from the left IND-CPA reduction state to the left MAC-ideal EtM game. -/
+@[local game_hopping_unfold]
+abbrev EtMMacIdealLToIndCpaLAbstraction {KEnc KMac Tag : Type}
+    (s : EtMFromIndCpaState KMac Tag × KEnc) :
+    EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag :=
+  ({ encKey := s.2, seen := s.1.seen },
+    { key := s.1.macKey, seen := s.1.seen })
+
+/-- Abstraction from the right IND-CPA reduction state to the right MAC-ideal EtM game. -/
+@[local game_hopping_unfold]
+abbrev EtMIndCpaRToMacIdealRAbstraction {KEnc KMac Tag : Type}
+    (s : EtMFromIndCpaState KMac Tag × KEnc) :
+    EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag :=
+  ({ encKey := s.2, seen := s.1.seen },
+    { key := s.1.macKey, seen := s.1.seen })
+
+/-- Abstraction from the right MAC reduction state to the right IND-CCA EtM state. -/
+@[local game_hopping_unfold]
+abbrev EtMMacRToIndCcaRAbstraction {KEnc KMac Tag : Type}
+    (s : EtMFromMacState KEnc Tag × KMac) :
+    IndCcaState (KMac × KEnc) (fun n => EtMC Tag n) :=
+  { key := (s.2, s.1.encKey), seen := s.1.seen }
+
 attribute [local game_hopping_unfold] EtMFromMACLReduction EtMFromMACRReduction
   EtMFromIndCpaReduction EtMGameMacIdealL EtMGameMacIdealR
   IndCpaL IndCpaR IndCcaL IndCcaR MACUFReal MACUFIdeal MACScheme.check
-  IndCcaLFam  IndCcaRFam
+  IndCcaLFam  IndCcaRFam encryptThenMac encryptThenMacFamily
 /-- IND-CCA security of Encrypt-then-MAC from IND-CPA security and MAC unforgeability,
 family version. The generated hop obligations are intentionally left for future proof work. -/
 noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
@@ -185,14 +215,7 @@ noncomputable def indCpaAndMacUfImpliesIndCcaEncryptThenMacFam
     (EtMFromMACRReduction enc) ◇ (MACUFReal mac),
     IndCcaR (encryptThenMac enc mac)
   ]
-  · by_abstraction ← (fun s =>
-      ({ key := (s.2, s.1.encKey), seen := s.1.seen } :
-        IndCcaState (KMac κ × KEnc κ) (fun n => EtMC (Tag κ) n)))
-  · by_abstraction ← (fun s =>
-      ({ encKey := s.2, seen := s.1.seen },
-        { key := s.1.macKey, seen := s.1.seen }))
-  · by_abstraction (fun s =>
-      ({ encKey := s.2, seen := s.1.seen },
-        { key := s.1.macKey, seen := s.1.seen }))
-  · by_abstraction (fun s =>
-      ({ key := (s.2, s.1.encKey), seen := s.1.seen }))
+  · by_abstraction ← EtMIndCcaLToMacLAbstraction
+  · by_abstraction ← EtMMacIdealLToIndCpaLAbstraction
+  · by_abstraction EtMIndCpaRToMacIdealRAbstraction
+  · by_abstraction EtMMacRToIndCcaRAbstraction
