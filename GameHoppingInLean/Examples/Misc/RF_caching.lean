@@ -123,3 +123,38 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pair (X Y : Type)
         StateT.lift]
       exact completePRFCache_diagram_batch X Y st query ({x' ∈ f query | x' ∉ st.keys})
         (Finset.mem_filter.mpr ⟨hf query, hq⟩) (fun x hx => (Finset.mem_filter.mp hx).2)
+
+
+
+def choosePair (b : Bool) (pair : (X × X)) :=
+  if b then pair.1 else pair.2
+
+noncomputable def PRF_ideal_cache_batch_pairs (i : ℕ) (Y : Type) [Fintype Y] [Nonempty Y] :
+    RStateOracle (SecurePRFSpec (BitVec i.succ) Y) where
+  stateType := Finmap (fun _x : (BitVec i) => (Y × Y))
+  initialState := pure ∅
+  queries x := by
+      simp[SecurePRFSpec, OracleSpec.Domain] at x
+      exact do
+      let c <- get
+      let x' := x.extractLsb' 0 i
+      if hx : x' ∈ c.keys then
+        let value := (c.lookup x').getD (Classical.choice inferInstance)
+        return choosePair x[i] value
+      else
+        let v1 <- PMF.uniformOfFintype Y
+        let v2 <- PMF.uniformOfFintype Y
+        if x[i] then
+          StateT.set (c.insert x' (v1, v2))
+        else
+          StateT.set (c.insert x' (v2, v1))
+        return v1
+
+
+
+/-- The eagerly sampled random-function oracle and the batched lazy cache are
+observationally equivalent. -/
+theorem obsEq_PRF_ideal_PRF_ideal_cache_pairs {i : ℕ} (Y : Type)
+     [Fintype Y] [Nonempty Y] :
+    ObsEq (PRF_ideal2 (BitVec i.succ) Y) (PRF_ideal_cache_batch_pairs i Y) :=
+      by sorry

@@ -137,6 +137,20 @@ theorem bind_uniformOfFintype_bitVec_append_do
     (e := bitVecAppendEquiv a b)
     (g := f)).symm
 
+
+theorem bind_uniformOfFintype_bitVec_append_rev
+  {a b : ℕ} {α : Type} (f : BitVec (a + b) → PMF α) :
+  (PMF.uniformOfFintype (BitVec (a + b))).bind f
+  =
+  (do
+    let x₁ ← PMF.uniformOfFintype (BitVec a)
+    let x₂ ← PMF.uniformOfFintype (BitVec b)
+    f (x₁ ++ x₂))
+  := by
+    apply Eq.symm
+    apply bind_uniformOfFintype_bitVec_append_do
+
+
 /-- A uniform bitvector draw observed only through its high and low slices is equivalent
 to two independent uniform bitvector draws. -/
 @[GHSimpPMFBitVec]
