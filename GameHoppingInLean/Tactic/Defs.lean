@@ -186,11 +186,11 @@ are an available indistinguishability assumption, in either direction.
 elab "game_hopping_reduce_assumption" : tactic => do
   let s ← saveState
   try
-    evalTactic (← `(tactic| refine IndistinguishableI.complexInitReduction _ _ ?_))
+    evalTactic (← `(tactic| refine IndistinguishableI.reduction _ _ ?_))
     closeGameHoppingAssumptionGoal
   catch _ =>
     restoreState s
-    evalTactic (← `(tactic| refine IndistinguishableI.complexInitReduction _ _ ?_))
+    evalTactic (← `(tactic| refine IndistinguishableI.reduction _ _ ?_))
     evalTactic (← `(tactic| apply IndistinguishableI.symm))
     closeGameHoppingAssumptionGoal
 

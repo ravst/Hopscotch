@@ -3,7 +3,7 @@ import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
 import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 
-/- # Observational Equivalence -/
+/- # Observational Equivalence and Abstraction -/
 
 /- In this file, we define the notion of observational equivalence for stateful random oracles,
    which is the main notion of equivalence used in our game-hopping proofs.
@@ -16,39 +16,16 @@ import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
    even if their internal states are represented by different types.
 -/
 
--- noncomputable def runQueriesAux {I : Type} {O : OracleSpec I} {S : Type} (impl : QueryImpl O (RState S)) (queries : List (QueryS O)) :
---   RState S (List (QueryResult O)) :=
---   match queries with
---   | [] => pure []
---   | q :: qs => do
---     let o ← impl.impl q.index q.input
---     (fun os =>  ({index := q.index, output := o} :: os)) <$> runQueriesAux impl qs
-
--- noncomputable def runQueries {I : Type} {O : OracleSpec I} (ro : OracleImpl O) (queries : List (QueryS O)) : PMF (List (QueryResult O)) :=
---   (runQueriesAux ro.queries queries).eval ro.initialState
-
--- lemma runQueriesEquiv {I : Type} {O : OracleSpec I} (ro : OracleImpl O) (queries : List (QueryS O)) : runQueries ro queries =
---    (OracleImpl.runQueriesOnlyOut ro queries)
---  := by
---   have hAux :
---       ∀ (queries : List (QueryS O)) (init : ro.stateType),
---         StateT.run (runQueriesAux ro.queries queries) init =
---           runQueries2Aux ro.queries queries init := by
---     intro queries
---     induction queries with
---     | nil =>
---         intro init
---         simp [runQueriesAux, runQueries2Aux]
---     | cons q qs ih =>
---         intro init
---         simp [runQueriesAux, runQueries2Aux, ih, map_eq_bind_pure_comp, bind_assoc]
---   simp [OracleImpl.runQueriesOnlyOut, runQueries, OracleImpl.runQueries2, RState.eval, RState.run, PMF.map_bind, hAux]
-
 /-- Two stateful random oracles are observationally equal when every finite replay of
 concrete queries induces the same distribution on observable query/output transcripts. -/
 def ObsEq (ro₁ ro₂ : OracleImpl O) : Prop :=
   ∀ queriesList, runQueriesOnlyOut ro₁ queriesList = runQueriesOnlyOut ro₂ queriesList
 
+@[symm]
+lemma ObsEqSymm {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O) :
+  ObsEq ro₁ ro₂ -> ObsEq ro₂ ro₁ := by
+  intro h queriesList
+  rw [h queriesList]
 
 /- ## Bounded Observational Equivalence -/
 
@@ -98,20 +75,28 @@ lemma ObsEqBounded.symm {ro₁ ro₂ : OracleImpl O} {q_b : ENat}
   intro queriesList hBound
   exact (h queriesList hBound).symm
 
--- In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
--- for observational equivalece. We start with the "correct abstraction", explained below.
+/-
+# Abstraction
+ In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
+ for observational equivalece. We start with the "correct abstraction", explained below.
 
--- Suppose we have a pair of oracles O₁ and O₂, which operates on states S₁ and S₂.
--- We say that a function f : S₁ → S₂ is a correct abstraction from O₁ to O₂, if
--- (a) After applying f to the initial state distribution of O₁, we get the initial state distribution of O₂
--- (b) The function `f` commutes with each query (see `correctAbstraction` below).
--- This is a kind of "bisimulation" condition, and is often easier to check than
--- the full definition of observational equivalence.
+ Suppose we have a pair of oracles O₁ and O₂, which operates on states S₁ and S₂.
+ We say that a function f : S₁ → S₂ is a correct abstraction from O₁ to O₂, if
+(a) After applying f to the initial state distribution of O₁, we get the initial state distribution of O₂
+(b) The function `f` commutes with each query (see `correctAbstraction` below).
+This is a kind of "bisimulation" condition, and is often easier to check than
+the full definition of observational equivalence.
 
-/-- In our proofs the main tool for showing observational equivalence is abstraction, i.e.
-    a function mapping the internal states of one oracle to the internal states of another oracle, such that
-    the initial states are mapped to each other, and the output distributions of queries commute with the mapping.
+In our proofs the main tool for showing observational equivalence is abstraction, i.e.
+a function mapping the internal states of one oracle to the internal states of another oracle, such that
+the initial states are mapped to each other, and the output distributions of queries commute with the mapping.
+
+Two main cases are when:
+(1) we want to forget about unused variables. The mapping function just forgets them: we map  (a, b) to a when we want oto forget b.
+(2) We want to introduce invarinant on the state space: isntead of `X` have `{x : X // P }`. Then abstraction function is inclusion `{x : X // P } → X`. In other word, we forget aobut proof: `⟨a, H⟩ -> a`.
 -/
+
+
 def mapSecond {α β γ} (f : β → γ) (p : α × β) : α × γ :=
   (p.1, f p.2)
 
@@ -132,6 +117,12 @@ def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O
   ∀ (query : O.Domain),
       mapOutputState f (ro₁.queries query) =
       mapInputState f (ro₂.queries query)
+
+/-
+# Probabilitis Abstraction
+  Here we generalize of abstraction presented above by alowing randomized mapping function.
+  This enables reasoning about freshnes of eagerly samples random values. In such case, we define abstraction from lazly-sampled version into eagerly sampled version. Whenever mapping function maps state when variable a ahve not yet been sampled into state where it already been sampled, it chooses random value from appropriate distribution.
+-/
 
 /-- A more general version of abstraction allows for probabilistic mappings between states. -/
 noncomputable def bindInputState (f : S₁ → PMF S₂) (m : RState S₂ α) (s : S₁) :
@@ -628,26 +619,3 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
   apply congrArg (fun g => PMF.bind ro₁.initialState g)
   funext a
   simpa [PMF.bind_bind, PMF.bind_const] using hRun2AuxFst a
-
-
--- lemma rState2Rstate_correct_abstraction_bind2 {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : Nat):
---   exists (f : (rState2Rstate q_b o).stateType -> PMF o.stateType)
---     (val : (rState2Rstate none o).stateType -> ENat),
---     correctAbstractionBindBound (rState2Rstate q_b o) o f val q_b := by sorry
-
-
-
--- also true. It is a bit problematic that implication from correctAbstractionBindBound2 f val none (for some val) to
---  correctAbstractionBind f (the same f) is nontrivial/false. It is implied that diagram commutes on rechable states, but it could not commute elsewhere (val have to be infty on rechable states and could be zero otherwise)
--- lemma rState2Rstate_correct_abstraction_bind {I : Type} {O : OracleSpec I} (o : OracleImpl O):
---   exists
---     (f : (rState2Rstate none o).stateType -> PMF o.stateType),
---     correctAbstractionBind (rState2Rstate none o) o f := by sorry
-
--- ## Useful helper lemmas about ObsEq and ObsEqBounded
-
-@[symm]
-lemma ObsEqSymm {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O) :
-  ObsEq ro₁ ro₂ -> ObsEq ro₂ ro₁ := by
-  intro h queriesList
-  rw [h queriesList]

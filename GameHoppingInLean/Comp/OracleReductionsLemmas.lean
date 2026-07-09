@@ -1,7 +1,10 @@
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Tactic.SimpAttrLemmas
-
 open OracleReduction
+
+/- # compositions of reduction
+We define composition of reductions. This file is only used in soundnes proof - in cryptographic proofs reductions are
+rearly composed with each other. -/
 
 /-- Helper: simulating a computation through the identity reduction (first via
 `addPMFtoImpl2` of the identity queries, then via `defaultImpl`) and applying the
@@ -30,7 +33,7 @@ lemma identity_roundtrip {Output I : Type} {O : OracleSpec I}
         simp [ih]
         simp [bind, pure]
 
-lemma applyComplexInitReduction2_identity {Output I : Type} {O : OracleSpec I}
+lemma applyreduction2_identity {Output I : Type} {O : OracleSpec I}
   (dist : OracleComp (withPMFSpec O) Output)
   : applyReductionToAdversary (OracleReduction.identity O) dist = dist := by
   simp only [applyReductionToAdversary, OracleReduction.identity, pure_bind]
@@ -83,6 +86,11 @@ def rcompose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec
   initialState := r1.initialState >>= fun s1 =>
       simulateQ defaultImpl (simulateQ (addPMFtoImpl2 r1.queries) r2.initialState) s1
   queries := fun i => simulateQ (combineImpl r1 r2.stateType) (r2.queries i)
+
+/- # Lemma about composition of oracles
+We prove that compostions (adversary, reduction1), reduction2 is equal to (adversary, (reduction1, reduction2))
+Note that composing reduction with each other is an different operation then composing it with adversary.
+-/
 
 set_option maxHeartbeats 1000000 in -- large simp set over the free-monad induction
 /-- Embedding a state-`S₁` computation into the combined state `S₂ × S₁` and

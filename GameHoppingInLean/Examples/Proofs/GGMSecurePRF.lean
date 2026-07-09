@@ -66,7 +66,7 @@ noncomputable def liftEmptyAssumptions
   induction h with
   | assumption i => exact i.elim
   | obsEqB q hObs => exact IndistinguishableI.obsEqB q hObs
-  | complexInitReduction r q h ih => exact IndistinguishableI.complexInitReduction r q ih
+  | reduction r q h ih => exact IndistinguishableI.reduction r q ih
   | symm q h ih => exact IndistinguishableI.symm q ih
   | trans ro₂ q h₁ h₂ ih₁ ih₂ => exact IndistinguishableI.trans ro₂ q ih₁ ih₂
   | longSequence l q ro hStep ih =>
@@ -239,7 +239,7 @@ noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
     obs_eq_by_abstraction ← (fun st => st.2)
     congr 1
     exact Subsingleton.elim _ _
-  · exact IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i) none
+  · exact IndistinguishableI.reduction (GGMHybridStepReduction2RF prg i) none
       (indistinguishable_PRF_ideal_PRF_ideal2 (BitVec i.1) (BitVec k))
   · apply Indistinguishable.of_ObsEq
     apply ObsEq.symm
@@ -454,7 +454,7 @@ noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
     GGMHybrid2 prg i.castSucc
     ]
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_reduction_rf prg i.succ)
-  · apply IndistinguishableI.complexInitReduction (GGMHybridStepReduction2RF prg i.succ) none
+  · apply IndistinguishableI.reduction (GGMHybridStepReduction2RF prg i.succ) none
     exact Indistinguishable.of_ObsEq (obsEq_PRF_ideal_PRF_ideal_cache_pairs (BitVec k))
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_Vs_3_batch_bridge prg i)
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid2_applyStepReduction_real prg i)

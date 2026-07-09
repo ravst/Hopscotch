@@ -53,7 +53,7 @@ initialization to obtain `(A, B, C)`, then publishes `A` as the public key and a
 message query with `(B, m * C)`. -/
 noncomputable def DDHToElGamalOTUCPubReduction {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (_g : G) :
-    ComplexInitReduction (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    reduction (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let (A, B, C) <- RReduction.query DecisionalDHQ.querry ()
@@ -289,13 +289,13 @@ theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G1 {G : Type} [Group G] [F
 theorem obsEq_G1_applyComplexInit_dhReal
     {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
     ObsEq (ElGamalOTUCPubG1 g)
-      (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhReal g)) := by
+      (applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g)) := by
   refine existsMapStateBijImpliesObsEq
     (ro₁ := ElGamalOTUCPubG1 g)
-    (ro₂ := applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
+    (ro₂ := applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
     ?_
   refine ⟨(Equiv.prodUnit _).symm, ?_, ?_⟩
-  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG1, applyComplexInitReduction,
+  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG1, applyreduction,
       DDHToElGamalOTUCPubReduction, dhReal, OracleComp.simulateQ, FreeMonad.mapM,
       query_impl_convert, pow_mul]
   · intro i query
@@ -303,14 +303,14 @@ theorem obsEq_G1_applyComplexInit_dhReal
     | getPk =>
         cases query
         simp [DDHToElGamalOTUCPubReduction]
-        dsimp [applyComplexInitReduction]
+        dsimp [applyreduction]
         simp [query_impl_convert]
         simp [monad_norm, GameHoppingSimplifyPMF,
           OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTUCPubReduction, dhReal,
           ElGamalOTUCPubG1, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTUCPubReduction]
-        dsimp [applyComplexInitReduction]
+        dsimp [applyreduction]
         simp [query_impl_convert]
         simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
           DDHToElGamalOTUCPubReduction, dhReal, ElGamalOTUCPubG1, RState.modify]
@@ -318,14 +318,14 @@ theorem obsEq_G1_applyComplexInit_dhReal
 /-- Applying the DDH reduction to the random DDH oracle is observationally equivalent to `G3`. -/
 theorem obsEq_applyComplexInit_dhRand_G3
     {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    ObsEq (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
+    ObsEq (applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
       (ElGamalOTUCPubG3 g) := by
   refine existsMapStateBijImpliesObsEq
-    (ro₁ := applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
+    (ro₁ := applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
     (ro₂ := ElGamalOTUCPubG3 g)
     ?_
   refine ⟨Equiv.prodUnit _, ?_, ?_⟩
-  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG3, applyComplexInitReduction,
+  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG3, applyreduction,
       DDHToElGamalOTUCPubReduction, dhRand, OracleComp.simulateQ, FreeMonad.mapM,
       query_impl_convert]
   · intro i query
@@ -333,14 +333,14 @@ theorem obsEq_applyComplexInit_dhRand_G3
     | getPk =>
         cases query
         simp [DDHToElGamalOTUCPubReduction]
-        dsimp [applyComplexInitReduction]
+        dsimp [applyreduction]
         simp [query_impl_convert]
         simp [monad_norm, GameHoppingSimplifyPMF,
           OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTUCPubReduction, dhRand,
           ElGamalOTUCPubG3, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTUCPubReduction]
-        dsimp [applyComplexInitReduction]
+        dsimp [applyreduction]
         simp [query_impl_convert]
         simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
           DDHToElGamalOTUCPubReduction, dhRand, ElGamalOTUCPubG3, RState.modify]
@@ -486,7 +486,7 @@ noncomputable def ddhImpliesElGamalOTUCPub
     {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G)
     (hgen : IsGenerator g)
     (hReduction : DDHToElGamalOTUCPubReduction g ∈
-      Reductions.complexInitReductions (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)))
+      Reductions.reductions (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)))
     : OneTimeUniformCyphertextsPubDef (DecisionalDHAssumption' g) Reductions (ElGamal g) := by
   intro κ
   have hRealRand :
@@ -508,21 +508,21 @@ noncomputable def ddhImpliesElGamalOTUCPub
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeUniformCyphertextsPubSpec G G (G × G))
         (ElGamalOTUCPubG1 g)
-        (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhReal g)) :=
+        (applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g)) :=
     Indistinguishable.of_ObsEq (obsEq_G1_applyComplexInit_dhReal g)
 
   have h3 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeUniformCyphertextsPubSpec G G (G × G))
-        (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
-        (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhRand g)) :=
-    IndistinguishableI.complexInitReduction
+        (applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
+        (applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g)) :=
+    IndistinguishableI.reduction
       (r := DDHToElGamalOTUCPubReduction g) none hRealRand hReduction
 
   have h4 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
         (OneTimeUniformCyphertextsPubSpec G G (G × G))
-        (applyComplexInitReduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
+        (applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
         (ElGamalOTUCPubG3 g) :=
     Indistinguishable.of_ObsEq (obsEq_applyComplexInit_dhRand_G3 g)
 

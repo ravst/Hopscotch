@@ -1,9 +1,9 @@
 import GameHoppingInLean.Comp.OracleReductions
 
 
-/- ## Indisringuishability Assumptions -/
-
-/- A single indistinguishability assumption, consists of an oracle specification over a set of queries,
+/- ## Indistinguishability Assumptions
+Our proofs of indistinguishability involves list of assumption, that could be used in the proof. Here, we define the type of such assumptions.
+A single indistinguishability assumption, consists of an oracle specification over a set of queries,
 and a pair of oracles of that specifications, which we assume to be indistinguishable.
 -/
 structure SingleAssumption where
@@ -15,12 +15,13 @@ def SingleAssumption.reverse (x : SingleAssumption) : SingleAssumption :=
   {x with i := (x.i.2, x.i.1)}
 
 /- Indistinguishability Assumptions are modeled as an indexed family of single assumptions.
-The index type is arbitrary, but we require it to be decidable, so that it is easier to
+The index type is arbitrary, but we require it to be decidable, so that it is possible to
 count how many times each assumption is used in a proof. -/
 structure IndAssumptions (Idx : Type) where
   [decEq : DecidableEq Idx]
   assumptions : Idx -> SingleAssumption
 
+/-- Fiamly of assumptions, one for each vlaue of security parameter κ. We require that the whole family have the same Idx, so we can relata the use of single assumption for different security parameter with each other. -/
 structure IndAssumptionsFam where
   Idx : Type
   val : (κ : ℕ) → IndAssumptions Idx

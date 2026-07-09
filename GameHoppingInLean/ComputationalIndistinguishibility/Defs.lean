@@ -220,7 +220,7 @@ noncomputable def transitive_step_proof
 --   0
 -- | IndistinguishableI.obsEqB a b =>
 --   0
--- | @IndistinguishableI.complexInitReduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
+-- | @IndistinguishableI.reduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
 --   1 + lengthOfIndI ind
 -- | IndistinguishableI.symm q_b ind  =>
 --   1 + lengthOfIndI ind
@@ -311,12 +311,12 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       case H1 =>
         simp [combine_red]
       simp [ascToReal]
-      rw [applyComplexInitReduction2_identity]
+      rw [applyreduction2_identity]
 | IndistinguishableI.obsEqB a b =>
   by
     simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
-| IndistinguishableI.complexInitReduction r b ind => by
+| IndistinguishableI.reduction r b ind => by
     let Hasc := symbolicSoundness_internal ind
     simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist

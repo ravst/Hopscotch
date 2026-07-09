@@ -15,28 +15,14 @@ The definition of IndistinguishabilityI is paremetrized by the indistingushabili
 i.e. the set of pairs of oracles that we assume to be indistinguishable.
 -/
 
-def mk (I : Type) (O : OracleSpec I) (p : OracleImpl O × OracleImpl O)
-  : (I : Type) × (O : OracleSpec I) × (OracleImpl O × OracleImpl O)
-  := ⟨I, O, p⟩
-
-/- Inductively generated indistinguishability relation for a fixed oracle spec.
-
-Indexed by:
-* `Assumptions`: assumption pairs, per oracle spec.
-* `Reductions`: allowed reductions (simple, randomized-stateless, stateful-randomized,
-  complex-initialization),
-  per source/target oracle specs.
-
-The relation is homogeneous in `O`, but reduction steps may move to a different spec
-by changing the index parameter of the conclusion. -/
-
+/-- getter: given sequence of OracleImpl's `ro`, we get `i`-element -/
 def ro_seq_fixed {I : Type} {O : OracleSpec I} (l : ℕ)
-    (ro : Finset.range (l + 1) -> OracleImpl O) (i : ℕ) (H : i <= l) : OracleImpl O :=
+    (ro : Finset.range (l + 1) -> OracleImpl O)
+    (i : ℕ) (H : i <= l) : OracleImpl O :=
     ro ⟨i, by
       simp [Finset.range];
       exact Nat.eq_or_lt_of_le H
       ⟩
-
 
 universe u v w
 
@@ -48,6 +34,8 @@ by
 lemma n_in_range (n : ℕ) : n ∈ Finset.range (n+1) :=
   by simp [Finset.range]
 
+/-- Inductively generated indistinguishability relation between O₁ and O₁.
+Paramter `q_b` count maximal number of queries made by adversary, under which indistinguishability holds. -/
 inductive IndistinguishableI
     {Idx : Type}
     (Assumptions : IndAssumptions Idx) :
@@ -58,7 +46,7 @@ inductive IndistinguishableI
   | obsEqB {I : Type} {O : OracleSpec I} {ro₁ ro₂ : OracleImpl O} (q_b : ENat):
       ObsEqBounded ro₁ ro₂ q_b →
       IndistinguishableI Assumptions q_b ro₁ ro₂
-  | complexInitReduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+  | reduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : OracleReduction O₁ O₂) {ro₁ ro₂ : OracleImpl O₁} (q_b : ENat):
       IndistinguishableI Assumptions none ro₁ ro₂ →
       IndistinguishableI Assumptions q_b
@@ -192,8 +180,8 @@ noncomputable def indistinguishabilityI_mono {Idx : Type} {Assumptions : IndAssu
   | obsEqB q H =>
       exact IndistinguishableI.obsEqB q₁
         (ObsEqBounded_monotone _ _ q₁ q H hle)
-  | complexInitReduction r q h =>
-      exact IndistinguishableI.complexInitReduction r q₁ h
+  | reduction r q h =>
+      exact IndistinguishableI.reduction r q₁ h
   | symm q h ih =>
       exact IndistinguishableI.symm q₁ (ih hle)
   | trans a q h₁ h₂ ih₁ ih₂ =>
