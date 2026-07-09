@@ -10,7 +10,7 @@ import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
    It is basically the extensional equality of the two oracles as seen from the outside,
    and is define in terms of the distributions on query outputs:
    two oracles are observationally equivalent if for every finite list of queries,
-   the distribution of the lists of of outputs they produce in response to those queries is the same.
+   the distribution of the lists of outputs they produce in response to those queries is the same.
 
    In particular, the internal state of the oracles is not being observed, so it is possible for two oracles
    even if their internal states are represented by different types.
@@ -49,7 +49,7 @@ lemma ObsEqBounded_monotone (ro₁ ro₂ : OracleImpl O) (qb1 qb2 : ENat)
     apply H
     exact Preorder.le_trans (↑ql.length) qb1 qb2 Hq Hle
 
--- The simples suffictient condition of ObsEq is simple equality:
+-- The simplest sufficient condition of ObsEq is simple equality:
 
 def obsEqReflexive (ro₁ ro₂ : OracleImpl O) (hEq : ro₁ = ro₂) :
   ObsEq ro₁ ro₂ := by
@@ -77,8 +77,8 @@ lemma ObsEqBounded.symm {ro₁ ro₂ : OracleImpl O} {q_b : ENat}
 
 /-
 # Abstraction
- In more complicated hops, i.e. thoose that change states, we need a more flexible cryterion,
- for observational equivalece. We start with the "correct abstraction", explained below.
+ In more complicated hops, i.e. those that change states, we need a more flexible criterion,
+ for observational equivalence. We start with the "correct abstraction", explained below.
 
  Suppose we have a pair of oracles O₁ and O₂, which operates on states S₁ and S₂.
  We say that a function f : S₁ → S₂ is a correct abstraction from O₁ to O₂, if
@@ -92,8 +92,8 @@ a function mapping the internal states of one oracle to the internal states of a
 the initial states are mapped to each other, and the output distributions of queries commute with the mapping.
 
 Two main cases are when:
-(1) we want to forget about unused variables. The mapping function just forgets them: we map  (a, b) to a when we want oto forget b.
-(2) We want to introduce invarinant on the state space: isntead of `X` have `{x : X // P }`. Then abstraction function is inclusion `{x : X // P } → X`. In other word, we forget aobut proof: `⟨a, H⟩ -> a`.
+(1) we want to forget about unused variables. The mapping function just forgets them: we map  (a, b) to a when we want to forget b.
+(2) We want to introduce invariant on the state space: instead of `X` have `{x : X // P }`. Then abstraction function is inclusion `{x : X // P } → X`. In other words, we forget about proof: `⟨a, H⟩ -> a`.
 -/
 
 
@@ -119,9 +119,9 @@ def correctAbstraction {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O
       mapInputState f (ro₂.queries query)
 
 /-
-# Probabilitis Abstraction
-  Here we generalize of abstraction presented above by alowing randomized mapping function.
-  This enables reasoning about freshnes of eagerly samples random values. In such case, we define abstraction from lazly-sampled version into eagerly sampled version. Whenever mapping function maps state when variable a ahve not yet been sampled into state where it already been sampled, it chooses random value from appropriate distribution.
+# Probabilistic Abstraction
+  Here we generalize the abstraction presented above by allowing randomized mapping function.
+  This enables reasoning about freshness of eagerly sampled random values. In such case, we define abstraction from lazily-sampled version into eagerly sampled version. Whenever mapping function maps state where variable a has not yet been sampled into state where it already has been sampled, it chooses random value from appropriate distribution.
 -/
 
 /-- A more general version of abstraction allows for probabilistic mappings between states. -/
@@ -329,7 +329,7 @@ lemma existsMapStateBijImpliesObsEq {I : Type} {O : OracleSpec I}
 /- In this section we define, and proof correctness of the bounded abstraction,
 which is a version of abstraction used to show bounded observational equivalence.
 Such an abstraction consists of a mapping between the states of the two oracles,
-and a valuatiion function from the states of the first oracle to the natural number (extended with infinity),
+and a valuation function from the states of the first oracle to the natural number (extended with infinity),
 such that the valuation of the initial states is above the bound,
 each query decreases the valuation by at most one,
 and the abstraction condition (commuting square) holds for states whose valuation non zero.

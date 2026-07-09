@@ -5,8 +5,8 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
 /-
 # Assumption Counting
 We define an assumption use counting function `assumptionCounting`. For each assumption idx,
-It returns a list of it uses. For each use, we put on the list the reduction from orignal problam to given assumption. In other words, for each use we pot the composition of all reduction steps appearign above given assumption use.
-In fact, we return such pair of such object - first for original assumption use and then for use of this symmetric variants. Whenever assumption is used the parity of number of symm constructors above it determines wheter we count it as the use of orignal of symmetric version.
+It returns a list of its uses. For each use, we put on the list the reduction from original problem to given assumption. In other words, for each use we put the composition of all reduction steps appearing above given assumption use.
+In fact, we return a pair of such objects - first for original assumption use and then for use of its symmetric variant. Whenever assumption is used the parity of number of symm constructors above it determines whether we count it as the use of original or symmetric version.
    -/
 
 abbrev asUseType {Idx : Type} (Assumptions : IndAssumptions Idx) {I : Type} (O : OracleSpec I) (J : Idx) :=
@@ -110,7 +110,7 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
 
 
 /- # Alternative assumption counting function
-for the soundness proof, it is more convient to use different assumption function counting function, defined below. It is better for the proof, but worse for humans. We prove eqivalence later.
+for the soundness proof, it is more convenient to use a different assumption counting function, defined below. It is better for the proof, but worse for humans. We prove equivalence later.
 -/
 
 -- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)

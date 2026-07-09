@@ -5,13 +5,13 @@ import GameHoppingInLean.Indistinguishability.Assumption
 
 /- # Indistinguishability Definition-/
 
-/- In this file, we define the type called IndistinguisabilityI, which represents a proof
+/- In this file, we define the type called IndistinguishabilityI, which represents a proof
 of indistinguishability between two stateful random oracles. It is in Type and not in Prop,
 because we might want to inspect it to see how the indistinguishability is established,
-e.g. in order to estabilsh a concrete bound on the advantage of an adversary or to
+e.g. in order to establish a concrete bound on the advantage of an adversary or to
 see what kind of reductions were used.
 
-The definition of IndistinguishabilityI is paremetrized by the indistingushabiliy assumptions,
+The definition of IndistinguishabilityI is parametrized by the indistinguishability assumptions,
 i.e. the set of pairs of oracles that we assume to be indistinguishable.
 -/
 
@@ -35,7 +35,7 @@ lemma n_in_range (n : ℕ) : n ∈ Finset.range (n+1) :=
   by simp [Finset.range]
 
 /-- Inductively generated indistinguishability relation between O₁ and O₁.
-Paramter `q_b` count maximal number of queries made by adversary, under which indistinguishability holds. -/
+Parameter `q_b` count maximal number of queries made by adversary, under which indistinguishability holds. -/
 inductive IndistinguishableI
     {Idx : Type}
     (Assumptions : IndAssumptions Idx) :

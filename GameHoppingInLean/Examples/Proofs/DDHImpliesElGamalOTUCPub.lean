@@ -238,7 +238,7 @@ noncomputable def ddhImpliesElGamalOTUCPubFam (Γ : GroupGeneratorFamily) :
 
 /-- how to see bounds that we proved? The best way it to write
 "assumptionCounting (indCpaRandImpliesIndCpa schemeFam κ) = sorry"
-abd then to simplify as below. Do not simplify reduction names!
+and then to simplify as below. Do not simplify reduction names!
 Then replace sorry with resulting term. -/
 noncomputable def DDH_proof_constants_simp (Γ : GroupGeneratorFamily) (κ : ℕ)
     :

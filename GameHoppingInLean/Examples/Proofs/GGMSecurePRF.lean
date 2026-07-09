@@ -21,8 +21,8 @@ open scoped OracleReduction
 
 
 /- # 1. Definition of hybrids and reductions.
- We defines GGMHybrid, GGMHybrid2 and GGMHybrid3.
-We want to do the follwoing sequence:
+ We define GGMHybrid, GGMHybrid2 and GGMHybrid3.
+We want to do the following sequence:
 [
     PRF_real (GGM prg n),
     GGMHybrid prg 0,
@@ -435,7 +435,7 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
     simp [Nat.testBit]
 
 /- # Final proof
-We join all setpes together. -/
+We join all steps together. -/
 
 /-- One hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
@@ -505,7 +505,7 @@ end
 
 /-- how to see bounds that we proved? The best way it to write
 "assumptionCounting (secureGGM_of_securePRG prgFam κ) = sorry"
-abd then to simplify as below. Do not simplify reduction names!
+and then to simplify as below. Do not simplify reduction names!
 Then replace sorry with resulting term.
 Here, we see that the only reduction that affect concrete security bound is GGMHybridStepReduction2PRG -/
 noncomputable def GGM_proof_constants_simp {κ : ℕ} (prgFam : PRGFamily id id)

@@ -19,16 +19,16 @@ import GameHoppingInLean.Tactic.Defs
 
 
 /- # Soundness theorem
-  Here we define the soundness theorem. It relates advantage of adversary A against orignal protocol to advantage of ∑_i n_i * advantage of (A.compose R_i) against assumption i.
+  Here we define the soundness theorem. It relates advantage of adversary A against original protocol to advantage of ∑_i n_i * advantage of (A.compose R_i) against assumption i.
 
-  Here R_i, n_i are computed from result of assumption counting function `assumptionCountingFin` (see AssumptionCounting.lean for more on it). For each assumption, `assumptionCountingFin` return list of reductions l. R_i is an reduction that picks one reduction form l unfiormly at random and executies it. n_i = l.length .
+  Here R_i, n_i are computed from result of assumption counting function `assumptionCountingFin` (see AssumptionCounting.lean for more on it). For each assumption, `assumptionCountingFin` returns a list of reductions l. R_i is a reduction that picks one reduction from l uniformly at random and executes it. n_i = l.length .
 
-  We epxress this sum using function `advBound`. The soundnes theorem is called `symbolicSoundness` and can be found at the very end of file. The name comes fro mthe fact that syntactic proofs presetnes as IndistinguishabilityI are shown to have semantic menaing. See paper for more high level discussion.
+  We express this sum using function `advBound`. The soundness theorem is called `symbolicSoundness` and can be found at the very end of file. The name comes from the fact that syntactic proofs presented as IndistinguishabilityI are shown to have semantic meaning. See paper for more high level discussion.
 
-  The soundness theorem is proven by induction on the IndistingushabilityI. The trans step requires reasonign about 'pick-one-at-random' reduction combination -- more detaisl on it are in ReductionCombiner.lean.
+  The soundness theorem is proven by induction on the IndistinguishabilityI. The trans step requires reasoning about 'pick-one-at-random' reduction combination -- more details on it are in ReductionCombiner.lean.
 -/
 
-/-- bound produces by soundess theorem, given pairs of n_i and R_i -/
+/-- bound produced by soundness theorem, given pairs of n_i and R_i -/
 def advBound {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : OracleImpl O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -146,7 +146,7 @@ def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1
   · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
   · simp [finsetSum, h1, h2] at hj
 
-/-- Prove of transitive step of soundness thoerem -/
+/-- Proof of transitive step of soundness theorem -/
 noncomputable def transitive_step_proof
   {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
@@ -225,7 +225,7 @@ lemma long_Step_proof_induction
       apply HxxP
   )
 
-/-- version of symbolic soundness thoerem that users `assumptionCounting_low` counting function -/
+/-- version of symbolic soundness theorem that uses `assumptionCounting_low` counting function -/
 lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
@@ -308,7 +308,7 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
   apply X
   exact lt_add_one a
 
-/- Symbolic soundness theorem - syntacitc proofs presetnes as IndistinguishabilityI have semantic menaing! -/
+/- Symbolic soundness theorem - syntactic proofs presented as IndistinguishabilityI have semantic meaning! -/
 theorem symbolicSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}

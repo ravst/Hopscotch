@@ -5,23 +5,23 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenc
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
-/- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq here)
-It is easy to prove that correctAbstractin lead both to ObsEq and AdvEq.
-But proving that ObsEq imply AdvEq is challenging. We provie this here.
-The harndess comes partialy from the fact that adversary can run for unbounded time --  its running time could be proportial to anser to first query. On the orher hand, ObsEq states that for any fixed length of interaction we have equal ditribuitions. To lift it to total prove, we need to consider conditinal probabilites related to each new transition. This conditioning make the prove rather hard.
+/- # Prove that Observation Equivalence (ObsEq) implies that no adversary distinguishes (called AdvEq here)
+It is easy to prove that correctAbstraction leads both to ObsEq and AdvEq.
+But proving that ObsEq implies AdvEq is challenging. We prove this here.
+The hardness comes partially from the fact that adversary can run for unbounded time -- its running time could be proportional to the answer to the first query. On the other hand, ObsEq states that for any fixed length of interaction we have equal distributions. To lift it to a total proof, we need to consider conditional probabilities related to each new transition. This conditioning makes the proof rather hard.
 
-To do that, we define behavioral oracle: an definition of oracle without internla state,
-only defines via input output relation. This definine them in BehavioralOracle.lean.
-Then we can convert back to statefull. This roundtrip is called rState2Rstate (see BehavioralOracle.lean)
+To do that, we define behavioral oracle: a definition of oracle without internal state,
+only defined via input/output relation. We define them in BehavioralOracle.lean.
+Then we can convert back to stateful. This roundtrip is called rState2Rstate (see BehavioralOracle.lean)
 Then we prove three facts (a : OracleImpl O):
-1) ObsEq A B imply to BehavioralOracle.into A = BehavioralOracle.into B . That is obvious from definition.
-2) There is an form of abstraction between rState2Rstate A -> A.
-3) This form of abstraction imply AdvEq.
-We use abstration defined as abstraction_with_levels_and_reach in ObservationalEquivalenceReach.
-It allow for transition function to be defined only on reachable state. Additionally it tracks number of queries made. Alternativly, the proof can be carried using correctAbstractionBindBound. In fact, exactly that is done in AbstractionComplete.lean. We keep this form of abstraction in the proof of ObsEqComp, as such proof is nicer, shorter and simpler.
+1) ObsEq A B implies BehavioralOracle.into A = BehavioralOracle.into B. That is obvious from definition.
+2) There is a form of abstraction between rState2Rstate A -> A.
+3) This form of abstraction implies AdvEq.
+We use abstraction defined as abstraction_with_levels_and_reach in ObservationalEquivalenceReach.
+It allows the transition function to be defined only on reachable states. Additionally it tracks number of queries made. Alternatively, the proof can be carried using correctAbstractionBindBound. In fact, exactly that is done in AbstractionComplete.lean. We keep this form of abstraction in the proof of ObsEqComp, as such proof is nicer, shorter and simpler.
 
 Most of this file is the proof of 2).
-This part was done by Aristotele (who generalized form of abstraction need here, proved 2 and 3, including generation of lemmas from PMFDisintegration). Impressive!
+This part was done by Aristotle (who generalized the form of abstraction needed here, proved 2 and 3, including generation of lemmas from PMFDisintegration). Impressive!
 -/
 
 

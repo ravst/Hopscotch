@@ -4,8 +4,8 @@ import GameHoppingInLean.Comp.OracleReductionsLemmas
 
 /- # More reduction combination.
 
-Given (non-empty) list od reductions l, combination pick one reduction from list at random and executes it.
-Crucial lemma about preservation of adversary advantage is `compose_combine`. In fact, this in only fact about comibnation function used in soundness theorem proof. See reductionCobminer.lean for more details.
+Given a (non-empty) list of reductions l, combination picks one reduction from the list at random and executes it.
+The crucial lemma about preservation of adversary advantage is `compose_combine`. In fact, this is the only fact about the combination function used in the soundness theorem proof. See ReductionCombiner.lean for more details.
 
 -/
 

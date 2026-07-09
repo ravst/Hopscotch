@@ -3,10 +3,10 @@ import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
--- the proof that 'indCpaRand' definition imply 'indCpa'.
+-- the proof that 'indCpaRand' definition implies 'indCpa'.
 
 -- files:
--- * GameHoppingInLean.Examples.Schemes.SymEnc -- definition of Symetric encryption
+-- * GameHoppingInLean.Examples.Schemes.SymEnc -- definition of Symmetric encryption
 -- * GameHoppingInLean.Examples.SecurityDefinitions.IndCpa -- definition 'IndCpa'
 -- * GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand -- definition 'IndCpaRand'
 -- * here - the proof of the implication.
@@ -57,7 +57,7 @@ noncomputable def indCpaRandImpliesIndCpa {K : ℕ → Type} {C : ℕ → ℕ �
 
 /-- how to see bounds that we proved? The best way it to write
 "assumptionCounting (indCpaRandImpliesIndCpa schemeFam κ) = sorry"
-abd then to simplify as below. Do not simplify reduction names!
+and then to simplify as below. Do not simplify reduction names!
 Then replace sorry with resulting term. -/
 noncomputable def proof_constants_simp {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)

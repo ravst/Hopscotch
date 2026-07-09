@@ -362,7 +362,7 @@ theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [âˆ
       rhs
       arg 2
       arg 1
-      -- rw [beforeFirstHeavyQuery iq o r f l1] does not work, even when terms seems equal. why?
+      -- rw [beforeFirstHeavyQuery iq o r f l1] does not work, even when terms seem equal. why?
       arg 2
       change OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries l1
     rw [beforeFirstHeavyQuery iq o r f l1 (by

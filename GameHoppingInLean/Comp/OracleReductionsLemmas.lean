@@ -3,8 +3,8 @@ import GameHoppingInLean.Tactic.SimpAttrLemmas
 open OracleReduction
 
 /- # compositions of reduction
-We define composition of reductions. This file is only used in soundnes proof - in cryptographic proofs reductions are
-rearly composed with each other. -/
+We define composition of reductions. This file is only used in soundness proof - in cryptographic proofs reductions are
+rarely composed with each other. -/
 
 /-- Helper: simulating a computation through the identity reduction (first via
 `addPMFtoImpl2` of the identity queries, then via `defaultImpl`) and applying the

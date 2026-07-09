@@ -3,11 +3,11 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 /-
 # Facts about ObsEq and Abstraction
 Here we prove two facts:
-1. First that abstraction is able to prove any ObsEq in the follwoign sense: for O1 O2 that are ObsEq there is
+1. First that abstraction is able to prove any ObsEq in the following sense: for O1 O2 that are ObsEq there is
  f(O1), such that there are abstractions from f(O1) to both O1 and O2.
- Function f defiens behavioral version of the oracle.
-2. That ObsEq O1 O2 could be eqivalently states as that forall all distingishers (not even ppt) advatege is exactly zero.
-This fact are never used in the rest of project and are provided for completness.
+ Function f defines behavioral version of the oracle.
+2. That ObsEq O1 O2 could be equivalently stated as that for all distinguishers (not even ppt) advantage is exactly zero.
+These facts are never used in the rest of the project and are provided for completeness.
 -/
 
 noncomputable def withInvariant {I : Type} {O : I → Type} {T : Type}
@@ -538,7 +538,7 @@ theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : OracleImpl O
   rw [PMF.map_eq_bind_pure]
   rfl
 
-/-- **Charactarizing of the ObsEq as distinguishing advantage.**  If every distinguisher achieves zero
+/-- **Characterizing ObsEq as distinguishing advantage.**  If every distinguisher achieves zero
 advantage separating `o1` and `o2`, then `o1` and `o2` are observationally equivalent. -/
 theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O)
     (H : ∀ d : adversaryT O, advantage d o1 o2 = 0) : ObsEq o1 o2 := by

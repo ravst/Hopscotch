@@ -4,7 +4,7 @@ import Mathlib
 
 /- # Behavioral Oracle
  We provide behavioral definition of oracle implementation. Contrary to OracleImpl, behavioral definition does not involve any internal state.
-   We define function the transform OracleImpl into behavioral version and back. We prove that resulting oracle is ObsEq wirth original.
+   We define functions that transform OracleImpl into behavioral version and back. We prove that resulting oracle is ObsEq with original.
 
   This notion is used on ObsEqComp.lean to prove that ObsEq implies indistinguishability for adversaries (see there for more).
 -/
@@ -25,7 +25,7 @@ structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type 
   good_spec : forall x : I, Nonempty (O x)
 
 
---#  We take short brake to prove fe technical leamms that allow conversion from BehavioralOracle to BehavioralOracle2.
+--#  We take a short break to prove a few technical lemmas that allow conversion from BehavioralOracle to BehavioralOracle2.
 
 /-- The input list recorded by `runQueriesOnlyOut` is exactly the list of queries asked,
 in order. -/
@@ -210,7 +210,7 @@ lemma into_no_look_ahead {I : Type} {O : OracleSpec I} (o : OracleImpl O) :
       ← PMF.map_comp, runQueriesOnlyOut_map_dropLast_append]
   rw [step x1, step x2]
 
---#  Covnersion  BehavioralOracle -> BehavioralOracle2 -> OracleImpl
+--#  Conversion BehavioralOracle -> BehavioralOracle2 -> OracleImpl
 
 /-- Realise an `OracleImpl` as a `BehavioralOracle`.
 

@@ -7,11 +7,11 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 /- # Reduction combination.
 
 We define two types of reduction combination:
-1. Given reductions R_1 and R_2 and p, combination executes R_1 with prob. p, and otherwise execute R_2.
-2. Given (non-empty) list od reductions l, combination pick one reduction from list at random and executes it.
+1. Given reductions R_1 and R_2 and p, combination executes R_1 with prob. p, and otherwise executes R_2.
+2. Given a (non-empty) list of reductions l, combination picks one reduction from the list at random and executes it.
 
-Version (1) is defiend here and version (2) in ReductionCombinerList.lean.
-Crucial lemma about preservation of adversary advantage is `reductionCombinerCorrect`. This preservation only holds for sigend advatanges -- this justifes why our proofs uses signed advanteges, insted of unsigned bounds.
+Version (1) is defined here and version (2) in ReductionCombinerList.lean.
+The crucial lemma about preservation of adversary advantage is `reductionCombinerCorrect`. This preservation only holds for signed advantages -- this justifies why our proofs use signed advantages, instead of unsigned bounds.
 -/
 
 noncomputable def addToStateG {I : Type u} {O : OracleSpec I} {s1 t : Type}
