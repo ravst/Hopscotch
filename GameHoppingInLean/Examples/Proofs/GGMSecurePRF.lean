@@ -11,6 +11,50 @@ attribute [-simp] bind_pure_comp
 open scoped IndistinguishableI
 open scoped OracleReduction
 
+/-
+# The proof security of GGM construction: from PRG to PRF.
+  The proof have three parts:
+  1. Definition of hybrids and reduction.
+  2. Proving ObsEq of various hops in sequence.
+  3. Final proof - joining all obsEqs together to form game hopping proof.
+-/
+
+
+/- # 1. Definition of hybrids and reductions.
+ We defines GGMHybrid, GGMHybrid2 and GGMHybrid3.
+We want to do the follwoing sequence:
+[
+    PRF_real (GGM prg n),
+    GGMHybrid prg 0,
+    GGMHybrid2 prg 0,
+    ...
+    GGMHybrid2 prg i,
+    ...
+    GGMHybrid2 prg (Fin.last n),
+    GGMHybrid prg (Fin.last n),
+    PRF_ideal (BitVec n) (BitVec k)]
+
+step (..) is justified by long_step. To do this we need the following sequence (presented as from GGMHybrid2 (i+1) to GGMHybrid2 i):
+[
+GGMHybrid2 prg i.succ,
+(GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal2 (BitVec i.succ.1) (BitVec k)),
+(GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal_cache_batch_pairs i (BitVec k)),
+GGMHybrid3 prg i,
+(GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
+(GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
+GGMHybrid2 prg i.castSucc (=i : Fin (n+1))
+]
+
+Move from GGMHybrid to GGMHybrid2 uses the following:
+GGMHybrid prg i,
+(GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
+(GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)),
+GGMHybrid2 prg i]
+
+Note, that only application of assumption is under reduction (GGMHybridStepReduction2PRG prg i). This reduction is clearly polynomial!
+It is interesting that some hybrids in this proof and even left side of thesis (PRF_ideal) are *not* polynomial. That does not affect correctness, because soundness theorem only cares about reduction used above application of assumption (only GGMHybridStepReduction2PRG).
+-/
+
 
 /-- Any indistinguishability that holds under the empty assumption set holds under
 any assumption set. -/
@@ -162,37 +206,7 @@ noncomputable def GGMHybridStepReduction2RF {k n : ℕ} (prg : lengthDoublingPRG
       let remainingBits : BitVec (n - i.1) := BitVec.extractLsb' i.1 (n - i.1) x
       pure (applyPRGs prg fNodeBits remainingBits)
 
-/-
-We want to do the follwoing sequence:
-[
-    PRF_real (GGM prg n),
-    GGMHybrid prg 0,
-    GGMHybrid2 prg 0,
-    ...
-    GGMHybrid2 prg i,
-    ...
-    GGMHybrid2 prg (Fin.last n),
-    GGMHybrid prg (Fin.last n),
-    PRF_ideal (BitVec n) (BitVec k)]
-
-step (..) is justified by long_step. To do this we need the following sequence:
-
-game_hopping [
-    GGMHybrid2 prg i.castSucc,
-    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
-    (GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
-    GGMHybrid3 prg i,
-    GGMHybrid2 prg i.succ]
-
-Move from GGMHybrid to GGMHybrid2 uses the following:
-GGMHybrid prg i,
-    (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
-    (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)),
-    GGMHybrid2 prg i]
-
-Note, that only application of assumption is under reduction (GGMHybridStepReduction2PRG prg i). This reduction is clearly polynomial!
-It is interesting that some hybrids in this proof and even left side of thesis (PRF_ideal) are *not* polynomial. That does not affect correctness, because soundness theorem only cares about reduction used above application of assumption (only GGMHybridStepReduction2PRG).
--/
+/- # 2. Proving ObsEqs -/
 
 attribute [local game_hopping_unfold]
   GGMHybrid2 GGMHybrid3 GGMHybridStepReduction2PRG GGMHybridStepReduction2RF
@@ -374,15 +388,8 @@ theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
           grind
         )
 
-/-- The `GGMHybrid2`/`GGMHybrid3`/`GGMHybrid2 (+1)` bridge as a symbolic indistinguishability object.
 
-This is intentionally phrased as an `IndistinguishableI` chain rather than a direct
-`ObsEq`, so the step can be assembled from the cached-random-function equivalences and
-the stateful reduction that embeds the depth-`i+1` random function into the outer PRF
-game. -/
 
--- easy, just definition
--- swap PMF.uniform (BitVec k k) into ideal prg randomness
 theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin n) :
     ObsEq (GGMHybrid3 prg i)
@@ -426,6 +433,9 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
     rw [applyPRGs_step prg v _ (by omega)]
     congr 4
     simp [Nat.testBit]
+
+/- # Final proof
+We join all setpes together. -/
 
 /-- One hybrid step is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG

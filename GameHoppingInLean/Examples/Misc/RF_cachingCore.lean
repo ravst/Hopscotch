@@ -438,3 +438,33 @@ theorem completePRFCache_diagram_batch (X Y : Type)
   ext c
   simp [PMF.bind_apply]
   grind +suggestions
+
+/-- Two-key fresh-query step: sampling values for two distinct not-yet-cached keys `k1`, `k2`,
+inserting both, and completing the cache (reading off `k1`) agrees with completing the cache
+directly and reading off `k1`. -/
+theorem completePRFCache_diagram_fresh2 (X Y : Type)
+    [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y]
+    (S : Finmap (fun _x : X => Y)) (k1 k2 : X) (hk : k1 ≠ k2)
+    (h1 : k1 ∉ S.keys) (h2 : k2 ∉ S.keys) :
+    ((PMF.uniformOfFintype Y).bind fun a => (PMF.uniformOfFintype Y).bind fun b =>
+        (completePRFCache X Y ((S.insert k1 a).insert k2 b)).bind fun c => PMF.pure (a, c))
+      = (completePRFCache X Y S).bind fun c => PMF.pure (c k1, c) := by
+  rw [← completePRFCache_diagram_fresh X Y S k1 h1]
+  congr 1
+  funext a
+  have hk2 : k2 ∉ (S.insert k1 a).keys := by
+    rw [Finmap.keys_insert]
+    simp [hk.symm, h2]
+  rw [completePRFCache_insert_eq X Y (S.insert k1 a) k2 hk2, PMF.bind_bind]
+
+/-- Variant of `completePRFCache_diagram_fresh2` where the value read off (`k1`) is the
+*second* sampled value; the first sampled value goes to `k2`. -/
+theorem completePRFCache_diagram_fresh2' (X Y : Type)
+    [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y]
+    (S : Finmap (fun _x : X => Y)) (k1 k2 : X) (hk : k1 ≠ k2)
+    (h1 : k1 ∉ S.keys) (h2 : k2 ∉ S.keys) :
+    ((PMF.uniformOfFintype Y).bind fun y => (PMF.uniformOfFintype Y).bind fun x =>
+        (completePRFCache X Y ((S.insert k1 x).insert k2 y)).bind fun c => PMF.pure (x, c))
+      = (completePRFCache X Y S).bind fun c => PMF.pure (c k1, c) := by
+  rw [PMF.bind_comm]
+  exact completePRFCache_diagram_fresh2 X Y S k1 k2 hk h1 h2
