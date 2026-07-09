@@ -5,6 +5,9 @@ import Mathlib.Data.Finset.Empty
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 
+/- # Lemmas about finite sums.
+ Epsecially aobut sum of two finite sums.  -/
+
 -- SUM JOINIG
 def finsetSum {X : Type} [DecidableEq X] (s1 s2 : Finset X) : Finset X :=
   s1 ∪ s2

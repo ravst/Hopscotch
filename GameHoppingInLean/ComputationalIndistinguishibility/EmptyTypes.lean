@@ -1,5 +1,10 @@
 import GameHoppingInLean.Comp.OracleReductions
 
+/- # Solving issues about enpty types in state spece or in oracle interface.
+When combining reduction (ReductionCombiner.lean, pick-one-reduction-form-list-at-random) it could 'happen' that analyzed reduction have empty state space. For exmaple that could 'happen' if for some query `q` qe are returned object of empty type `spec q`.
+ In this file we deal we all such annoying issues. We prove that existence od oracleImpl imply that spec has no empty types in it. We also prove that if spec has no empty types then reductions have nonempty state-spaces.
+ -/
+
 lemma pmf_nonempty (x : PMF X) : Nonempty X :=
   open Classical in
   byContradiction (by

@@ -2,6 +2,13 @@ import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 import Mathlib
 
+/- # Behavioral Oracle
+ We provide behavioral definition of oracle implementation. Contrary to OracleImpl, behavioral definition does not involve any internal state.
+   We define function the transform OracleImpl into behavioral version and back. We prove that resulting oracle is ObsEq wirth original.
+
+  This notion is used on ObsEqComp.lean to prove that ObsEq implies indistinguishability for adversaries (see there for more).
+-/
+
 structure BehavioralOracle {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type _ where
   process : (l : List (O.Domain)) -> (l.length <= q_b) -> PMF (List (QueryWithResult O))
   no_look_ahead : forall (ql : List (O.Domain)) (H : ql.length+1 <= q_b) (x1 x2 : O.Domain),
@@ -12,9 +19,13 @@ structure BehavioralOracle {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type _
       pure ql
   good_spec : forall x : I, Nonempty (O x)
 
+-- alternative definition of behavioral oracle.
 structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type u where
   process : (ql : List (QueryWithResult O)) -> (ql.length <= q_b) -> (q : O.Domain) -> PMF (O.Range q)
   good_spec : forall x : I, Nonempty (O x)
+
+
+--#  We take short brake to prove fe technical leamms that allow conversion from BehavioralOracle to BehavioralOracle2.
 
 /-- The input list recorded by `runQueriesOnlyOut` is exactly the list of queries asked,
 in order. -/
@@ -199,13 +210,11 @@ lemma into_no_look_ahead {I : Type} {O : OracleSpec I} (o : OracleImpl O) :
       ← PMF.map_comp, runQueriesOnlyOut_map_dropLast_append]
   rw [step x1, step x2]
 
+--#  Covnersion  BehavioralOracle -> BehavioralOracle2 -> OracleImpl
+
 /-- Realise an `OracleImpl` as a `BehavioralOracle`.
 
-Note: the original draft used `process ql _ := runQueriesOnlyOut o ql`, which processes the head
-of the history first.  That is incompatible with the `no_look_ahead` axiom (which treats the head
-as the *most recent* query, whose presence must not affect earlier answers).  We therefore replay
-the history in chronological order (`ql.reverse`) and report the answers newest-first
-(`.map List.reverse`), which satisfies both `well_formed` and `no_look_ahead`. -/
+We replay the history in chronological order (`ql.reverse`) and report the answers newest-first (`.map List.reverse`), which satisfies both `well_formed` and `no_look_ahead`. -/
 noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : OracleImpl O) :
   BehavioralOracle O q_b :=
 {
@@ -277,3 +286,5 @@ noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec I} {q_b :
 
 noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : OracleImpl O) : OracleImpl O :=
   behavioralOracle1toRstate (BehavioralOracle.into q_b x)
+
+-- # The prove of important lemmas is in ObsEqComp

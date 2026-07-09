@@ -4,6 +4,9 @@ import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.Indistinguishability.Assumption
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
+/- # Definition of computational semantics
+ We define adversary and its advantage. -/
+
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> OracleImpl (Spec κ)
 def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
 

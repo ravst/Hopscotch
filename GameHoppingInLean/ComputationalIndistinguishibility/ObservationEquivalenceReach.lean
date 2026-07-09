@@ -3,6 +3,10 @@ import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 import Mathlib.Data.ENat.Lattice
 
+/-- # Definition of Abstraction with reachability and levels.
+This version of abstraction is used in ObsEqComp.lean. It relates oracle implementation that track number of queires asked (expsed by function lvl) and accompanied by rachablity function on its state spece.
+
+-/
 
 noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
 | PFunctor.FreeM.pure _ => 0

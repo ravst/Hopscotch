@@ -2,6 +2,13 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
 import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Comp.OracleReductionsLemmas
 
+/- # More reduction combination.
+
+Given (non-empty) list od reductions l, combination pick one reduction from list at random and executes it.
+Crucial lemma about preservation of adversary advantage is `compose_combine`. In fact, this in only fact about comibnation function used in soundness theorem proof. See reductionCobminer.lean for more details.
+
+-/
+
 structure internal_type {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (l : List (OracleReduction O1 O2)) where
   index : Fin (l.length)

@@ -1,5 +1,14 @@
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 
+/-
+# Facts about ObsEq and Abstraction
+Here we prove two facts:
+1. First that abstraction is able to prove any ObsEq in the follwoign sense: for O1 O2 that are ObsEq there is
+ f(O1), such that there are abstractions from f(O1) to both O1 and O2.
+ Function f defiens behavioral version of the oracle.
+2. That ObsEq O1 O2 could be eqivalently states as that forall all distingishers (not even ppt) advatege is exactly zero.
+This fact are never used in the rest of project and are provided for completness.
+-/
 
 noncomputable def withInvariant {I : Type} {O : I → Type} {T : Type}
   (q_b : ℕ∞)

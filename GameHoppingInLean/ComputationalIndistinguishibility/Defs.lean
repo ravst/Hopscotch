@@ -17,33 +17,18 @@ import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 import GameHoppingInLean.Tactic.Defs
 
--- generic intro. move.
 
+/- # Soundness theorem
+  Here we define the soundness theorem. It relates advantage of adversary A against orignal protocol to advantage of ∑_i n_i * advantage of (A.compose R_i) against assumption i.
 
+  Here R_i, n_i are computed from result of assumption counting function `assumptionCountingFin` (see AssumptionCounting.lean for more on it). For each assumption, `assumptionCountingFin` return list of reductions l. R_i is an reduction that picks one reduction form l unfiormly at random and executies it. n_i = l.length .
 
--- inductive AssumptionUse {I1 : Type} (O1 : OracleSpec I1) : {I : Type} -> (O: OracleSpec I) -> Type 1
--- | SingleAssumption {I : Type} {O: OracleSpec I} (r : OracleReduction O1 O) : AssumptionUse O1 O
--- | Listing {I : Type} {O: OracleSpec I} (n : ℕ) (l : Fin n -> (AssumptionUse O1 O)) (H : n > 0): AssumptionUse O1 O
--- | Reduction {I2 : Type} {O2: OracleSpec I2} {I3 : Type} {O3: OracleSpec I2}
---   (r : OracleReduction O2 O3) (x : AssumptionUse O1 O2)
---   : AssumptionUse O1 O3
+  We epxress this sum using function `advBound`. The soundnes theorem is called `symbolicSoundness` and can be found at the very end of file. The name comes fro mthe fact that syntactic proofs presetnes as IndistinguishabilityI are shown to have semantic menaing. See paper for more high level discussion.
 
--- def toList (T : Type _) (n : ℕ) (l : Fin n -> T) : List T :=
---   List.ofFn l
+  The soundness theorem is proven by induction on the IndistingushabilityI. The trans step requires reasonign about 'pick-one-at-random' reduction combination -- more detaisl on it are in ReductionCombiner.lean.
+-/
 
-
--- noncomputable def introReduction {I1 : Type} (O1 : OracleSpec I1) {I2 : Type} (O2 : OracleSpec I2) :
---   (r : AssumptionUse O1 O2) -> OracleReduction O1 O2
--- | AssumptionUse.SingleAssumption r => r
--- | AssumptionUse.Listing n l Hn =>
---   let tl := (List.ofFn (fun i => introReduction O1 O2 (l i)))
---   reduction_combiner_list_full tl (by
---     simp [List.length_map, tl, Hn])
--- | @AssumptionUse.Reduction I1 O1 I2 O2 I3 O3 r x => rcompose (introReduction O1 O2 x) r
-
-
-
-
+/-- bound produces by soundess theorem, given pairs of n_i and R_i -/
 def advBound {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   {I : Type} (O : OracleSpec I) (ro1 ro2 : OracleImpl O)
   (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
@@ -64,7 +49,7 @@ def advBoundQ {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   advBound Assumptions q_b O ro1 ro2 asc distinguisher
 
 
-noncomputable def obse_eq_step2
+lemma obse_eq_step2
   {Idx : Type} {Assumptions : IndAssumptions Idx}
   {a : ℕ∞} {I : Type} {O : OracleSpec I}
   (o₁ o₂ : OracleImpl O)
@@ -161,7 +146,7 @@ def sumJoinerCorrect' {Univ : Type} (XJ : Univ -> Type v) [DecidableEq Univ] {D1
   · simp [g1, g2, g3, sumJoiner, h1, h2, hj]
   · simp [finsetSum, h1, h2] at hj
 
-
+/-- Prove of transitive step of soundness thoerem -/
 noncomputable def transitive_step_proof
   {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
@@ -205,53 +190,6 @@ noncomputable def transitive_step_proof
       simp []
       apply sub_add_sub_comm
 
--- lemma nextInRange {n : ℕ} {x : ℕ} (H : x ∈ Finset.range n) : x ∈ Finset.range (n+1) :=
--- by
---   refine Finset.mem_range_succ_iff.mpr ?_
---   simp [Finset.range] at H
---   exact Nat.le_of_succ_le H
-
-
--- def lengthOfIndI {Idx : Type} {Assumptions : IndAssumptions Idx}
---       {q_b : ENat}
---       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
---       (ind : IndistinguishableI Assumptions q_b o₁ o₂) -> ℕ
--- | IndistinguishableI.assumption idx =>
---   0
--- | IndistinguishableI.obsEqB a b =>
---   0
--- | @IndistinguishableI.reduction Assumptions I1 I2 O1 O2 r ro1 o₁ b ind =>
---   1 + lengthOfIndI ind
--- | IndistinguishableI.symm q_b ind  =>
---   1 + lengthOfIndI ind
--- | IndistinguishableI.trans rm q_b ind1 ind2 =>
---   1 + lengthOfIndI ind1 + lengthOfIndI ind2
--- | IndistinguishableI.longSequence a q_b ro Hseq =>
---   1 + ∑ i : Finset.range a, lengthOfIndI (Hseq i (by
---     cases i
---     case mk val prop =>
---     simp []
---     exact List.mem_range.mp prop
---   ))
-
-
--- theorem sum_ge_entry {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ):
---     f a ≤ ∑ x ∈ s, f x :=
--- by
---   apply Finset.single_le_sum
---   · intro i Hi
---     exact Nat.zero_le (f i)
---   assumption
-
--- theorem sum_ge_entry2 {y : ℕ} {X : Type u} {s : Finset X} (a : X) (ha : a ∈ s) (f : X -> ℕ) (Hle : y <= f a):
---     y ≤ ∑ x ∈ s, f x :=
--- by
---   apply Nat.le_trans
---   · apply Hle
---   apply sum_ge_entry
---   assumption
-
-
 
 
 lemma long_Step_proof_induction
@@ -287,7 +225,7 @@ lemma long_Step_proof_induction
       apply HxxP
   )
 
-
+/-- version of symbolic soundness thoerem that users `assumptionCounting_low` counting function -/
 lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
@@ -370,7 +308,8 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
   apply X
   exact lt_add_one a
 
-lemma symbolicSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
+/- Symbolic soundness theorem - syntacitc proofs presetnes as IndistinguishabilityI have semantic menaing! -/
+theorem symbolicSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) :

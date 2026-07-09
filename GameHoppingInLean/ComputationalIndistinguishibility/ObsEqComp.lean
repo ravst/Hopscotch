@@ -6,19 +6,22 @@ import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 /- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq here)
-It is easy to proof, that varios form of correctAbstractin lead both to ObsEq and AdvEq.
+It is easy to prove that correctAbstractin lead both to ObsEq and AdvEq.
 But proving that ObsEq imply AdvEq is challenging. We provie this here.
+The harndess comes partialy from the fact that adversary can run for unbounded time --  its running time could be proportial to anser to first query. On the orher hand, ObsEq states that for any fixed length of interaction we have equal ditribuitions. To lift it to total prove, we need to consider conditinal probabilites related to each new transition. This conditioning make the prove rather hard.
+
 To do that, we define behavioral oracle: an definition of oracle without internla state,
 only defines via input output relation. This definine them in BehavioralOracle.lean.
-Then we can convert back to statefull. This roundtrip is called rState2Rstate
+Then we can convert back to statefull. This roundtrip is called rState2Rstate (see BehavioralOracle.lean)
 Then we prove three facts (a : OracleImpl O):
 1) ObsEq A B imply to BehavioralOracle.into A = BehavioralOracle.into B . That is obvious from definition.
 2) There is an form of abstraction between rState2Rstate A -> A.
 3) This form of abstraction imply AdvEq.
 We use abstration defined as abstraction_with_levels_and_reach in ObservationalEquivalenceReach.
-It allow for transition function to be define donly on reachable state. Additionally it tracks number of queries made.
-Most of this file is the prove of 2).
-This part was done by Aristotele (who generalized form of abstraction to one need here, proved 2 and 3, including generation of lemmas from PMFDisintegration). Impressive!
+It allow for transition function to be defined only on reachable state. Additionally it tracks number of queries made. Alternativly, the proof can be carried using correctAbstractionBindBound. In fact, exactly that is done in AbstractionComplete.lean. We keep this form of abstraction in the proof of ObsEqComp, as such proof is nicer, shorter and simpler.
+
+Most of this file is the proof of 2).
+This part was done by Aristotele (who generalized form of abstraction need here, proved 2 and 3, including generation of lemmas from PMFDisintegration). Impressive!
 -/
 
 

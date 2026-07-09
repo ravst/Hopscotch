@@ -2,6 +2,12 @@ import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.ComputationalIndistinguishibility.Sums
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
 
+/-
+# Assumption Counting
+We define an assumption use counting function `assumptionCounting`. For each assumption idx,
+It returns a list of it uses. For each use, we put on the list the reduction from orignal problam to given assumption. In other words, for each use we pot the composition of all reduction steps appearign above given assumption use.
+In fact, we return such pair of such object - first for original assumption use and then for use of this symmetric variants. Whenever assumption is used the parity of number of symm constructors above it determines wheter we count it as the use of orignal of symmetric version.
+   -/
 
 abbrev asUseType {Idx : Type} (Assumptions : IndAssumptions Idx) {I : Type} (O : OracleSpec I) (J : Idx) :=
   {x : List (OracleReduction (Assumptions.assumptions J).O O) // x.length > 0}
@@ -103,7 +109,9 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
       (fun j Hq => assumptionCounting (Hseq j Hq))
 
 
--- for the soundness proof, it is more convient to use different assumption function counting function, defined below:
+/- # Alternative assumption counting function
+for the soundness proof, it is more convient to use different assumption function counting function, defined below. It is better for the proof, but worse for humans. We prove eqivalence later.
+-/
 
 -- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)
 def assumptionJoiner {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
@@ -287,6 +295,10 @@ noncomputable def finite_support {Idx : Type} {Assumptions : IndAssumptions Idx}
   Fintype {x | ret.2 x ≠ []} :=
   ((assumptionCounting_finite ind).1.fintype,
    (assumptionCounting_finite ind).2.fintype)
+
+/- # Eqivalence of assumptionCounting functions
+  The ismorphism is given by `AssumptionsUseTSimple2other`
+-/
 
 def AssumptionsUseTSimple2other {Idx : Type} {Assumptions : IndAssumptions Idx}
   {I : Type} {O : OracleSpec I} (count : AssumptionsUseTSimple Assumptions O)
