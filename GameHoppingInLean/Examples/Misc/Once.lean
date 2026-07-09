@@ -1,6 +1,6 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.FreeMonadLemmas
 
 noncomputable

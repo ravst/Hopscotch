@@ -1,6 +1,6 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRG
 import GameHoppingInLean.Examples.Constructions.LengthTripplingPRG
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Lemmas
 

@@ -1,6 +1,6 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
 import GameHoppingInLean.Tactic.SimpAttrLemmas
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Tactic.Defs
 
 
 open scoped OracleReduction

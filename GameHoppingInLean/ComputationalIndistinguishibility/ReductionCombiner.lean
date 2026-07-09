@@ -1,6 +1,6 @@
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
 

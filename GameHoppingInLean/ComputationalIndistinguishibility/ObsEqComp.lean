@@ -2,7 +2,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.BehavioralOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.PMFDisintegration
 import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenceReach
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 /- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq here)

@@ -1,4 +1,4 @@
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
 
 /-- Public-key IND-CPA-rand oracle spec with a public-key reveal query and a

@@ -1,6 +1,6 @@
 import Mathlib.Data.Fintype.Pi
 import Mathlib.Probability.Distributions.Uniform
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.Schemes.PRF
 
 /-- PRF security oracle spec.

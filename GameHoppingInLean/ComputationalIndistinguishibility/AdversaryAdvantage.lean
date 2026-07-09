@@ -1,7 +1,7 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
-import GameHoppingInLean.IndistinguishabilityAssumption
+import GameHoppingInLean.Indistinguishability.Assumption
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)

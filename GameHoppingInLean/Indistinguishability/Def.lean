@@ -1,7 +1,7 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.IndistinguishabilityAssumption
+import GameHoppingInLean.ObservationalEq.Defs
+import GameHoppingInLean.Indistinguishability.Assumption
 
 /- # Indistinguishability Definition-/
 

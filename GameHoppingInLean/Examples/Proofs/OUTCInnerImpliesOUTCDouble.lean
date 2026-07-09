@@ -1,7 +1,7 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.OTUC
 import GameHoppingInLean.Examples.Constructions.DoubleSymEnc
 import GameHoppingInLean.Comp.RState
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 

@@ -5,7 +5,7 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsP
 import GameHoppingInLean.Examples.Constructions.ElGamal
 import GameHoppingInLean.Examples.Misc.Once
 
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.Tactic.Isos
 import GameHoppingInLean.Normalization.PMF.Simprocs

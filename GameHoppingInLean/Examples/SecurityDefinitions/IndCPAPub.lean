@@ -1,4 +1,4 @@
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.Schemes.PubEnc
 
 /-- Query indices for the public-key IND-CPA interface. -/

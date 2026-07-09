@@ -1,4 +1,4 @@
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.Schemes.SymEnc
 import GameHoppingInLean.Tactic.SimpAttrs
 

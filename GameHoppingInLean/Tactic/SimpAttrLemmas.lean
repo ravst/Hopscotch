@@ -1,10 +1,10 @@
 import GameHoppingInLean.Tactic.SimpAttrs
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.PMF.Lemmas
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import Lean
 
 open Lean Elab Tactic

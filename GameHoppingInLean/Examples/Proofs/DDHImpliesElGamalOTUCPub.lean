@@ -2,8 +2,8 @@ import GameHoppingInLean.Examples.SecurityDefinitions.DecisionalDH
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
 import GameHoppingInLean.Examples.Constructions.ElGamal
 
-import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.ObservationalEq.Defs
+import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.Group.Simprocs
 import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting

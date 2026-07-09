@@ -2,7 +2,7 @@ import GameHoppingInLean.Examples.SecurityDefinitions.IndCca
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefinitions.MACUnforgeability
 import GameHoppingInLean.Examples.Constructions.EncryptThenMac
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Tactic.Defs
 
 open scoped OracleReduction
 

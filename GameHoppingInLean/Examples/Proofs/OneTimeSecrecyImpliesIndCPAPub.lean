@@ -3,8 +3,8 @@ import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
-import GameHoppingInLean.IndistinguishabilityTactics
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.Tactic.Defs
+import GameHoppingInLean.ObservationalEq.Defs
 
 open scoped OracleReduction
 

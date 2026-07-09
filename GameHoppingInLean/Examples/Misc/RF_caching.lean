@@ -1,8 +1,8 @@
 import Mathlib.Data.Fintype.Pi
 import Mathlib.Probability.Distributions.Uniform
 import Mathlib.Data.Finmap
-import GameHoppingInLean.IndistinguishabilityDef
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Indistinguishability.Def
+import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Examples.Schemes.PRF
 import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRF
 import GameHoppingInLean.Examples.Misc.RF_cachingCore
@@ -124,8 +124,6 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pair (X Y : Type)
       exact completePRFCache_diagram_batch X Y st query ({x' ∈ f query | x' ∉ st.keys})
         (Finset.mem_filter.mpr ⟨hf query, hq⟩) (fun x hx => (Finset.mem_filter.mp hx).2)
 
-
-
 def choosePair (b : Bool) (pair : (X × X)) :=
   if b then pair.1 else pair.2
 
@@ -149,7 +147,6 @@ noncomputable def PRF_ideal_cache_batch_pairs (i : ℕ) (Y : Type) [Fintype Y] [
         else
           StateT.set (c.insert x' (v2, v1))
         return v1
-
 
 
 /-- Reconstruct a `BitVec (i+1)` from its top bit and its low `i` bits. -/

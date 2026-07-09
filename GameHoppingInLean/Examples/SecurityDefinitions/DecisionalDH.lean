@@ -1,4 +1,4 @@
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.Misc.Groups
 
 /-- Query indices for the decisional Diffie-Hellman interface. -/

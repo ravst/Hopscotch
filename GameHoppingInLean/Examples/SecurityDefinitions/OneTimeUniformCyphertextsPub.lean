@@ -1,4 +1,4 @@
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 
 /-- Query indices for the one-time public-key uniform-ciphertexts interface. -/

@@ -1,11 +1,11 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Comp.OracleReductionsLemmas
-import GameHoppingInLean.ObservationalEquvialence
+import GameHoppingInLean.ObservationalEq.Defs
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.OracleComp.OracleSpec
-import GameHoppingInLean.IndistinguishabilityDef
+import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
@@ -15,7 +15,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
 import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
-import GameHoppingInLean.IndistinguishabilityTactics
+import GameHoppingInLean.Tactic.Defs
 
 -- generic intro. move.
 
