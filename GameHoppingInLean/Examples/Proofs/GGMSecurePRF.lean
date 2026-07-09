@@ -46,7 +46,7 @@ GGMHybrid2 prg i.castSucc (=i : Fin (n+1))
 ]
 
 Move from GGMHybrid to GGMHybrid2 uses the following:
-GGMHybrid prg i,
+[GGMHybrid prg i,
 (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
 (GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)),
 GGMHybrid2 prg i]
