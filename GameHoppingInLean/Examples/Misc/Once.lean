@@ -20,17 +20,17 @@ def OnceRed {I : Type} (s : OracleSpec I) [∀ n, Inhabited (s.range n)] (iq : I
   }
 
 noncomputable
-def once {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s) : RStateOracle s :=
+def once {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) : OracleImpl s :=
   applySRReduction (OnceRed s iq) o
 
 
-lemma onceInitialState {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s) : (once iq o).initialState = (o.initialState.map (fun x => (false, x))) :=
+lemma onceInitialState {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) : (once iq o).initialState = (o.initialState.map (fun x => (false, x))) :=
   by
     simp [once, applySRReduction, OnceRed]
     exact rfl
 
 noncomputable
-def simpleLocalRandomness {A} {I : Type} {s : OracleSpec I} (o : RStateOracle s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) :=
+def simpleLocalRandomness {A} {I : Type} {s : OracleSpec I} (o : OracleImpl s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) :=
   { o with queries := {
     impl n args :=
       if not (iq n) then o.queries.impl n args else do
@@ -38,11 +38,11 @@ def simpleLocalRandomness {A} {I : Type} {s : OracleSpec I} (o : RStateOracle s)
         f a n args
   }}
 
-lemma simpleLocalRandomnessInitialState {A} {I : Type} {s : OracleSpec I} (o : RStateOracle s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) :
+lemma simpleLocalRandomnessInitialState {A} {I : Type} {s : OracleSpec I} (o : OracleImpl s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) :
   (simpleLocalRandomness o iq r f).initialState = o.initialState := rfl
 
 noncomputable
-def simpleGlobalRandomness {A} {I : Type} {s : OracleSpec I} (o : RStateOracle s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) : RStateOracle s := {
+def simpleGlobalRandomness {A} {I : Type} {s : OracleSpec I} (o : OracleImpl s) (iq : I → Bool) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) : OracleImpl s := {
   stateType := A × o.stateType
   initialState := do
     let a ← r
@@ -65,23 +65,23 @@ def proj1 {A Y : Type} (x : Bool × (A × Y)) : Bool × Y :=
   (a, c)
 
 
-lemma t1 {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s)  : (once iq o).stateType = (Bool × o.stateType) := by
+lemma t1 {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s)  : (once iq o).stateType = (Bool × o.stateType) := by
   simp [once, applySRReduction]
   simp [OnceRed]
 
 set_option maxHeartbeats 1000000 in
-lemma afterFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) (queriesl :  List (QueryS s)) (x :  A × o.stateType)
+lemma afterFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) (queriesl :  List (QueryS s)) (x :  A × o.stateType)
   -- (H : forall (x : QueryS s), x ∈ queriesl -> iq x.index)
   :
-  (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (true, x.2) ) =
-  (RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl (true, x)).map (liftL (liftL (proj)))
+  (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (true, x.2) ) =
+  (OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl (true, x)).map (liftL (liftL (proj)))
 := by
   induction queriesl generalizing x with
   | nil =>
-      simp [RStateOracle.runQueries2Aux, PMF.map, liftL, proj]
+      simp [OracleImpl.runQueries2Aux, PMF.map, liftL, proj]
   | cons q qs ih =>
       by_cases hq : iq q.index = false
-      · simp [RStateOracle.runQueries2Aux, hq, once, applySRReduction, OnceRed, simpleLocalRandomness,
+      · simp [OracleImpl.runQueries2Aux, hq, once, applySRReduction, OnceRed, simpleLocalRandomness,
           simpleGlobalRandomness, query_impl_convert, OracleComp.simulateQ, FreeMonad.mapM,
           FreeMonad.lift, RState.modify, PMF.map_bind, PMF.bind_map, bind_assoc,
           Function.comp, liftL, proj]
@@ -97,7 +97,7 @@ lemma afterFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.ra
       ·
         have hqTrue : iq q.index = true := by
           cases h : iq q.index <;> simp [h] at hq ⊢
-        simp [RStateOracle.runQueries2Aux, hqTrue]
+        simp [OracleImpl.runQueries2Aux, hqTrue]
         rw [PMF.map_bind]
         simp [once, applySRReduction, OnceRed, simpleLocalRandomness, simpleGlobalRandomness, hqTrue,
           query_impl_convert, OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
@@ -111,35 +111,35 @@ lemma afterFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.ra
           PMF.bind_map, Function.comp, liftL, proj] using hrec'
 
 noncomputable
-def initTerm {A} {I : Type} {s : OracleSpec I} (o : RStateOracle s) (r : PMF A)  := (r.bind fun a ↦ o.initialState.bind fun a_1 ↦ PMF.pure (false, a, a_1))
+def initTerm {A} {I : Type} {s : OracleSpec I} (o : OracleImpl s) (r : PMF A)  := (r.bind fun a ↦ o.initialState.bind fun a_1 ↦ PMF.pure (false, a, a_1))
 
-lemma beforeFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) (queriesl :  List (QueryS s))
+lemma beforeFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)) (queriesl :  List (QueryS s))
   (H : forall x, x ∈ queriesl -> iq x.index = false)
   :
   (r.bind fun a ↦ o.initialState.bind fun a_1 ↦ PMF.pure (false, a, a_1)).bind (
-      RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl)
+      OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl)
    =
   ((o.initialState.bind fun a_1 ↦ PMF.pure (false, a_1)).bind
-      (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl)).bind (fun (l, b, s) => do let sr <- r; return (l, b, sr, s))
+      (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl)).bind (fun (l, b, s) => do let sr <- r; return (l, b, sr, s))
   := by
     let insA : A → (List (QueryResult s) × Bool × o.stateType) →
         (List (QueryResult s) × Bool × A × o.stateType) :=
       fun a z => (z.1, z.2.1, a, z.2.2)
     have hAux :
         ∀ (qs : List (QueryS s)) (Hqs : ∀ x ∈ qs, iq x.index = false) (a : A) (st : o.stateType),
-          RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries qs (false, a, st) =
-            (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries qs (false, st)).map
+          OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries qs (false, a, st) =
+            (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries qs (false, st)).map
               (insA a) := by
       intro qs Hqs a st
       induction qs generalizing st with
       | nil =>
-          simp [RStateOracle.runQueries2Aux, insA]
+          simp [OracleImpl.runQueries2Aux, insA]
       | cons q qs ih =>
           have hq : iq q.index = false := Hqs q (by simp)
           have htail : ∀ x ∈ qs, iq x.index = false := by
             intro x hx
             exact Hqs x (by simp [hx])
-          simp [RStateOracle.runQueries2Aux, once, applySRReduction, OnceRed, simpleLocalRandomness,
+          simp [OracleImpl.runQueries2Aux, once, applySRReduction, OnceRed, simpleLocalRandomness,
             simpleGlobalRandomness, query_impl_convert, OracleComp.simulateQ, FreeMonad.mapM,
             FreeMonad.lift, RState.modify, hq, PMF.map_bind, PMF.bind_map,
             Function.comp]
@@ -154,14 +154,14 @@ lemma beforeFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.r
             PMF.bind_map, Function.comp, insA] using hrec'
     calc
       (r.bind fun a ↦ o.initialState.bind fun a_1 ↦ PMF.pure (false, a, a_1)).bind
-          (RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl)
+          (OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl)
           =
         r.bind (fun a => o.initialState.bind fun st =>
-          RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl (false, a, st)) := by
+          OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries queriesl (false, a, st)) := by
             simp [PMF.bind_bind]
       _ =
         r.bind (fun a => o.initialState.bind fun st =>
-          (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).map
+          (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).map
             (insA a)) := by
               refine bind_congr (x := r) ?_
               intro a
@@ -171,26 +171,26 @@ lemma beforeFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.r
       _ =
         r.bind (fun a =>
           (o.initialState.bind fun st =>
-            RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).bind
+            OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).bind
               (PMF.pure ∘ insA a)) := by
                 simp [PMF.bind_bind, PMF.map]
       _ =
         (o.initialState.bind fun st =>
-          RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).bind
+          OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st)).bind
             (fun z => r.bind fun sr => PMF.pure (insA sr z)) := by
               simpa using
                 (PMF.bind_comm r
                   (o.initialState.bind fun st =>
-                    RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st))
+                    OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, st))
                   (fun a z => PMF.pure (insA a z)))
       _ =
         ((o.initialState.bind fun a_1 ↦ PMF.pure (false, a_1)).bind
-          (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl)).bind
+          (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl)).bind
             (fun (l, b, s) => do let sr <- r; return (l, b, sr, s)) := by
               simp [PMF.bind_bind, insA]
               rfl
 
--- lemma ObsEqLonger {I : Type} {s : OracleSpec I} (o1 o2 : RStateOracle s) (queries l : List (QueryS s))
+-- lemma ObsEqLonger {I : Type} {s : OracleSpec I} (o1 o2 : OracleImpl s) (queries l : List (QueryS s))
 --   (H : runQueries o1 (queries++l) = runQueries o2 (queries++l)) :
 --   runQueries o1 (queries) = runQueries o2 (queries)
 --   := by sorry
@@ -235,25 +235,25 @@ noncomputable def decomp (p : A -> Prop) (l : List A) :
               | inr hxIn =>
                   exact hprefix x hxIn
 
-lemma decompRStateOracle.runQueries2Aux {O : OracleSpec I} (o : QueryImpl3 O (RState S)) (l p : List (QueryS O)) (x : S): RStateOracle.runQueries2Aux o (l++p) x =
+lemma decompOracleImpl.runQueries2Aux {O : OracleSpec I} (o : QueryImpl3 O (RState S)) (l p : List (QueryS O)) (x : S): OracleImpl.runQueries2Aux o (l++p) x =
   (
   do
-    let (out1, s1) <- RStateOracle.runQueries2Aux o l x
-    let (out2, s2) <- RStateOracle.runQueries2Aux o p s1
+    let (out1, s1) <- OracleImpl.runQueries2Aux o l x
+    let (out2, s2) <- OracleImpl.runQueries2Aux o p s1
     return (out1++out2, s2)
   )
  := by
   induction l generalizing x with
   | nil =>
-      simp [RStateOracle.runQueries2Aux]
+      simp [OracleImpl.runQueries2Aux]
   | cons q qs ih =>
-      simp [RStateOracle.runQueries2Aux, ih, bind_assoc]
+      simp [OracleImpl.runQueries2Aux, ih, bind_assoc]
 
-lemma decompRStateOracle.runQueries2Aux2 {O : OracleSpec I} (o : QueryImpl3 O (RState S)) (l p : List (QueryS O)) (xd : PMF S): xd.bind (RStateOracle.runQueries2Aux o (l++p)) =
+lemma decompOracleImpl.runQueries2Aux2 {O : OracleSpec I} (o : QueryImpl3 O (RState S)) (l p : List (QueryS O)) (xd : PMF S): xd.bind (OracleImpl.runQueries2Aux o (l++p)) =
   (
-  (xd.bind (fun x => RStateOracle.runQueries2Aux o l x)).bind (fun (out1, s1) =>
+  (xd.bind (fun x => OracleImpl.runQueries2Aux o l x)).bind (fun (out1, s1) =>
   do
-    let (out2, s2) <- RStateOracle.runQueries2Aux o p s1
+    let (out2, s2) <- OracleImpl.runQueries2Aux o p s1
     return (out1++out2, s2)
   ))
  := by
@@ -261,23 +261,23 @@ lemma decompRStateOracle.runQueries2Aux2 {O : OracleSpec I} (o : QueryImpl3 O (R
     lhs
     arg 2
     ext xd
-    rw [decompRStateOracle.runQueries2Aux]
+    rw [decompOracleImpl.runQueries2Aux]
   simp []
 
 lemma flagLowered {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool)
-    (o : RStateOracle s) (r : PMF A)
+    (o : OracleImpl s) (r : PMF A)
     (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι))
     (queriesl :  List (QueryS s))
     (Hn : forall x, x ∈ queriesl -> iq x.index = false)
     (b: List (QueryResult s) × Bool × o.stateType) (tm : o.stateType)
-: b ∈ (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, tm)).support ->
+: b ∈ (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries queriesl (false, tm)).support ->
     b.2.1 = false :=
 by
   revert Hn b tm
   induction queriesl with
   | nil =>
       intro Hn b tm H
-      simp [RStateOracle.runQueries2Aux] at H
+      simp [OracleImpl.runQueries2Aux] at H
       simp [H]
   | cons q qs ih =>
       intro Hn b tm H
@@ -285,7 +285,7 @@ by
       have hqs : forall x, x ∈ qs -> iq x.index = false := by
         intro x hx
         exact Hn x (by simp [hx])
-      rw [RStateOracle.runQueries2Aux] at H
+      rw [OracleImpl.runQueries2Aux] at H
       rcases (PMF.mem_support_bind_iff _ _ _).1 H with ⟨step, hStep, hTail⟩
       rcases step with ⟨out, bflag, st0⟩
       rcases (PMF.mem_support_bind_iff _ _ _).1 hTail with ⟨tail, hTailRun, hPure⟩
@@ -313,7 +313,7 @@ by
               exact ((PMF.mem_support_iff _ _).1 hmem) hzero
             exact hStepNotMem hStepMem
       have hTailRun' :
-          tail ∈ (RStateOracle.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries qs
+          tail ∈ (OracleImpl.runQueries2Aux (once iq (simpleLocalRandomness o iq r f)).queries qs
             (false, st0)).support := by
         simpa [hStepFalse] using hTailRun
       have hTailFalse : tail.2.1 = false := ih hqs tail st0 hTailRun'
@@ -322,7 +322,7 @@ by
       simp [hTailFalse]
 
 set_option maxHeartbeats 1000000 in
-theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : RStateOracle s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)):
+theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)):
   ObsEq
     (once iq (simpleLocalRandomness o iq r f))
     (once iq (simpleGlobalRandomness o iq r f)) := by
@@ -330,7 +330,7 @@ theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [�
   intro queries
   rw [runQueriesEquiv]
   rw [runQueriesEquiv]
-  simp [RStateOracle.runQueriesOnlyOut, RStateOracle.runQueries2]
+  simp [OracleImpl.runQueriesOnlyOut, OracleImpl.runQueries2]
   conv =>
     rhs
     arg 2
@@ -356,15 +356,15 @@ theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [�
     simp [] at P
     clear a
     rw [P.1]
-    rw [decompRStateOracle.runQueries2Aux2]
-    rw [decompRStateOracle.runQueries2Aux2]
+    rw [decompOracleImpl.runQueries2Aux2]
+    rw [decompOracleImpl.runQueries2Aux2]
     conv =>
       rhs
       arg 2
       arg 1
       -- rw [beforeFirstHeavyQuery iq o r f l1] does not work, even when terms seems equal. why?
       arg 2
-      change RStateOracle.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries l1
+      change OracleImpl.runQueries2Aux (once iq (simpleGlobalRandomness o iq r f)).queries l1
     rw [beforeFirstHeavyQuery iq o r f l1 (by
         intro x Hx
         exact P.2.2 x Hx)]
@@ -385,7 +385,7 @@ theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [�
         exact P.2.2 x hx
       exact flagLowered (iq := iq) (o := o) (r := r) (f := f) (queriesl := l1)
         hNoHeavy b tm Hb
-    simp [RStateOracle.runQueries2Aux]
+    simp [OracleImpl.runQueries2Aux]
     simp [StateT.run]
     conv =>
       lhs

@@ -32,7 +32,7 @@ def OTSToIndCpaReduction {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK
 
 noncomputable
 def OTSToIndCpaHybrid {PubK SecK M C : Type} (scheme : PubEncScheme PubK SecK M C) (i : ℕ) :
-  RStateOracle (IndCpaPubSpec PubK M C) where
+  OracleImpl (IndCpaPubSpec PubK M C) where
   stateType := ℕ × PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen

@@ -35,7 +35,7 @@ sample an `S` key, encrypt the message with `S`, ignore that result, and output 
 noncomputable def OUTC_G1 {K₁ K₂ : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)]
     (S : SymEncScheme K₁ BitVec) (_T : SymEncScheme K₂ C) :
-    RStateOracle (OTUCSpec C) where
+    OracleImpl (OTUCSpec C) where
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨n, m⟩ => do

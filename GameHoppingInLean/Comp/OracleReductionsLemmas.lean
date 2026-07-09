@@ -36,6 +36,7 @@ lemma applyComplexInitReduction2_identity {Output I : Type} {O : OracleSpec I}
   simp only [applyReductionToAdversary, OracleReduction.identity, pure_bind]
   have h := identity_roundtrip (O := O) dist ()
   simp only [OracleReduction.identity] at h
+  simp [OracleReduction.lower_state_passing]
   rw [h]
   simp [Functor.map_map]
 
@@ -191,7 +192,7 @@ lemma rcompose_apply {Output I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O�
       = r1.initialState >>= fun s1 =>
           simulateQ defaultImpl (simulateQ (addPMFtoImpl2 r1.queries) r2.initialState) s1 from rfl]
   simp only [bind_assoc, Functor.mapRev, simulateQ_bind, simulateQ_map, statefulOracleComp_bind,
-    map_bind, bind_map, Functor.map_map, Function.comp]
+    map_bind, bind_map, Functor.map_map, Function.comp, OracleReduction.lower_state_passing]
   apply bind_congr; intro s1
   apply bind_congr; intro a
   obtain ⟨s2, s1'⟩ := a

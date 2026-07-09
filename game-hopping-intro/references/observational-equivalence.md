@@ -2,7 +2,7 @@
 
 ## Definition
 
-Two oracle implementations `A` and `B` (of type `RStateOracle O`) are **observation-indistinguishable with length** `l` (written `ObsEqBounded A B l`) if:
+Two oracle implementations `A` and `B` (of type `OracleImpl O`) are **observation-indistinguishable with length** `l` (written `ObsEqBounded A B l`) if:
 - For any list of queries of length up to `l`
 - Both `A` and `B` respond with outputs having the same distribution
 - The parameter `l` is an `ENat`; `+∞` (i.e. `none`) means this holds for lists of any length

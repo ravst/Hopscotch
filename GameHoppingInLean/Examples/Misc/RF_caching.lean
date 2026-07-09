@@ -23,7 +23,7 @@ them.
 It answers a query `x` by returning the cached value if present, or sampling a fresh uniform
 value, caching it, and returning it. -/
 noncomputable def PRF_ideal2 (X Y : Type) [DecidableEq X] [Fintype Y] [Nonempty Y] :
-    RStateOracle (SecurePRFSpec X Y) where
+    OracleImpl (SecurePRFSpec X Y) where
   stateType := Finmap (fun _x : X => Y)
   initialState := pure ∅
   queries x := do
@@ -76,7 +76,7 @@ batch `f x` still missing from the cache, stores them, and returns the value at 
 noncomputable def PRF_ideal_cache_batch (X Y : Type)
     [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y]
     (f : X → Finset X) (hf : ∀ x, x ∈ f x) :
-    RStateOracle (SecurePRFSpec X Y) where
+    OracleImpl (SecurePRFSpec X Y) where
   stateType := Finmap (fun _x : X => Y)
   initialState := pure ∅
   queries x := by
@@ -128,7 +128,7 @@ def choosePair (b : Bool) (pair : (X × X)) :=
   if b then pair.1 else pair.2
 
 noncomputable def PRF_ideal_cache_batch_pairs (i : ℕ) (Y : Type) [Fintype Y] [Nonempty Y] :
-    RStateOracle (SecurePRFSpec (BitVec i.succ) Y) where
+    OracleImpl (SecurePRFSpec (BitVec i.succ) Y) where
   stateType := Finmap (fun _x : (BitVec i) => (Y × Y))
   initialState := pure ∅
   queries x := by

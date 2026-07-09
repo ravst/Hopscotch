@@ -102,7 +102,7 @@ attribute [goodDoubleActionSimps]
   id_eq
   Function.comp_def
   Prod.mk.eta
-
+  OracleReduction.lower_state_passing
 
 /-- Solve a correct-abstraction query diagram by extensionality and standard unfolding. -/
 syntax "solveCorrectAbstractionDiag" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic

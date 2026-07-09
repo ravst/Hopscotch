@@ -12,7 +12,7 @@ For `x : OracleSpec I`:
 
 ## Oracle Implementation Structure
 
-An oracle implementation (`RStateOracle O`) is a record with:
+An oracle implementation (`OracleImpl O`) is a record with:
 
 - **`stateType`** – the internal state type that the implementation keeps between processed queries
 

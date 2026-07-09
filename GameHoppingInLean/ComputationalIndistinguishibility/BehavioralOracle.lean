@@ -18,7 +18,7 @@ structure BehavioralOracle2 {I : Type u} (O : OracleSpec I) (q_b : ENat) : Type 
 
 /-- The input list recorded by `runQueriesOnlyOut` is exactly the list of queries asked,
 in order. -/
-lemma runQueriesOnlyOut_map_input {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+lemma runQueriesOnlyOut_map_input {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (qs : List I) :
     (runQueriesOnlyOut o qs).map (fun l => l.map (QueryWithResult.input)) = pure qs := by
   have aux : ∀ (qs : List I) (s : o.stateType),
@@ -100,7 +100,7 @@ lemma runQueries2Aux_append {I : Type} {O : OracleSpec I} {S : Type}
 /-- Asking one more query at the very end and then discarding its result yields the same
 distribution on the earlier results as not asking it at all: a later query cannot influence
 the results of earlier ones. -/
-lemma runQueriesOnlyOut_map_dropLast_append {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+lemma runQueriesOnlyOut_map_dropLast_append {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (qs : List I) (x : I) :
     (runQueriesOnlyOut o (qs ++ [x])).map List.dropLast = runQueriesOnlyOut o qs := by
   have hx : ∀ (t : o.stateType),
@@ -158,13 +158,13 @@ by
   rw [h2, hw]
   exact (PMF.pure_map List.length ql).symm
 
-/-- Well-formedness of the behavioral oracle obtained from an `RStateOracle`.
+/-- Well-formedness of the behavioral oracle obtained from an `OracleImpl`.
 
 We model the history list with the most recent query at the head (newest-first), so to run an
-`RStateOracle` on the history `ql` we replay the queries in chronological order (`ql.reverse`)
+`OracleImpl` on the history `ql` we replay the queries in chronological order (`ql.reverse`)
 and then put the answers back in newest-first order (`.map List.reverse`). With this convention
 the recorded inputs are exactly `ql`. -/
-lemma into_well_formed {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
+lemma into_well_formed {I : Type} {O : OracleSpec I} (o : OracleImpl O) :
     forall (ql : List I),
       ((runQueriesOnlyOut o ql.reverse).map List.reverse).map (fun l => l.map (QueryWithResult.input)) =
         pure ql := by
@@ -178,12 +178,12 @@ lemma into_well_formed {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
     PMF.pure_map, List.reverse_reverse]
   rfl
 
-/-- The "no look ahead" property of the behavioral oracle obtained from an `RStateOracle`:
+/-- The "no look ahead" property of the behavioral oracle obtained from an `OracleImpl`:
 the distribution of the answers to the earlier queries `ql` does not depend on the most recent
 query (`x1` or `x2`) sitting at the head of the history. This holds because, after replaying in
 chronological order, the most recent query is processed last and hence cannot affect the earlier
 answers. -/
-lemma into_no_look_ahead {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
+lemma into_no_look_ahead {I : Type} {O : OracleSpec I} (o : OracleImpl O) :
     forall (ql : List I) (x1 x2 : I),
       (((runQueriesOnlyOut o (List.cons x1 ql).reverse).map List.reverse).map List.tail) =
       (((runQueriesOnlyOut o (List.cons x2 ql).reverse).map List.reverse).map List.tail) := by
@@ -199,14 +199,14 @@ lemma into_no_look_ahead {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
       ← PMF.map_comp, runQueriesOnlyOut_map_dropLast_append]
   rw [step x1, step x2]
 
-/-- Realise an `RStateOracle` as a `BehavioralOracle`.
+/-- Realise an `OracleImpl` as a `BehavioralOracle`.
 
 Note: the original draft used `process ql _ := runQueriesOnlyOut o ql`, which processes the head
 of the history first.  That is incompatible with the `no_look_ahead` axiom (which treats the head
 as the *most recent* query, whose presence must not affect earlier answers).  We therefore replay
 the history in chronological order (`ql.reverse`) and report the answers newest-first
 (`.map List.reverse`), which satisfies both `well_formed` and `no_look_ahead`. -/
-noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : RStateOracle O) :
+noncomputable def into {I : Type} {O : OracleSpec I} (q_b : ENat) (o : OracleImpl O) :
   BehavioralOracle O q_b :=
 {
   process (ql : List (O.Domain)) (_H : ql.length <= q_b) :=
@@ -256,7 +256,7 @@ noncomputable def behavioralOracle1to2 {I : Type u} {O : OracleSpec I} {q_b : EN
   }
 
 noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b : ENat}
-  (x : BehavioralOracle2 O q_b) : RStateOracle O where
+  (x : BehavioralOracle2 O q_b) : OracleImpl O where
   stateType := List (QueryWithResult O)
   initialState := pure []
   queries := fun q =>
@@ -272,8 +272,8 @@ noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b :
           pure out
 
 noncomputable def behavioralOracle1toRstate {I : Type} {O : OracleSpec I} {q_b : ENat}
-  (x : BehavioralOracle O q_b) : RStateOracle O :=
+  (x : BehavioralOracle O q_b) : OracleImpl O :=
   behavioralOracle2toRstate (behavioralOracle1to2 x)
 
-noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : RStateOracle O) : RStateOracle O :=
+noncomputable def rState2Rstate {I : Type} {O : OracleSpec I} (q_b : ENat) (x : OracleImpl O) : OracleImpl O :=
   behavioralOracle1toRstate (BehavioralOracle.into q_b x)

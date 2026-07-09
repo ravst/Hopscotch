@@ -4,13 +4,13 @@ import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.Indistinguishability.Assumption
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
-def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)
+def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> OracleImpl (Spec κ)
 def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
 
 
 
 noncomputable def runDinstinguisher {I : Type} {O : OracleSpec I}
-  (d : adversaryT O) (impl : RStateOracle O) : PMF Bool :=
+  (d : adversaryT O) (impl : OracleImpl O) : PMF Bool :=
   let comp := simulateQ (addPMFtoImpl impl.queries) d
   do
     let init <- impl.initialState
@@ -40,7 +40,7 @@ lemma runDinstinguisher_inner_bind {I stateType : Type _} {O : OracleSpec I}
   rw [PMF.map_bind]
 
 lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
-  (d : OracleComp (withPMFSpec O) Bool) (impl : RStateOracle O) :
+  (d : OracleComp (withPMFSpec O) Bool) (impl : OracleImpl O) :
   runDinstinguisher d impl =
   (do
     let init <- impl.initialState
@@ -53,7 +53,7 @@ rewrites the *applied* form `(apply r o).queries i` (leaving the partially-appli
 `(apply r o).queries` used as a simulation oracle intact, so the induction hypothesis
 still matches). -/
 private lemma apply_queries_apply {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-    (r : OracleReduction O1 O2) (o : RStateOracle O1) (i : I2) :
+    (r : OracleReduction O1 O2) (o : OracleImpl O1) (i : I2) :
     (OracleReduction.apply r o).queries i =
       simulateQ (OracleReduction.liftWithPMFAndState o.queries r.stateType) (r.queries i) := rfl
 open OracleReduction in
@@ -62,7 +62,7 @@ open OracleReduction in
   reduction state via `defaultImpl` and then simulating against `o` (right), up to a
   reshuffling of the state pair. -/
 lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
-    (o : RStateOracle O1)
+    (o : OracleImpl O1)
     (c : OracleComp (withPMFAndStateSpec s O1) X) (sr : s) (so : o.stateType) :
     (simulateQ (liftWithPMFAndState o.queries s) c) (sr, so)
     =
@@ -93,7 +93,7 @@ equals first threading the reduction state (via the reduction's own simulation a
 `defaultImpl`) and then simulating against `o`. Proved by induction on `dist`, using
 `goodDoubleAction_step` to discharge each underlying oracle query. -/
 lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {X : Type}
-    (r : OracleReduction O1 O2) (o : RStateOracle O1)
+    (r : OracleReduction O1 O2) (o : OracleImpl O1)
     (dist : OracleComp (withPMFSpec O2) X) (sr : r.stateType) (so : o.stateType) :
     StateT.run (simulateQ (addPMFtoImpl (OracleReduction.apply r o).queries) dist) (sr, so)
     =
@@ -134,7 +134,7 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
 
 open OracleReduction in
 lemma goodDoubleAction_core2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2} {X : Type}
-    (r : OracleReduction O1 O2) (o : RStateOracle O1)
+    (r : OracleReduction O1 O2) (o : OracleImpl O1)
     (dist : OracleComp (withPMFSpec O2) X) (srt : r.stateType × o.stateType) :
     (simulateQ (addPMFtoImpl (OracleReduction.apply r o).queries) dist) srt
     =
@@ -146,7 +146,7 @@ lemma goodDoubleAction_core2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpe
 
 /-  probably could be proven by induction over dist -/
 lemma goodDoubleAction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (dist : adversaryT O2) (r : OracleReduction O1 O2) (o : RStateOracle O1) :
+  (dist : adversaryT O2) (r : OracleReduction O1 O2) (o : OracleImpl O1) :
   runDinstinguisher dist (OracleReduction.apply r o) =
   runDinstinguisher (OracleReduction.applyReductionToAdversary r dist) o :=
 by
@@ -165,7 +165,7 @@ by
     arg 2
     rw [goodDoubleAction_core2]
   simp [StateT.run, StateT.run_bind]
-  simp [OracleReduction.applyReductionToAdversary]
+  simp [OracleReduction.applyReductionToAdversary, OracleReduction.lower_state_passing]
   change
     ((simulateQ (addPMFtoImpl o.queries) r.initialState initS).bind fun init =>
         PMF.map (fun (x : Bool × (r.apply o).stateType) => x.1)
@@ -211,11 +211,11 @@ def PolyFamOracleCompPred : Type 1 :=
 
 noncomputable
 def advantage {I : Type} {O : OracleSpec I}
-  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) : Real :=
+  (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) : Real :=
   pdistancePMF (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
 
 lemma advantageReverse {I : Type} {O : OracleSpec I}
-  (distinguisher : adversaryT O) (o1 o2 : RStateOracle O) :
+  (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) :
   advantage distinguisher o1 o2 = - advantage distinguisher o2 o1 :=
 by simp [advantage, pdistancePMF]
 
@@ -226,7 +226,7 @@ def advantageFam {I : Type} {Spec : ℕ -> OracleSpec I}
 
 
 lemma advatangeTriangle {I : Type} {O : OracleSpec I}
-  {distinguisher : adversaryT O} (o1 o2 o3 : RStateOracle O) :
+  {distinguisher : adversaryT O} (o1 o2 o3 : OracleImpl O) :
   advantage distinguisher o1 o3 = advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
 by
   simp [advantage]
@@ -234,7 +234,7 @@ by
 
 
 lemma advantageRefl {I : Type} {O : OracleSpec I}
-  {distinguisher : adversaryT O} (o : RStateOracle O) :
+  {distinguisher : adversaryT O} (o : OracleImpl O) :
     advantage distinguisher o o = 0 :=
 by
   simp [advantage, pdistancePMF]
@@ -298,7 +298,7 @@ by
   simp []
 
 def advantage_reduction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-  (dist : adversaryT O2) (o1 o2 : RStateOracle O1)
+  (dist : adversaryT O2) (o1 o2 : OracleImpl O1)
   (r : OracleReduction O1 O2) :
   advantage dist (OracleReduction.apply r o1) (OracleReduction.apply r o2) =
   advantage (OracleReduction.applyReductionToAdversary r dist) o1 o2 := by

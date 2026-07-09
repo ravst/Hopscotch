@@ -15,7 +15,7 @@ def SecurePRGSpec (k l : ℕ) : OracleSpec Unit :=
 /-- Real PRG oracle.
 Stateless: samples a fresh uniform seed on each query, then returns `prg.draw seed`. -/
 noncomputable def PRG_real {k l : ℕ} (prg : PRG k l) :
-    RStateOracle (SecurePRGSpec k l) where
+    OracleImpl (SecurePRGSpec k l) where
   stateType := Unit
   initialState := pure ()
   queries := fun _ => do
@@ -24,7 +24,7 @@ noncomputable def PRG_real {k l : ℕ} (prg : PRG k l) :
 
 /-- Random oracle baseline for PRG security.
 Ignores the query input and returns a uniformly random `(k + l)`-bit string. -/
-noncomputable def PRG_rand (k l : ℕ) : RStateOracle (SecurePRGSpec k l) where
+noncomputable def PRG_rand (k l : ℕ) : OracleImpl (SecurePRGSpec k l) where
   stateType := Unit
   initialState := pure ()
   queries := fun _ => do
@@ -33,7 +33,7 @@ noncomputable def PRG_rand (k l : ℕ) : RStateOracle (SecurePRGSpec k l) where
 /-- The oracle pair corresponding to the PRG security definition, for use in an
 `Assumptions` set. -/
 noncomputable def SecurePRGAssumption {k l : ℕ} (prg : PRG k l) :
-    RStateOracle (SecurePRGSpec k l) × RStateOracle (SecurePRGSpec k l) :=
+    OracleImpl (SecurePRGSpec k l) × OracleImpl (SecurePRGSpec k l) :=
   (PRG_real prg, PRG_rand k l)
 
 noncomputable def SecurePRGAssumptionFull {k l : ℕ} (prg : PRG k l) :

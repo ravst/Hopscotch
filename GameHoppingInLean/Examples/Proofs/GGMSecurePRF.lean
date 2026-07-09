@@ -60,7 +60,7 @@ It is interesting that some hybrids in this proof and even left side of thesis (
 any assumption set. -/
 noncomputable def liftEmptyAssumptions
     {Idx : Type} {Assumptions : IndAssumptions Idx}
-    {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : RStateOracle O}
+    {q_b : ENat} {I : Type} {O : OracleSpec I} {ro₁ ro₂ : OracleImpl O}
     (h : IndistinguishableI IndAssumptions.empty q_b ro₁ ro₂) :
     IndistinguishableI Assumptions q_b ro₁ ro₂ := by
   induction h with
@@ -78,7 +78,7 @@ The oracle samples a uniformly random label for every depth-`i` node in the GGM 
 On input `x`, it reads the first `i` bits in the same LSB-first order used by `applyPRGs`,
 looks up the corresponding random label, and then evaluates the remaining suffix with `prg`. -/
 noncomputable def GGMHybrid {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
-    RStateOracle (SecurePRFSpec (BitVec n) (BitVec k)) where
+    OracleImpl (SecurePRFSpec (BitVec n) (BitVec k)) where
   stateType := BitVec i.1 → BitVec k
   initialState := PMF.uniformOfFintype (BitVec i.1 → BitVec k)
   queries x := do
@@ -127,7 +127,7 @@ theorem obsEq_GGMHybrid_last_ideal {k n : ℕ} (prg : lengthDoublingPRG k) :
 
 
 noncomputable def GGMHybrid2 {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
-    RStateOracle (SecurePRFSpec (BitVec n) (BitVec k)) where
+    OracleImpl (SecurePRFSpec (BitVec n) (BitVec k)) where
   stateType := Finmap (fun _x : BitVec i.1 => BitVec k)
   initialState := pure ∅
   queries x := do
@@ -147,7 +147,7 @@ noncomputable def GGMHybrid2 {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin (n
 
 
 noncomputable def GGMHybrid3 {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
-    RStateOracle (SecurePRFSpec (BitVec n) (BitVec k)) where
+    OracleImpl (SecurePRFSpec (BitVec n) (BitVec k)) where
   stateType := Finmap (fun _x : BitVec i.1 => BitVec (k + k))
   initialState := pure ∅
   queries x := do
@@ -272,7 +272,7 @@ noncomputable def obsEq_rand_GGMHybrid_1_2 {k n : ℕ}
   omega
 
 noncomputable def PRF_ideal_cache_batch_flipMsb2 (i : ℕ) (k : ℕ) :
-    RStateOracle (SecurePRFSpec (BitVec i.succ) (BitVec k)) where
+    OracleImpl (SecurePRFSpec (BitVec i.succ) (BitVec k)) where
   stateType := Finmap (fun _x : (BitVec i) => BitVec (k + k))
   initialState := pure ∅
   queries x := by

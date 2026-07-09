@@ -27,7 +27,7 @@ def IndCpaPubSpec (PubK M C : Type) : OracleSpec (IndCpaPubQ M)
 * `eavesdrop(m₀, m₁)` returns `Enc_pk(m₀)` for every query. -/
 noncomputable def IndCpaPubL {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaPubSpec PubK M C) where
+    OracleImpl (IndCpaPubSpec PubK M C) where
   stateType := PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -45,7 +45,7 @@ noncomputable def IndCpaPubL {PubK SecK M C : Type}
 * `eavesdrop(m₀, m₁)` returns `Enc_pk(m₁)` for every query. -/
 noncomputable def IndCpaPubR {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaPubSpec PubK M C) where
+    OracleImpl (IndCpaPubSpec PubK M C) where
   stateType := PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -62,7 +62,7 @@ noncomputable def IndCpaPubR {PubK SecK M C : Type}
 for use in an `Assumptions` set. -/
 noncomputable def IndCpaPubAssumption {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaPubSpec PubK M C) × RStateOracle (IndCpaPubSpec PubK M C) :=
+    OracleImpl (IndCpaPubSpec PubK M C) × OracleImpl (IndCpaPubSpec PubK M C) :=
   (IndCpaPubL scheme, IndCpaPubR scheme)
 
 noncomputable def IndCpaPubAssumptionFull {PubK SecK M C : Type}

@@ -22,7 +22,7 @@ abbrev IndCpaRandPubSpec (PubK M C : Type) : OracleSpec (OneTimeUniformCyphertex
 * `eavesdrop(m)` returns `Enc_pk(m)` for every query. -/
 noncomputable def IndCpaRandPubReal {PubK SecK M C : Type}
     (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaRandPubSpec PubK M C) where
+    OracleImpl (IndCpaRandPubSpec PubK M C) where
   stateType := PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -39,7 +39,7 @@ noncomputable def IndCpaRandPubReal {PubK SecK M C : Type}
 * `eavesdrop(m)` ignores the message and returns a uniform ciphertext. -/
 noncomputable def IndCpaRandPubRand {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaRandPubSpec PubK M C) where
+    OracleImpl (IndCpaRandPubSpec PubK M C) where
   stateType := PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -54,8 +54,8 @@ noncomputable def IndCpaRandPubRand {PubK SecK M C : Type}
 use in an `Assumptions` set. -/
 noncomputable def IndCpaRandPubAssumption {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (IndCpaRandPubSpec PubK M C) ×
-      RStateOracle (IndCpaRandPubSpec PubK M C) :=
+    OracleImpl (IndCpaRandPubSpec PubK M C) ×
+      OracleImpl (IndCpaRandPubSpec PubK M C) :=
   (IndCpaRandPubReal scheme, IndCpaRandPubRand scheme)
 
 noncomputable def IndCpaRandPubAssumptionFull {PubK SecK M C : Type}

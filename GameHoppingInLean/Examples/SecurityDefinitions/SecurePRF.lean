@@ -16,7 +16,7 @@ def SecurePRFSpec (X Y : Type) : OracleSpec X :=
 /-- Real PRF oracle.
 It samples a key once during initialization and answers each query with `F_k(x)`. -/
 noncomputable def PRF_real {K X Y : Type} (prf : PRF K X Y) :
-    RStateOracle (SecurePRFSpec X Y) where
+    OracleImpl (SecurePRFSpec X Y) where
   stateType := K
   initialState := prf.keyGen
   queries x := do
@@ -28,7 +28,7 @@ noncomputable def PRF_real {K X Y : Type} (prf : PRF K X Y) :
 It samples a uniformly random function `X → Y` once during initialization and answers
 each query by applying that sampled function. -/
 noncomputable def PRF_ideal (X Y : Type) [Fintype X] [Fintype Y] [Nonempty Y] :
-    RStateOracle (SecurePRFSpec X Y) where
+    OracleImpl (SecurePRFSpec X Y) where
   stateType := X → Y
   initialState := by
     classical -- to get decidable equality for X
@@ -42,7 +42,7 @@ noncomputable def PRF_ideal (X Y : Type) [Fintype X] [Fintype Y] [Nonempty Y] :
 `Assumptions` set. -/
 noncomputable def SecurePRFAssumption {K X Y : Type}
     [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) :
-    RStateOracle (SecurePRFSpec X Y) × RStateOracle (SecurePRFSpec X Y) :=
+    OracleImpl (SecurePRFSpec X Y) × OracleImpl (SecurePRFSpec X Y) :=
   (PRF_real prf, PRF_ideal X Y)
 
 noncomputable def SecurePRFAssumptionFull {K X Y : Type}

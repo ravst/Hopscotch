@@ -22,7 +22,7 @@ A reduction from specification `O₁` to `O₂` is an object of type `OracleRedu
 
 ## Key Difference from Oracle Implementations
 
-- **Oracle implementations** (`RStateOracle`): Implement queries directly in `RState`
+- **Oracle implementations** (`OracleImpl`): Implement queries directly in `RState`
 - **Reductions** (`OracleReduction`): Must sample randomness and access state via queries
   - This is necessary to reactively combine these operations
 
@@ -30,9 +30,9 @@ A reduction from specification `O₁` to `O₂` is an object of type `OracleRedu
 
 Given:
 - `R : OracleReduction O₁ O₂` (a reduction)
-- `x : RStateOracle O₂` (an implementation)
+- `x : OracleImpl O₂` (an implementation)
 
-You obtain a new implementation: `R.apply x : RStateOracle O₁`. Also written as shorthand: `R ◇ x`
+You obtain a new implementation: `R.apply x : OracleImpl O₁`. Also written as shorthand: `R ◇ x`
 
 ## Use in Game-Hopping Proofs
 

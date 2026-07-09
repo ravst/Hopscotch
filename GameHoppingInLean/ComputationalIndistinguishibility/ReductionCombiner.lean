@@ -160,7 +160,7 @@ lemma addToStateR_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
 -- lemma reductionStateInclusion_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
 --   (r : OracleReduction O1 O2) (T : Type)
 --   [Nonempty r.stateType]
---   (impl : RStateOracle O1) :
+--   (impl : OracleImpl O1) :
 --   ObsEq (r.apply impl) ((reductionStateInclusion r T).apply impl) := by
 --   simp [OracleReduction.apply]
 --   simp [reductionStateInclusion]
@@ -198,7 +198,7 @@ noncomputable def reductionCombinerMiniL_nontrivial {I1 I2 : Type} {O1 : OracleS
 lemma reductionStateInclusionMiniL_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : (OracleReduction O1 O2))
   [Nonempty x2.stateType] [Nonempty x1.stateType]
-  (impl : RStateOracle O1) :
+  (impl : OracleImpl O1) :
   ObsEq (x1.apply impl) ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) := by
   simp [OracleReduction.apply]
   simp [reductionCombinerMiniL_nontrivial]
@@ -239,7 +239,7 @@ noncomputable def reductionCombinerMiniR_nontrivial {I1 I2 : Type} {O1 : OracleS
 lemma reductionStateInclusionMiniR_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : (OracleReduction O1 O2))
   [Nonempty x2.stateType] [Nonempty x1.stateType]
-  (impl : RStateOracle O1) :
+  (impl : OracleImpl O1) :
   ObsEq (x2.apply impl) ((reductionCombinerMiniR_nontrivial x1 x2).apply impl) := by
   simp [OracleReduction.apply]
   simp [reductionCombinerMiniR_nontrivial]
@@ -259,7 +259,7 @@ lemma reductionStateInclusionMiniR_spec {I1 I2 : Type} {O1 : OracleSpec I1} {O2 
 def reductionStateInclusionMiniR_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : (OracleReduction O1 O2))
   [Nonempty x2.stateType] [Nonempty x1.stateType]
-  (impl : RStateOracle O1) :
+  (impl : OracleImpl O1) :
   forall dist,
   runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1 x2).apply impl) =
   runDinstinguisher dist (x2.apply impl)
@@ -273,7 +273,7 @@ by
 def reductionStateInclusionMiniL_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (x1 x2 : (OracleReduction O1 O2))
   [Nonempty x2.stateType] [Nonempty x1.stateType]
-  (impl : RStateOracle O1) :
+  (impl : OracleImpl O1) :
   forall dist,
   runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) =
   runDinstinguisher dist (x1.apply impl)
@@ -355,7 +355,7 @@ lemma getBernullir2 (x1 x2 : ℕ) (H : x1 + x2 >= 1) : getPMF (bernulli_ratio x1
 
 
 lemma reductionCombiner_initialState_split {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   (x1 x2 : ℕ × (OracleReduction O1 O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
   ((reductionCombiner_nontrivial x1 x2).2.apply impl).initialState =
@@ -381,7 +381,7 @@ lemma reductionCombiner_initialState_split {I : Type} {O : OracleSpec I} {I1 : T
 
 lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {I1 : Type} {O1 : OracleSpec I1}
   (dist : OracleComp (withPMFSpec O) Bool)
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   (x1 x2 : ℕ × (OracleReduction O1 O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
   runDinstinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =

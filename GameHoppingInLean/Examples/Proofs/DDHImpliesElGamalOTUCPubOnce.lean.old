@@ -76,7 +76,7 @@ noncomputable def DDHToElGamalOTUCPubReduction {G : Type}
 reused through `once`, so this is definitionally the global-randomness hop. -/
 noncomputable def ElGamalOTUCPubG0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleGlobalRandomness
       (IndCpaRandPubReal (ElGamal g))
@@ -88,7 +88,7 @@ noncomputable def ElGamalOTUCPubG0 {G : Type} [Group G] [Fintype G] [Nontrivial 
 eavesdropping query with `(B, m * C)`. -/
 noncomputable def ElGamalOTUCPubG1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let a <- sampleExponent G
@@ -115,7 +115,7 @@ noncomputable def ElGamalOTUCPubG1 {G : Type} [Group G] [Fintype G] [Nontrivial 
 message query with `(B, m * C)`. -/
 noncomputable def ElGamalOTUCPubG3 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let a <- sampleExponent G
@@ -140,7 +140,7 @@ noncomputable def ElGamalOTUCPubG3 {G : Type} [Group G] [Fintype G] [Nontrivial 
 independent `b, c` and return `(g^b, m * g^c)`. -/
 noncomputable def ElGamalOTUCPubG4 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := OneTimeSecrecyState G
   initialState := do
     let (pk, _sk) <- (ElGamal g).keyGen
@@ -363,7 +363,7 @@ private noncomputable def elGamalG3G4LocalRandQuery {G : Type} [Group G]
 
 private noncomputable def ElGamalOTUCPubG3Global {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleGlobalRandomness
       (IndCpaRandPubReal (ElGamal g))
@@ -373,7 +373,7 @@ private noncomputable def ElGamalOTUCPubG3Global {G : Type} [Group G] [Fintype G
 
 private noncomputable def ElGamalOTUCPubG4Local {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleLocalRandomness
       (IndCpaRandPubReal (ElGamal g))

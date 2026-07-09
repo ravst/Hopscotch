@@ -72,7 +72,7 @@ noncomputable def combine_red_singleton
   (l : (OracleReduction O1 O2))
   (H : [l].length > 0)
   (H2 : forall i, Nonempty (O1 i))
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   :
   ObsEq
     ((reduction_combiner_list_full ⟨[l], H⟩).apply impl)
@@ -230,7 +230,7 @@ lemma simulateQ_bind_pure_run {I : Type} {O : OracleSpec I} {st α γ : Type}
 
 /-- Transport an initial-state simulation along an equality of reductions. -/
 lemma simulateQ_init_run_congr {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-    (impl : RStateOracle O1) (red red' : OracleReduction O1 O2) (hEq : red = red')
+    (impl : OracleImpl O1) (red red' : OracleReduction O1 O2) (hEq : red = red')
     (s : impl.stateType) :
     StateT.run (simulateQ (addPMFtoImpl impl.queries) red'.initialState) s
       = PMF.map (fun p => (hEq ▸ p.1, p.2))
@@ -252,7 +252,7 @@ lemma internal_type_ext {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
 
 /-- Left-branch initial-state fibre agreement (the `hl` obligation of `flat_init`). -/
 lemma flat_init_hl {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-    (l1 l2 : List (OracleReduction O1 O2)) (impl : RStateOracle O1)
+    (l1 l2 : List (OracleReduction O1 O2)) (impl : OracleImpl O1)
     (sₒ : impl.stateType) (j : Fin l1.length) (hidx : (↑j : ℕ) < (l1 ++ l2).length) :
     ((StateT.run (simulateQ (addPMFtoImpl impl.queries)
         ((l1 ++ l2)[(⟨↑j, hidx⟩ : Fin (l1 ++ l2).length)].initialState >>= fun init =>
@@ -283,7 +283,7 @@ lemma flat_init_hl {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
 
 /-- Right-branch initial-state fibre agreement (the `hr` obligation of `flat_init`). -/
 lemma flat_init_hr {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-    (l1 l2 : List (OracleReduction O1 O2)) (impl : RStateOracle O1)
+    (l1 l2 : List (OracleReduction O1 O2)) (impl : OracleImpl O1)
     (sₒ : impl.stateType) (j : Fin l2.length) (hidx : (l1.length + ↑j : ℕ) < (l1 ++ l2).length) :
     ((StateT.run (simulateQ (addPMFtoImpl impl.queries)
         ((l1 ++ l2)[(⟨l1.length + ↑j, hidx⟩ : Fin (l1 ++ l2).length)].initialState >>= fun init =>
@@ -328,7 +328,7 @@ lemma flat_init {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (Hl1 : l1.length > 0)
   (Hl2 : l2.length > 0)
   (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1) :
+  (impl : OracleImpl O1) :
   ((reduction_combiner_list (l1 ++ l2) (by simp [Hl1, Hl2]) He).apply impl).initialState.map
       (flatToSumProd l1 l2 impl.stateType) =
   ((reductionCombiner_nontrivial_packed
@@ -381,7 +381,7 @@ lemma flat_init {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
 
 /-- Transport a per-query simulation along an equality of reductions. -/
 lemma simQ_red_congr {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
-    (impl : RStateOracle O1) (query : I2) (s2 : impl.stateType)
+    (impl : OracleImpl O1) (query : I2) (s2 : impl.stateType)
     (red red' : OracleReduction O1 O2) (hEq : red = red') (v : red.stateType) :
     simulateQ (OracleReduction.liftWithPMFAndState impl.queries red'.stateType) (red'.queries query)
         (hEq ▸ v, s2)
@@ -409,7 +409,7 @@ lemma flat_query_left {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (Hl1 : l1.length > 0)
   (Hl2 : l2.length > 0)
   (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   (query : I2)
   (s : internal_type (l1 ++ l2) × impl.stateType)
   (h : (s.1.index : ℕ) < l1.length) :
@@ -465,7 +465,7 @@ lemma flat_query_right {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (Hl1 : l1.length > 0)
   (Hl2 : l2.length > 0)
   (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   (query : I2)
   (s : internal_type (l1 ++ l2) × impl.stateType)
   (h : ¬ (s.1.index : ℕ) < l1.length) :
@@ -524,7 +524,7 @@ lemma flat_query {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (Hl1 : l1.length > 0)
   (Hl2 : l2.length > 0)
   (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   (query : I2) :
   mapOutputState (flatToSumProd l1 l2 impl.stateType)
       (((reduction_combiner_list (l1 ++ l2) (by simp [Hl1, Hl2]) He).apply impl).queries query) =
@@ -545,7 +545,7 @@ lemma reduction_combiner_list_vs_2
   (Hl1 : l1.length > 0)
   (Hl2 : l2.length > 0)
   (He : forall x : I1, Nonempty (O1 x))
-  (impl : RStateOracle O1)
+  (impl : OracleImpl O1)
   :
   ObsEq
     ((reduction_combiner_list (l1 ++ l2) (by simp [Hl1, Hl2]) He).apply impl)
@@ -608,7 +608,7 @@ by
 
 /-- Pull an initial uniform (or arbitrary `PMF`) sample outside of `runDinstinguisher`. -/
 lemma runDinstinguisher_initSample {I : Type} {O : OracleSpec I} {α : Type}
-    (impl : RStateOracle O) (p : PMF α) (k : α → adversaryT O) :
+    (impl : OracleImpl O) (p : PMF α) (k : α → adversaryT O) :
     runDinstinguisher (OracleReduction.initSample p >>= k) impl
       = p.bind (fun x => runDinstinguisher (k x) impl) := by
   simp only [runDinstinguisher]
@@ -786,7 +786,7 @@ lemma combiner_apply_uniform {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpe
         let init <- l[x].initialState
         pure ({index := x, value := init} : internal_type l)) := rfl
   simp only [OracleReduction.applyReductionToAdversary, hinit, bind_assoc, pure_bind]
-  simp only [combiner_inner]
+  simp only [combiner_inner, OracleReduction.lower_state_passing]
   simp [Functor.mapRev, ← comp_map, Function.comp]
 
 lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
@@ -794,7 +794,7 @@ lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
   {I3 : Type} (O3 : OracleSpec I3)
   (r1 : OracleReduction O2 O3)
   (l : {x : List (OracleReduction O1 O2) // x.length > 0})
-  (impl : RStateOracle O1) (dist : adversaryT O3) :
+  (impl : OracleImpl O1) (dist : adversaryT O3) :
   runDinstinguisher dist
     ((rcompose (reduction_combiner_list_full l) r1).apply impl) =
   runDinstinguisher dist

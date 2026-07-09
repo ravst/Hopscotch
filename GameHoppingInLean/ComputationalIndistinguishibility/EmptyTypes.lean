@@ -25,7 +25,7 @@ lemma QueryImpl2NonEmpty (stateType : Type _) {I : Type _} {O : OracleSpec I}
     constructor
     exact a.1
 
-lemma non_trivial_spec {I : Type _} {O : OracleSpec I} (ro : RStateOracle O) :
+lemma non_trivial_spec {I : Type _} {O : OracleSpec I} (ro : OracleImpl O) :
   forall x : I, Nonempty (O x) :=
   by
     have Hstate : Nonempty ro.stateType := pmf_nonempty ro.initialState

@@ -39,7 +39,7 @@ noncomputable def PRGDouble_to_Tripple_R2 {k : ℕ} :
 return `x || prg.draw y`. -/
 @[local game_hopping_unfold]
 noncomputable def PRG_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
-    RStateOracle (SecurePRGSpec k (2 * k)) where
+    OracleImpl (SecurePRGSpec k (2 * k)) where
   stateType := Unit
   initialState := pure ()
   queries := fun _ => do
@@ -53,7 +53,7 @@ noncomputable def PRG_G1 {k : ℕ} (prg : lengthDoublingPRG k) :
 return `x || prg.draw y`. -/
 @[local game_hopping_unfold]
 noncomputable def PRG_G2 {k : ℕ} (prg : lengthDoublingPRG k) :
-    RStateOracle (SecurePRGSpec k (2 * k)) where
+    OracleImpl (SecurePRGSpec k (2 * k)) where
   stateType := Unit
   initialState := pure ()
   queries := fun _ => do
@@ -66,7 +66,7 @@ noncomputable def PRG_G2 {k : ℕ} (prg : lengthDoublingPRG k) :
 `y : BitVec (2k)`, return `x || y`. -/
 @[local game_hopping_unfold]
 noncomputable def PRG_G3 {k : ℕ} :
-    RStateOracle (SecurePRGSpec k (2 * k)) where
+    OracleImpl (SecurePRGSpec k (2 * k)) where
   stateType := Unit
   initialState := pure ()
   queries := fun _ => do

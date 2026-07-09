@@ -105,7 +105,7 @@ noncomputable def EtMFromIndCpaReduction {KMac Tag : Type} [DecidableEq Tag]
 @[local game_hopping_unfold]
 noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
-    RStateOracle (EtMSpec Tag) where
+    OracleImpl (EtMSpec Tag) where
   stateType := EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag
   initialState := do
     let ke ← enc.keyGen
@@ -133,7 +133,7 @@ noncomputable def EtMGameMacIdealL {KEnc KMac Tag : Type} [DecidableEq Tag]
 @[local game_hopping_unfold]
 noncomputable def EtMGameMacIdealR {KEnc KMac Tag : Type} [DecidableEq Tag]
     (enc : SymEncScheme KEnc BitVec) (mac : MACScheme KMac Tag) :
-    RStateOracle (EtMSpec Tag) where
+    OracleImpl (EtMSpec Tag) where
   stateType := EtMFromMacState KEnc Tag × MACUFIdealState KMac Tag
   initialState := do
     let ke ← enc.keyGen

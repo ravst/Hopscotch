@@ -18,7 +18,7 @@ structure ElGamalRealState (G : Type) where
 
 noncomputable def G1 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRealState G
   initialState := do
     let a <- sampleExponent G
@@ -48,7 +48,7 @@ noncomputable def G1 {G : Type}
 
 noncomputable def G2 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRealState G
   initialState := do
     let a <- sampleExponent G
@@ -116,7 +116,7 @@ structure ElGamalRandState (G : Type) where
 
 noncomputable def G3 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRandState G
   initialState := do
     let a <- sampleExponent G
@@ -145,7 +145,7 @@ noncomputable def G3 {G : Type}
 
 noncomputable def G4 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRandState G
   initialState := do
     let a <- sampleExponent G

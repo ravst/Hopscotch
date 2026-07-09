@@ -18,7 +18,7 @@ def IndCpaRandSpec (C : ℕ → Type) : OracleSpec IndCpaRandDomain :=
 
 /-- IND-CPA "real ciphertext" oracle for the `ctxt(m)` interface. Returns `Enc_k(m)`. -/
 noncomputable def IndCpaRandReal {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    RStateOracle (IndCpaRandSpec C) where
+    OracleImpl (IndCpaRandSpec C) where
   stateType := K
   initialState := scheme.keyGen
   queries := fun ⟨_n, m⟩ => do
@@ -30,7 +30,7 @@ noncomputable def IndCpaRandReal {K : Type} {C : ℕ → Type} (scheme : SymEncS
 Ignores the message and returns a uniformly random `n`-bit ciphertext. -/
 noncomputable def IndCpaRandRand {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (_scheme : SymEncScheme K C) :
-    RStateOracle (IndCpaRandSpec C) where
+    OracleImpl (IndCpaRandSpec C) where
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨n, _m⟩ => do
@@ -65,5 +65,5 @@ def IndCpaRandIFam
     (I := fun _ => IndCpaRandDomain)
     (O := fun κ => IndCpaRandSpec (C κ))
     Assumptions
-    (fun κ => (IndCpaRandReal (schemeFam.scheme κ) : RStateOracle (IndCpaRandSpec (C κ))))
-    (fun κ => (IndCpaRandRand (schemeFam.scheme κ) : RStateOracle (IndCpaRandSpec (C κ))))
+    (fun κ => (IndCpaRandReal (schemeFam.scheme κ) : OracleImpl (IndCpaRandSpec (C κ))))
+    (fun κ => (IndCpaRandRand (schemeFam.scheme κ) : OracleImpl (IndCpaRandSpec (C κ))))

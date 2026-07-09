@@ -41,7 +41,7 @@ def IndCcaSpec (C : ℕ → Type) : OracleSpec (IndCcaQ C)
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
 noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
-    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
+    (scheme : SymEncScheme K C) : OracleImpl (IndCcaSpec C) where
   stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
@@ -64,7 +64,7 @@ noncomputable def IndCcaL {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
 * `decrypt(c)` returns `none` iff `c` was previously returned by `eavesdrop`,
   otherwise returns `some (Dec_k(c))`. -/
 noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
-    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) where
+    (scheme : SymEncScheme K C) : OracleImpl (IndCcaSpec C) where
   stateType := IndCcaState K C
   initialState := do
     let k ← scheme.keyGen
@@ -85,12 +85,12 @@ noncomputable def IndCcaR {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n
 
 noncomputable def IndCcaRFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
   (schemeFam : SymEncSchemeFamily K C) [∀ κ n, DecidableEq (C κ n)] :
-    (κ : ℕ) → RStateOracle (IndCcaSpec (C κ)) :=
+    (κ : ℕ) → OracleImpl (IndCcaSpec (C κ)) :=
   fun κ => IndCcaR (schemeFam.scheme κ)
 
 noncomputable def IndCcaLFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
   (schemeFam : SymEncSchemeFamily K C) [∀ κ n, DecidableEq (C κ n)] :
-    (κ : ℕ) → RStateOracle (IndCcaSpec (C κ)) :=
+    (κ : ℕ) → OracleImpl (IndCcaSpec (C κ)) :=
   fun κ => IndCcaL (schemeFam.scheme κ)
 
 /-- Pointwise IND-CCA assumptions for a symmetric-encryption scheme family. -/

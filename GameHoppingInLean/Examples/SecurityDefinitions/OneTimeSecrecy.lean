@@ -28,7 +28,7 @@ abbrev OneTimeSecrecySpec (PubK M C : Type) : OracleSpec (IndCpaPubQ M) :=
 * every later `eavesdrop` query returns `default : C` -/
 noncomputable def OneTimeSecrecyL {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (OneTimeSecrecySpec PubK M C) where
+    OracleImpl (OneTimeSecrecySpec PubK M C) where
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -51,7 +51,7 @@ noncomputable def OneTimeSecrecyL {PubK SecK M C : Type}
 * every later `eavesdrop` query returns `default : C` -/
 noncomputable def OneTimeSecrecyR {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (OneTimeSecrecySpec PubK M C) where
+    OracleImpl (OneTimeSecrecySpec PubK M C) where
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -72,7 +72,7 @@ noncomputable def OneTimeSecrecyR {PubK SecK M C : Type}
 `Assumptions` set. -/
 noncomputable def OneTimeSecrecyAssumption {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (OneTimeSecrecySpec PubK M C) × RStateOracle (OneTimeSecrecySpec PubK M C) :=
+    OracleImpl (OneTimeSecrecySpec PubK M C) × OracleImpl (OneTimeSecrecySpec PubK M C) :=
   (OneTimeSecrecyL scheme, OneTimeSecrecyR scheme)
 
 noncomputable def OneTimeSecrecyAssumptionFull {PubK SecK M C : Type}

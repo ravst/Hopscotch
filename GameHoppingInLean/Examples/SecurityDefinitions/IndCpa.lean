@@ -17,7 +17,7 @@ def IndCpaSpec (C : ℕ → Type) : OracleSpec IndCpaDomain :=
 
 /-- Left IND-CPA oracle: encrypts the left message `m₀`. -/
 noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    RStateOracle (IndCpaSpec C) where
+    OracleImpl (IndCpaSpec C) where
   stateType := K
   initialState := scheme.keyGen
   queries := fun ⟨_n, (m₀, _m₁)⟩ => do
@@ -26,7 +26,7 @@ noncomputable def IndCpaL {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
 
 /-- Right IND-CPA oracle: encrypts the right message `m₁`. -/
 noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    RStateOracle (IndCpaSpec C) where
+    OracleImpl (IndCpaSpec C) where
   stateType := K
   initialState := scheme.keyGen
   queries := fun  ⟨_n, (_m₀, m₁)⟩ => do
@@ -34,11 +34,11 @@ noncomputable def IndCpaR {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K
           scheme.encrypt key m₁
 
 noncomputable def IndCpaRFam {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) :
-    (κ : ℕ) → RStateOracle (IndCpaSpec (C κ)) :=
+    (κ : ℕ) → OracleImpl (IndCpaSpec (C κ)) :=
   fun κ => IndCpaR (schemeFam.scheme κ)
 
 noncomputable def IndCpaLFam {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C) :
-    (κ : ℕ) → RStateOracle (IndCpaSpec (C κ)) :=
+    (κ : ℕ) → OracleImpl (IndCpaSpec (C κ)) :=
   fun κ => IndCpaL (schemeFam.scheme κ)
 
 noncomputable def IndCpaAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}

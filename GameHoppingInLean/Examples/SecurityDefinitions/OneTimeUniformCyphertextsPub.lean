@@ -36,7 +36,7 @@ instance instInhabitedOneTimeUniformCyphertextsPubRange {PubK M C : Type}
 * every later `eavesdrop` query returns a fixed default ciphertext -/
 noncomputable def OneTimeUniformCyphertextsPubReal {PubK SecK M C : Type}
     [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec PubK M C) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec PubK M C) where
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen
@@ -59,7 +59,7 @@ noncomputable def OneTimeUniformCyphertextsPubReal {PubK SecK M C : Type}
 * every later `eavesdrop` query returns a fixed default ciphertext -/
 noncomputable def OneTimeUniformCyphertextsPubRand {PubK SecK M C : Type}
     [Fintype C] [Inhabited C] (scheme : PubEncScheme PubK SecK M C) :
-    RStateOracle (OneTimeUniformCyphertextsPubSpec PubK M C) where
+    OracleImpl (OneTimeUniformCyphertextsPubSpec PubK M C) where
   stateType := OneTimeSecrecyState PubK
   initialState := do
     let (pk, _sk) <- scheme.keyGen

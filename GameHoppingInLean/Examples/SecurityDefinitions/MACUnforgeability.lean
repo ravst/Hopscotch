@@ -36,7 +36,7 @@ def MACUFSpec (Tag : Type) : OracleSpec (MACUFQ Tag)
 * `GetTag(m)` returns `tag_k(m)`
 * `CheckTag(m, t)` returns deterministic `check_k(m, t)` -/
 noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
-    RStateOracle (MACUFSpec Tag) where
+    OracleImpl (MACUFSpec Tag) where
   stateType := K
   initialState := scheme.keyGen
   queries := fun
@@ -52,7 +52,7 @@ noncomputable def MACUFReal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme
 * `GetTag(m)` returns `tag_k(m)` and records `(m, tag_k(m))`
 * `CheckTag(m, t)` returns `true` iff `(m, t)` is in the recorded set -/
 noncomputable def MACUFIdeal {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
-    RStateOracle (MACUFSpec Tag) where
+    OracleImpl (MACUFSpec Tag) where
   stateType := MACUFIdealState K Tag
   initialState := do
     let key ← scheme.keyGen
@@ -69,7 +69,7 @@ noncomputable def MACUFIdeal {K Tag : Type} [DecidableEq Tag] (scheme : MACSchem
 
 /-- The oracle pair corresponding to the MAC unforgeability assumption. -/
 noncomputable def MACUFAssumption {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :
-    RStateOracle (MACUFSpec Tag) × RStateOracle (MACUFSpec Tag) :=
+    OracleImpl (MACUFSpec Tag) × OracleImpl (MACUFSpec Tag) :=
   (MACUFReal scheme, MACUFIdeal scheme)
 
 noncomputable def MACUFAssumptionFull {K Tag : Type} [DecidableEq Tag] (scheme : MACScheme K Tag) :

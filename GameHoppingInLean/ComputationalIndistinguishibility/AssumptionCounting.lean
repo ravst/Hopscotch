@@ -73,7 +73,7 @@ noncomputable def long_step_combinator_simple {O : OracleSpec I}
 
 noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
   AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
 :=
@@ -155,7 +155,7 @@ noncomputable def long_step_combinator {O : OracleSpec I}
 
 noncomputable def assumptionCounting_low {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
-      {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
+      {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
       AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O
 | IndistinguishableI.assumption idx =>
@@ -196,7 +196,7 @@ noncomputable def assumptionCounting_low {Idx : Type} {Assumptions : IndAssumpti
 
 lemma assumptionCounting_finite {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   {x | (assumptionCounting ind).1 x ≠ []}.Finite ∧
   {x | (assumptionCounting ind).2 x ≠ []}.Finite := by
@@ -273,14 +273,14 @@ abbrev assumptionCountType {Idx : Type} (Assumptions : IndAssumptions Idx)
 
 noncomputable def assumptionCountingFin {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   assumptionCountType Assumptions O :=
   ⟨assumptionCounting ind, assumptionCounting_finite ind⟩
 
 noncomputable def finite_support {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   let ret := assumptionCounting ind
   Fintype {x | ret.1 x ≠ []} ×
@@ -380,7 +380,7 @@ theorem agree_trans {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {
 
 lemma simpleCorrect_in {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   agreeWithSimpPair
     (assumptionCounting_low ind)
@@ -478,7 +478,7 @@ lemma simpleCorrect_in {Idx : Type} {Assumptions : IndAssumptions Idx}
 
 lemma simpleCorrect {Idx : Type} {Assumptions : IndAssumptions Idx}
   {q_b : ENat}
-  {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O}
+  {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
   assumptionCountLower (assumptionCountingFin ind) =
     assumptionCounting_low ind :=

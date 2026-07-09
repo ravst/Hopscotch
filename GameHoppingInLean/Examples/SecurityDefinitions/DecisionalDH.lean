@@ -16,7 +16,7 @@ def DecisionalDHSpec (G : Type) : OracleSpec DecisionalDHQ
 
 /-- Real DDH oracle: sample exponents `a, b` and return `(g^a, g^b, g^(ab))`. -/
 noncomputable def dhReal {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
-    RStateOracle (DecisionalDHSpec G) where
+    OracleImpl (DecisionalDHSpec G) where
   stateType := Unit
   initialState := pure ()
   queries := fun
@@ -27,7 +27,7 @@ noncomputable def dhReal {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G)
 
 /-- Random DDH oracle: sample exponents `a, b, c` and return `(g^a, g^b, g^c)`. -/
 noncomputable def dhRand {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G) :
-    RStateOracle (DecisionalDHSpec G) where
+    OracleImpl (DecisionalDHSpec G) where
   stateType := Unit
   initialState := pure ()
   queries := fun
@@ -40,7 +40,7 @@ noncomputable def dhRand {G : Type} [Group G] [Fintype G] [Nontrivial G] (g : G)
 /-- The oracle pair corresponding to the DDH assumption, for use in an `Assumptions` set. -/
 noncomputable def DecisionalDHAssumption {G : Type}
     [Group G] [Fintype G] [Nontrivial G] (g : G) :
-    RStateOracle (DecisionalDHSpec G) × RStateOracle (DecisionalDHSpec G) :=
+    OracleImpl (DecisionalDHSpec G) × OracleImpl (DecisionalDHSpec G) :=
   (dhReal g, dhRand g)
 
 noncomputable def DecisionalDHAssumptionFull {G : Type}

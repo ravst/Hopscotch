@@ -17,7 +17,7 @@ def OTUCSpec (C : ℕ → Type) : OracleSpec OTUCDomain :=
 
 /-- OTUC real oracle: on each query, sample a fresh key from the scheme and encrypt the message. -/
 noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme K C) :
-    RStateOracle (OTUCSpec C) where
+    OracleImpl (OTUCSpec C) where
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨_n, m⟩ => do
@@ -27,7 +27,7 @@ noncomputable def OTUC_Real {K : Type} {C : ℕ → Type} (scheme : SymEncScheme
 /-- OTUC random oracle: ignore the message and return a uniformly random `n`-bit ciphertext. -/
 noncomputable def OTUC_Rand {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (_scheme : SymEncScheme K C) :
-    RStateOracle (OTUCSpec C) where
+    OracleImpl (OTUCSpec C) where
   stateType := Unit
   initialState := pure ()
   queries := fun ⟨n, _m⟩ => do
@@ -36,7 +36,7 @@ noncomputable def OTUC_Rand {K : Type} {C : ℕ → Type}
 /-- The oracle pair corresponding to the OTUC assumption, for use in an `Assumptions` set. -/
 noncomputable def OTUCAssumption {K : Type} {C : ℕ → Type}
     [∀ n, Fintype (C n)] [∀ n, Nonempty (C n)] (scheme : SymEncScheme K C) :
-    RStateOracle (OTUCSpec C) × RStateOracle (OTUCSpec C) :=
+    OracleImpl (OTUCSpec C) × OracleImpl (OTUCSpec C) :=
   (OTUC_Real scheme, OTUC_Rand scheme)
 
 noncomputable def OTUCAssumptionFull {K : Type} {C : ℕ → Type}

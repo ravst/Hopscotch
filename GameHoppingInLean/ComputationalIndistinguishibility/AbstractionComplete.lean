@@ -36,7 +36,7 @@ noncomputable def withInvariant2 {I : Type} {O : I → Type} {T : Type}
     ∀ p ∈ (ostep i τ).support, lvl p.2 = lvl τ + 1 ∧ reach p.2)
   (start : T)
   (reach_unit : lvl start <= q_b ∧ reach start)
-  : RStateOracle O where
+  : OracleImpl O where
   stateType := {x // lvl x <= q_b ∧ reach x }
   initialState := PMF.pure ⟨start, reach_unit⟩
   queries :=
@@ -64,7 +64,7 @@ noncomputable def withInvariant2_val {I : Type} {O : I → Type} {T : Type}
 noncomputable def simple {I : Type} {O : I → Type} {T : Type}
   (ostep : (i : I) → T → PMF (O i × T))
   (start : T)
-  : RStateOracle O where
+  : OracleImpl O where
   stateType := T
   initialState := PMF.pure start
   queries := ostep
@@ -144,7 +144,7 @@ noncomputable def withInvariant2_correct {I : Type} {O : I → Type} {T : Type}
 def withInv3 {I : Type} {O : I → Type} {S : Type}
     (okernel : (i : I) → S → PMF (O i × S))
     (init : PMF S)
-    : RStateOracle O where
+    : OracleImpl O where
     stateType := S
     initialState := init
     queries := okernel
@@ -153,7 +153,7 @@ def withInv3 {I : Type} {O : I → Type} {S : Type}
 
 noncomputable def withInvariant3_correct {I : Type} {O : I → Type} {T : Type}
   (q_b : ℕ∞)
-  (o : RStateOracle O)
+  (o : OracleImpl O)
   (ostep : (i : I) → T → PMF (O i × T))
   (cs : T → PMF o.stateType)
   (lvl : T → ℕ∞)
@@ -232,19 +232,19 @@ noncomputable def withInvariant3_correct {I : Type} {O : I → Type} {T : Type}
           congr 1
     · simp [withInvariant2, lvl_start, withInvariant2_val]
 
-noncomputable def behavioralRestricted {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) : RStateOracle O :=
+noncomputable def behavioralRestricted {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) : OracleImpl O :=
   withInvariant2 q_b ((rState2Rstate q_b o).queries)
     (fun τ => (τ.length : ℕ∞)) (reachT o) (Hstep_reach o q_b) []
     ⟨by simp [],  reachT_nil o⟩
 
-noncomputable def behavioralRestricted_val {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+noncomputable def behavioralRestricted_val {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) :
   (behavioralRestricted o q_b).stateType -> ENat :=
     fun x => by
       simp [behavioralRestricted, withInvariant2] at x
       exact q_b - x.1.length
 
 
-def rState2Rstate_ob_seq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+def rState2Rstate_ob_seq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) :
  correctAbstractionBindBound (behavioralRestricted o q_b) o
   (fun x => condState o (x.1)) (behavioralRestricted_val o q_b) q_b
  := by
@@ -254,7 +254,7 @@ def rState2Rstate_ob_seq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b
       ((rState2Rstate q_b o).queries) (condState o) (fun τ => (τ.length : ℕ∞))
       (reachT o) (Hstep_reach o q_b) (hstep o q_b) [] ⟨by simp [],  reachT_nil o⟩ (by simp []) (condState_nil o)
 
-lemma reach_calc {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) (q_b : ENat)
+lemma reach_calc {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O) (q_b : ENat)
   (H : ObsEqBounded o1 o2 q_b)
   (x : { x // ↑(List.length x) ≤ q_b ∧ reachT o1 x })
   : reachT o2 x := by
@@ -328,7 +328,7 @@ lemma withInvariant_map_eq {I : Type} {O : I → Type} {T : Type} (q_b : ℕ∞)
     congr 1
     exact Subtype.ext (hg _)
 
-def behavioralToRestrictedEq {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) (q_b : ENat)
+def behavioralToRestrictedEq {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O) (q_b : ENat)
   (H : ObsEqBounded o1 o2 q_b) :
   correctAbstractionBound
     (behavioralRestricted o1 q_b)
@@ -392,7 +392,7 @@ The valuation of `A` is reused, and the hypothesis `hval` states that the valuat
 increases along `f` (so that positivity of `valA s` transfers to positivity of `valB (f s)`,
 which is what the step condition of the second abstraction needs). -/
 lemma correctAbstractionBound_comp_BindBound {I : Type} {O : OracleSpec I}
-    (A B C : RStateOracle O)
+    (A B C : OracleImpl O)
     (f : A.stateType → B.stateType) (valA : A.stateType → ENat)
     (g : B.stateType → PMF C.stateType) (valB : B.stateType → ENat)
     (b : ENat)
@@ -424,7 +424,7 @@ the behaviorally-restricted oracle of `o1` is a correct (bind, bounded) abstract
 Obtained by composing the map-abstraction `behavioralRestricted o1 → behavioralRestricted o2`
 with the bind-abstraction `behavioralRestricted o2 → o2`. -/
 noncomputable def behavioralRestrictedToOther {I : Type} {O : OracleSpec I}
-    (o1 o2 : RStateOracle O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
+    (o1 o2 : OracleImpl O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
     correctAbstractionBindBound (behavioralRestricted o1 q_b) o2
       (fun x => condState o2 x.1) (behavioralRestricted_val o1 q_b) q_b := by
   have hcomp := correctAbstractionBound_comp_BindBound
@@ -443,7 +443,7 @@ noncomputable def behavioralRestrictedToOther {I : Type} {O : OracleSpec I}
 up to `q_b` queries, the behaviorally-restricted oracle of `o1` is a correct (bind, bounded)
 abstraction of *both* `o1` and `o2`. -/
 noncomputable def behavioralRestricted_complete {I : Type} {O : OracleSpec I}
-    (o1 o2 : RStateOracle O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
+    (o1 o2 : OracleImpl O) (q_b : ENat) (H : ObsEqBounded o1 o2 q_b) :
     correctAbstractionBindBound (behavioralRestricted o1 q_b) o1
         (fun x => condState o1 x.1) (behavioralRestricted_val o1 q_b) q_b ∧
     correctAbstractionBindBound (behavioralRestricted o1 q_b) o2
@@ -476,7 +476,7 @@ noncomputable def collectComp {I : Type} {O : OracleSpec I} (ql : List I) :
 
 /-- Simulating `collectComp ql` against `o` reproduces the transcript distribution
 `runQueries2Aux o.queries ql`. -/
-theorem collectComp_simulateQ_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+theorem collectComp_simulateQ_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (ql : List I) :
     ∀ s, simulateQ (addPMFtoImpl o.queries) (collectComp (O := O) ql) s
       = runQueries2Aux o.queries ql s := by
@@ -510,7 +510,7 @@ noncomputable def mkDist {I : Type} {O : OracleSpec I} (ql : List I)
 
 /-- The output distribution of `mkDist ql P` against `o` is exactly the push-forward of the
 transcript distribution `runQueriesOnlyOut o ql` along `P`. -/
-theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (ql : List I) (P : List (QueryWithResult O) → Bool) :
     runDinstinguisher (mkDist ql P) o = (runQueriesOnlyOut o ql).map P := by
   rw [runDinstinguisher_unfold, runQueriesOnlyOut, runQueries2]
@@ -531,7 +531,7 @@ theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : RStateOracle
 
 /-- **Charactarizing of the ObsEq as distinguishing advantage.**  If every distinguisher achieves zero
 advantage separating `o1` and `o2`, then `o1` and `o2` are observationally equivalent. -/
-theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O)
+theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O)
     (H : ∀ d : adversaryT O, advantage d o1 o2 = 0) : ObsEq o1 o2 := by
   classical
   have Hd : ∀ d : adversaryT O, runDinstinguisher d o1 = runDinstinguisher d o2 :=
@@ -549,7 +549,7 @@ theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : RStateOra
   · intro b hb; simp [hb]
 
 -- eqivalence
-theorem obsEq_eq_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : RStateOracle O) :
+theorem obsEq_eq_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O) :
      ObsEq o1 o2 ↔ ∀ d : adversaryT O, advantage d o1 o2 = 0 := by
     constructor
     · intro H d

@@ -11,7 +11,7 @@ But proving that ObsEq imply AdvEq is challenging. We provie this here.
 To do that, we define behavioral oracle: an definition of oracle without internla state,
 only defines via input output relation. This definine them in BehavioralOracle.lean.
 Then we can convert back to statefull. This roundtrip is called rState2Rstate
-Then we prove three facts (a : RStateOracle O):
+Then we prove three facts (a : OracleImpl O):
 1) ObsEq A B imply to BehavioralOracle.into A = BehavioralOracle.into B . That is obvious from definition.
 2) There is an form of abstraction between rState2Rstate A -> A.
 3) This form of abstraction imply AdvEq.
@@ -22,7 +22,7 @@ This part was done by Aristotele (who generalized form of abstraction to one nee
 -/
 
 
-lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
+lemma behavioral_eq_from_obsEq (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b) :
   BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := by
   unfold BehavioralOracle.into
   congr 1
@@ -37,12 +37,12 @@ lemma behavioral_eq_from_obsEq (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_
 /-- The conditional distribution of `o`'s internal state given that the observable transcript so
 far equals `τ` (recorded newest-first).  We replay the chronological queries `(τ.reverse).map input`
 and condition the resulting joint on having produced the transcript `τ.reverse`. -/
-noncomputable def condState {I : Type} {O : OracleSpec I} (o : RStateOracle O)
+noncomputable def condState {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (τ : List (QueryWithResult O)) : PMF o.stateType :=
   ((runQueries2 o ((τ.reverse).map QueryWithResult.input)).condOn {p | p.1 = τ.reverse}).map Prod.snd
 
 /-- For the empty transcript the conditional state is just the initial-state distribution. -/
-lemma condState_nil {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
+lemma condState_nil {I : Type} {O : OracleSpec I} (o : OracleImpl O) :
     condState o [] = o.initialState := by
   unfold condState
   simp only [List.reverse_nil, List.map_nil]
@@ -61,7 +61,7 @@ lemma condState_nil {I : Type} {O : OracleSpec I} (o : RStateOracle O) :
 
 /-- The reconstructed oracle, run on the newest-first transcript `τ` (within budget), draws the
 next answer from the behavioural oracle and pushes the new query/answer onto the transcript. -/
-theorem rState2Rstate_queries_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat)
+theorem rState2Rstate_queries_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat)
     (i : I) (τ : List (QueryWithResult O)) (H : (τ.length : ℕ∞) ≤ q_b) :
     ((rState2Rstate q_b o).queries i) τ
       = (((behavioralOracle1to2 (BehavioralOracle.into q_b o)).process τ H i).map
@@ -78,7 +78,7 @@ theorem rState2Rstate_queries_eq {I : Type} {O : OracleSpec I} (o : RStateOracle
   congr 1; funext a; simp [Function.comp, PMF.pure_bind]
 
 /-- The reconstructed oracle extends the transcript by exactly one entry (within budget). -/
-lemma condState_lvl {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+lemma condState_lvl {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) :
     ∀ (i : I) (τ : List (QueryWithResult O)), (τ.length : ℕ∞) + 1 ≤ q_b →
       ∀ p ∈ (((rState2Rstate q_b o).queries i) τ).support, (p.2.length : ℕ∞) = (τ.length : ℕ∞) + 1 := by
   intro i τ hb p hp
@@ -89,7 +89,7 @@ lemma condState_lvl {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : EN
   simp
 
 /-- Running `[i]` extends the recorded transcript by the single entry `⟨i, out⟩`. -/
-theorem runQueries2Aux_single {I : Type} {O : OracleSpec I} (o : RStateOracle O) (i : I)
+theorem runQueries2Aux_single {I : Type} {O : OracleSpec I} (o : OracleImpl O) (i : I)
     (s : o.stateType) :
     runQueries2Aux o.queries [i] s
       = ((o.queries i) s).map (fun q => (([(⟨i, q.1⟩ : QueryWithResult O)]), q.2)) := by
@@ -104,7 +104,7 @@ theorem runQueries2Aux_single {I : Type} {O : OracleSpec I} (o : RStateOracle O)
 
 /-- Joint distribution after `qs ++ [i]`: run `qs`, then run the extra query `i` and append its
 recorded entry. -/
-theorem runQueries2_append_single {I : Type} {O : OracleSpec I} (o : RStateOracle O) (qs : List I)
+theorem runQueries2_append_single {I : Type} {O : OracleSpec I} (o : OracleImpl O) (qs : List I)
     (i : I) :
     runQueries2 o (qs ++ [i])
       = (runQueries2 o qs).bind
@@ -122,7 +122,7 @@ theorem runQueries2_append_single {I : Type} {O : OracleSpec I} (o : RStateOracl
   rfl
 
 /-- Unfolding `condState` for a transcript extended by one entry. -/
-lemma condState_ext {I : Type} {O : OracleSpec I} (o : RStateOracle O) (i : I) (out : O.Range i)
+lemma condState_ext {I : Type} {O : OracleSpec I} (o : OracleImpl O) (i : I) (out : O.Range i)
     (τ : List (QueryWithResult O)) :
     condState o (⟨i, out⟩ :: τ)
       = ((runQueries2 o ((τ.reverse).map QueryWithResult.input ++ [i])).condOn
@@ -134,7 +134,7 @@ lemma condState_ext {I : Type} {O : OracleSpec I} (o : RStateOracle O) (i : I) (
 
 /-- **BRIDGE.** Querying `i` from the conditional state of `τ` equals conditioning the joint after
 `qs ++ [i]` on the recorded prefix `τ.reverse`, then reading off the last answer and the state. -/
-lemma condState_bind_query_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (i : I)
+lemma condState_bind_query_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) (i : I)
     (τ : List (QueryWithResult O)) :
     (condState o τ).bind (fun s => (o.queries i) s)
       = ((runQueries2 o ((τ.reverse).map QueryWithResult.input ++ [i])).condOn
@@ -162,7 +162,7 @@ lemma condState_bind_query_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O)
 
 /-- **LemmaB2.** The behavioural oracle's answer distribution equals the conditional last-answer
 distribution of the joint after `qs ++ [i]` given the recorded prefix `τ.reverse`. -/
-lemma behavioral_process_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (i : I)
+lemma behavioral_process_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) (i : I)
     (τ : List (QueryWithResult O)) (H : (τ.length : ℕ∞) ≤ q_b) (hb : (τ.length : ℕ∞) + 1 ≤ q_b)
     (hex : ∃ a ∈ {l : List (QueryWithResult O) | l.tail = τ},
         a ∈ ((runQueries2 o ((τ.reverse).map QueryWithResult.input ++ [i])).map (fun p => p.1.reverse)).support) :
@@ -198,20 +198,20 @@ lemma behavioral_process_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (
 
 /-- A transcript `τ` is *reachable* when its recorded prefix `τ.reverse` has positive probability of
 being produced by replaying the chronological queries `(τ.reverse).map input`. -/
-def reachT {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) : Prop :=
+def reachT {I : Type} {O : OracleSpec I} (o : OracleImpl O) (τ : List (QueryWithResult O)) : Prop :=
   ∃ p ∈ (runQueries2 o ((τ.reverse).map QueryWithResult.input)).support, p.1 = τ.reverse
 
-def reachT2 {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) : Prop :=
+def reachT2 {I : Type} {O : OracleSpec I} (o : OracleImpl O) (τ : List (QueryWithResult O)) : Prop :=
   τ.reverse ∈ (runQueriesOnlyOut o ((τ.reverse).map QueryWithResult.input)).support
 
-lemma reachT_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (τ : List (QueryWithResult O)) :
+lemma reachT_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (τ : List (QueryWithResult O)) :
   reachT o τ = reachT2 o τ := by
   apply propext
   unfold reachT reachT2 runQueriesOnlyOut
   rw [PMF.mem_support_map_iff]
 
 /-- The empty transcript is reachable. -/
-lemma reachT_nil {I : Type} {O : OracleSpec I} (o : RStateOracle O) : reachT o [] := by
+lemma reachT_nil {I : Type} {O : OracleSpec I} (o : OracleImpl O) : reachT o [] := by
   unfold reachT
   simp only [List.reverse_nil, List.map_nil]
   obtain ⟨s, hs⟩ := PMF.support_nonempty o.initialState
@@ -224,7 +224,7 @@ lemma reachT_nil {I : Type} {O : OracleSpec I} (o : RStateOracle O) : reachT o [
   exact ⟨s, hs, rfl⟩
 
 /-- Transcripts produced by `runQueries2 o L` always have inputs `L`. -/
-lemma runQueries2_input_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (L : List I)
+lemma runQueries2_input_eq {I : Type} {O : OracleSpec I} (o : OracleImpl O) (L : List I)
     (p : List (QueryWithResult O) × o.stateType) (hp : p ∈ (runQueries2 o L).support) :
     p.1.map QueryWithResult.input = L := by
   have hkey : (runQueries2 o L).map (fun p => p.1.map QueryWithResult.input) = PMF.pure L := by
@@ -238,7 +238,7 @@ lemma runQueries2_input_eq {I : Type} {O : OracleSpec I} (o : RStateOracle O) (L
   simpa using hmem
 
 /-- From reachability of `τ`, the behavioural oracle's conditioning event is non-empty. -/
-lemma reach_hex {I : Type} {O : OracleSpec I} (o : RStateOracle O) (i : I)
+lemma reach_hex {I : Type} {O : OracleSpec I} (o : OracleImpl O) (i : I)
     (τ : List (QueryWithResult O))
     (hreach : reachT o τ) :
     ∃ a ∈ {l : List (QueryWithResult O) | l.tail = τ},
@@ -255,7 +255,7 @@ lemma reach_hex {I : Type} {O : OracleSpec I} (o : RStateOracle O) (i : I)
 /-- One-step compatibility: querying `i` from the conditional state `condState o τ` agrees with
 taking the reconstructed step `(rState2Rstate q_b o).queries i τ` and then re-expanding the
 conditional state of the new transcript. -/
-lemma hstep {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+lemma hstep {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) :
     ∀ (i : I) (τ : List (QueryWithResult O)), reachT o τ → (τ.length : ℕ∞) + 1 ≤ q_b →
       (condState o τ).bind (fun s => (o.queries i) s) =
         (((rState2Rstate q_b o).queries i) τ).bind
@@ -341,7 +341,7 @@ lemma hstep {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
   rfl
 
 /-- Combined level/reachability preservation for the reconstructed oracle. -/
-lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) :
+lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) :
     ∀ (i : I) (τ : List (QueryWithResult O)), reachT o τ → (τ.length : ℕ∞) + 1 ≤ q_b →
       ∀ p ∈ (((rState2Rstate q_b o).queries i) τ).support,
         (p.2.length : ℕ∞) = (τ.length : ℕ∞) + 1 ∧ reachT o p.2 := by
@@ -403,7 +403,7 @@ lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat
   · rw [hpw1]; simp [List.reverse_cons]
 
 -- /-- `runDinstinguisher` expressed through the generic `geval`. -/
--- lemma runDinstinguisher_geval {I : Type} {O : OracleSpec I} (o : RStateOracle O) (dist : adversaryT O) :
+-- lemma runDinstinguisher_geval {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
 --     runDinstinguisher dist o =
 --       o.initialState.bind (fun s => (geval (fun i s => (o.queries i) s) (toGTree dist) s).map Prod.fst) := by
 --   simp only [runDinstinguisher]
@@ -412,7 +412,7 @@ lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat
 --   rfl
 
 /-- `runDinstinguisher` expressed through the generic `geval`. -/
-lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : RStateOracle O) (dist : adversaryT O) :
+lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
     runDinstinguisher dist o =
       o.initialState.bind (fun s => (simulateQ (addPMFtoImpl (o.queries)) (dist) s).map Prod.fst) := by
   simp only [runDinstinguisher]
@@ -426,7 +426,7 @@ lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : RStateOracle O
 `rState2Rstate` does not change its output distribution, provided the adversary asks at most `q_b`
 queries.  It is reduced (via the generic `geval_reconstruct`) to the conditional-probability facts
 `condState_nil`, `condState_lvl` and `hstep`. -/
-lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) (q_b : ENat) (dist : adversaryT O)
+lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) (dist : adversaryT O)
   (Hdist : FreeM.depth dist <= q_b) :
   runDinstinguisher dist o = runDinstinguisher dist (rState2Rstate q_b o) := by
   have key2 := abstraction_with_levels_and_reach q_b (fun i s => (o.queries i) s)
@@ -442,7 +442,7 @@ lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : RStateOracle O) 
 
 
 
-lemma obsEq_distinquishing (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+lemma obsEq_distinquishing (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
     runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
 by
@@ -455,7 +455,7 @@ by
     rw [H3p]
   rw [H1, H2, H3]
 
-lemma obsEq_distinquishing_adv (ro₁ ro₂ : RStateOracle O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+lemma obsEq_distinquishing_adv (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
     advantage dist ro₁ ro₂ = 0 :=
 by
@@ -466,7 +466,7 @@ by
   · assumption
 
 
-lemma adv_from_bobseq (ro₁ ro₂ : RStateOracle O)
+lemma adv_from_bobseq (ro₁ ro₂ : OracleImpl O)
   (dist1 dist2 : adversaryT O)
   (Hd : forall impl, runDinstinguisher dist1 impl = runDinstinguisher dist2 impl)
    :
@@ -476,7 +476,7 @@ by
   rw [Hd]
   rw [Hd]
 
-lemma obsEq_distinquishing_ub (ro₁ ro₂ : RStateOracle O) (obs_eq : ObsEq ro₁ ro₂)
+lemma obsEq_distinquishing_ub (ro₁ ro₂ : OracleImpl O) (obs_eq : ObsEq ro₁ ro₂)
   (dist : adversaryT O) :
     runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
 by
@@ -560,7 +560,7 @@ by
 --     congr
 
 -- lemma correctAbstraction2ind {I : Type} {O : OracleSpec I} (dist : adversaryT O)
---   (ro₁ ro₂ : RStateOracle O) (f : ro₁.stateType → PMF ro₂.stateType)
+--   (ro₁ ro₂ : OracleImpl O) (f : ro₁.stateType → PMF ro₂.stateType)
 --   (Habs : correctAbstractionBind ro₁ ro₂ f) :
 --   advantage dist ro₁ ro₂ = 0
 -- := by

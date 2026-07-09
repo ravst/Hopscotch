@@ -9,7 +9,7 @@ and a pair of oracles of that specifications, which we assume to be indistinguis
 structure SingleAssumption where
   {I : Type}
   {O : OracleSpec I}
-  i : RStateOracle O × RStateOracle O
+  i : OracleImpl O × OracleImpl O
 
 def SingleAssumption.reverse (x : SingleAssumption) : SingleAssumption :=
   {x with i := (x.i.2, x.i.1)}
