@@ -7,19 +7,19 @@ import ToMathlib.General
 
 namespace PMF
 
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 lemma map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
     PMF.map f (PMF.pure a) = PMF.pure (f a) := by
   exact PMF.pure_map f a
 
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 lemma monad_map_pure_eq_pure {α β : Type} (f : α → β) (a : α) :
     f <$> (PMF.pure a) = PMF.pure (f a) := by
   rw [PMF.monad_map_eq_map]
   exact PMF.map_pure_eq_pure f a
 
 /-- Rewriting a uniform draw over a product type as two independent uniform draws. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 lemma uniformOfFintype_prod_bind
     {A B α : Type}
     [Fintype A] [Nonempty A] [Fintype B] [Nonempty B]
@@ -53,7 +53,7 @@ theorem map_eq_do {α β : Type} (p : PMF α) (f : α → β) :
   simpa [Function.comp] using (PMF.bind_pure_comp (p := p) (f := f)).symm
 
 /-- Rewrite `PMF.map` into raw `PMF.bind` form for PMF normalization. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem map_eq_bind_pure {α β : Type} (p : PMF α) (f : α → β) :
     p.map f = PMF.bind p (fun x => PMF.pure (f x)) := by
   simpa [Function.comp] using (PMF.bind_pure_comp (p := p) (f := f)).symm
@@ -68,7 +68,7 @@ theorem monad_map_eq_do {α β : Type} (f : α → β) (A : PMF α) :
   exact PMF.map_eq_do A f
 
 /-- Eliminate a pure bind in monadic form. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem pure_bind_do {α β : Type} (a : α) (f : α → PMF β) :
     (do
       let x ← (PMF.pure a : PMF α)
@@ -81,7 +81,7 @@ theorem pure_eq_monad_pure {α : Type} (a : α) :
     PMF.pure a = @Pure.pure PMF (inferInstance : Pure PMF) α a := rfl
 
 /-- Eliminate an identity bind in monadic form. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_pure_do {α : Type} (p : PMF α) :
     (do
       let x ← p
@@ -90,7 +90,7 @@ theorem bind_pure_do {α : Type} (p : PMF α) :
   rw [PMF.bind_pure_comp, PMF.map_id]
 
 /-- Eliminate a bind whose sampled value is unused. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_const_do {α β : Type} (m : PMF α) (rest : PMF β) :
     (do
       let _x ← m
@@ -98,7 +98,7 @@ theorem bind_const_do {α β : Type} (m : PMF α) (rest : PMF β) :
   exact PMF.bind_const m rest
 
 /-- Eliminate a raw `PMF.bind` whose sampled value is unused. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_const_raw {α β : Type} (m : PMF α) (rest : PMF β) :
     PMF.bind m (fun _x => rest) = rest := by
   exact PMF.bind_const m rest
@@ -115,7 +115,7 @@ theorem unit_eq_pure (m : PMF Unit) :
   exact hsingle.symm.trans hsum
 
 /-- Eliminate a bind over a `PMF Unit`. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem unit_bind_do {α : Type} (m : PMF Unit) (f : Unit → PMF α) :
     (do
       let x ← m
@@ -124,7 +124,7 @@ theorem unit_bind_do {α : Type} (m : PMF Unit) (f : Unit → PMF α) :
   exact PMF.pure_bind () f
 
 /-- Pull an `if` out of a monadic bind in `do` notation. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem monad_ite_bind_do {α β : Type} (p : Prop) [Decidable p]
     (A B : PMF α) (rest : α → PMF β) :
     ((if p then A else B) >>= rest) =
@@ -135,7 +135,7 @@ theorem monad_ite_bind_do {α β : Type} (p : Prop) [Decidable p]
   split_ifs <;> rfl
 
 /-- Pull an `if` out of a `PMF` bind. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem ite_bind_do {α β : Type} (p : Prop) [Decidable p]
     (A B : PMF α) (rest : α → PMF β) :
     (do
@@ -148,7 +148,7 @@ theorem ite_bind_do {α β : Type} (p : Prop) [Decidable p]
   split_ifs <;> rfl
 
 /-- Reassociate nested binds into raw `PMF.bind` form. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_assoc_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β → PMF γ) :
     (do
       let y ← (do
@@ -159,7 +159,7 @@ theorem bind_assoc_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β
   exact bind_assoc p f g
 
 /-- Push a bind past a mapped input, keeping the result in raw `PMF.bind` form. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_map_do {α β γ : Type} (p : PMF α) (f : α → β) (q : β → PMF γ) :
     (do
       let y ← p.map f
@@ -170,7 +170,7 @@ theorem bind_map_do {α β γ : Type} (p : PMF α) (f : α → β) (q : β → P
   rfl
 
 /-- Raw `PMF.bind` form of `bind_map_do`. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_map_raw {α β γ : Type} (p : PMF α) (f : α → β) (q : β → PMF γ) :
     PMF.bind (PMF.map f p) q =
     PMF.bind p (fun x => q (f x)) := by
@@ -178,7 +178,7 @@ theorem bind_map_raw {α β γ : Type} (p : PMF α) (f : α → β) (q : β → 
   rfl
 
 /-- Push a map through a bind, keeping the result in raw `PMF` form. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β → γ) :
     PMF.map g (do
       let x ← p
@@ -188,7 +188,7 @@ theorem map_bind_do {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β �
   simpa using (PMF.map_bind (p := p) (q := f) (f := g))
 
 /-- Raw `PMF.bind` form of `map_bind_do`. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem map_bind_raw {α β γ : Type} (p : PMF α) (f : α → PMF β) (g : β → γ) :
     PMF.map g (PMF.bind p f) =
     PMF.bind p (fun x => PMF.map g (f x)) := by
@@ -215,7 +215,7 @@ theorem bind_uniformOfFintype_equiv {X Y α : Type}
           simp [PMF.bind_apply, PMF.uniformOfFintype_apply, Fintype.card_congr e]
 
 /-- Mapping a uniform `PMF` through an equivalence gives the uniform `PMF`. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem map_uniformOfFintype_equiv {X Y : Type}
     [Fintype X] [Nonempty X] [Fintype Y] [Nonempty Y] (e : X ≃ Y) :
     (PMF.uniformOfFintype X).bind (fun x => pure (e x)) = PMF.uniformOfFintype Y := by
@@ -242,7 +242,7 @@ noncomputable def evalFunctionEquiv (X Y : Type) [DecidableEq X] (x : X) :
 
 /-- Sampling a uniform function and evaluating it at one fixed input is the same as
 sampling a uniform value directly. -/
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 theorem bind_uniformOfFintype_eval_do {X Y α : Type}
     [Fintype X] [DecidableEq X] [Fintype Y] [Nonempty Y]
     (x : X) (rest : Y → PMF α) :
@@ -268,7 +268,7 @@ theorem bind_uniformOfFintype_eval_do {X Y α : Type}
           rw [PMF.uniformOfFintype_prod_bind]
           simp [rest', PMF.bind_const]
 
-@[GameHoppingSimplifyPMF]
+@[sPMF]
 lemma ite_pure {α} (p : Prop) [Decidable p] (a b : α) :
       (if p then (pure a : PMF α) else pure b) =
       (pure (if p then a else b) : PMF α)

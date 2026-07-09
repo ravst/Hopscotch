@@ -74,8 +74,8 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
       (fun p => (p.1.1, (p.1.2, p.2))) := by
   induction c using OracleComp.inductionOn generalizing sr so with
   | pure x =>
-    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, GameHoppingSimplifyPMF]
-    simp [goodDoubleActionSimps, OracleReductionSimps, StateTSimps, GameHoppingSimplifyPMF, pure]
+    simp [goodDoubleActionSimps, sReduction, sStateT, sPMF]
+    simp [goodDoubleActionSimps, sReduction, sStateT, sPMF, pure]
   | query_bind t mx h =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
       -- All four heads reduce by unfolding the simulation/state-threading plumbing with
@@ -84,9 +84,9 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
       -- `simp` does not perform on its own here.
       cases t with
       | setState st =>
-          simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure, StateT.set]
+          simp [goodDoubleActionSimps, sStateT, sReduction, h, sRState, pure, StateT.set]
       | _ =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure] <;> try rfl
+        simp [goodDoubleActionSimps, sStateT, sReduction, h, sRState, pure] <;> try rfl
 
 
 open OracleReduction in
@@ -113,18 +113,18 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
     cases t with
     | oracle tt =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+      simp [goodDoubleActionSimps, sStateT, sReduction, sRState, pure,
         goodDoubleAction_step, addPMFtoImpl2]
       congr
       ext1 st
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+      simp [goodDoubleActionSimps, sStateT, sReduction, sRState, pure,
        addPMFtoImpl2] at h
       apply h
     | sample p =>
       rw [simulateQ_query_bind, simulateQ_query_bind]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+      simp [goodDoubleActionSimps, sStateT, sReduction, sRState, pure,
         goodDoubleAction_step]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure,
+      simp [goodDoubleActionSimps, sStateT, sReduction, sRState, pure,
        addPMFtoImpl2] at h
       conv =>
         lhs
@@ -132,7 +132,7 @@ lemma goodDoubleAction_core {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec
         intro a
         rw [h]
       simp [addPMFtoImpl2]
-      simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier, pure]
+      simp [goodDoubleActionSimps, sStateT, sReduction, sRState, pure]
       rfl
 
 open OracleReduction in

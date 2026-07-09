@@ -115,8 +115,8 @@ theorem obsEq_real_GGMHybrid_zero {k n : ℕ} (prg : lengthDoublingPRG k) :
 theorem obsEq_GGMHybrid_last_ideal {k n : ℕ} (prg : lengthDoublingPRG k) :
     ObsEq (GGMHybrid prg (Fin.last n)) (PRF_ideal (BitVec n) (BitVec k)) := by
   apply obsEqReflexive
-  simp [OracleReductionSimps, StateTSimps, RStateSimplifier,
-    GameHoppingSimplifyPMF, game_hopping_unfold]
+  simp [sReduction, sStateT, sRState,
+    sPMF, game_hopping_unfold]
   constructor
   · ext f
     simp [PMF.uniformOfFintype_apply]
@@ -349,7 +349,7 @@ theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
       rw [extractFlat]
       rw [Hz]
       simp []
-      simp [RStateSimplifier, GameHoppingSimplifyPMF]
+      simp [sRState, sPMF]
       congr 3
       · simp [choosePair, PRG.chooseHalfI]
         congr
@@ -366,14 +366,14 @@ theorem obsEq_GGMHybrid2_Vs_3_batch_bridge {k n : ℕ}
       simp [Haa]
       have Hz := Finmap.lookup_eq_none.mpr Haa
       rw [Hz]
-      simp [RStateSimplifier]
+      simp [sRState]
       conv =>
           rhs
           rw [bind_uniformOfFintype_bitVec_append_rev]
       simp [PRG.chooseHalfI]
       split_ifs <;> (
       -- if L : (q1.val).testBit ↑i then (
-        simp [GameHoppingSimplifyPMF]
+        simp [sPMF]
         congr
         ext1 a
         congr
@@ -397,8 +397,8 @@ theorem obsEq_GGMHybrid2_applyStepReduction_real {k n : ℕ}
   obs_eq_by_abstraction (fun labels => (labels, ()))
   split <;>
     simp_all [set, MonadState.set, MonadStateOf.set, StateT.set,
-      correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF,
-      OracleReductionSimps, StateTSimps]
+      correctAbstractionDiagSimps, sRState, sPMF,
+      sReduction, sStateT]
 
 /-- One expansion step of `applyPRGs`, stated for a non-literal positive length. -/
 lemma applyPRGs_step {k q : ℕ} (prg : PRG k k) (s : BitVec k) (bits : BitVec q) (hq : 0 < q) :
@@ -421,7 +421,7 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
   generalize hlk : Finmap.lookup (BitVec.extractLsb' 0 (↑i) {toFin:=query}) ⟨s1, s2⟩ = m
   cases m with
   | none =>
-    simp [OracleReductionSimps, RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF]
+    simp [sReduction, sRState, sStateT, sPMF]
     congr 1
     ext1 o
     simp [set, StateT.set]
@@ -429,7 +429,7 @@ theorem obsEq_applyStepReduction_rand_GGMHybrid2 {k n : ℕ}
     congr 4
     simp [Nat.testBit]
   | some v =>
-    simp [OracleReductionSimps, RStateSimplifier, StateTSimps, GameHoppingSimplifyPMF]
+    simp [sReduction, sRState, sStateT, sPMF]
     rw [applyPRGs_step prg v _ (by omega)]
     congr 4
     simp [Nat.testBit]

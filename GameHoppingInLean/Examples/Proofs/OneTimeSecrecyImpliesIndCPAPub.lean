@@ -104,16 +104,16 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
     symm
     refine (correctAbstractionBImpliesObsEqBounded _ _ (fun b => fun s => (q-b, s)) q ?_)
     constructor
-    · simp [game_hopping_unfold, GameHoppingSimplifyPMF]
+    · simp [game_hopping_unfold, sPMF]
       rfl
     · intro q k
       cases q
       · apply Or.inr
         ext1 st
-        simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+        simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
       · apply Or.inl
         ext1 st
-        simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+        simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
         split_ifs <;> try grind
 
 
@@ -126,17 +126,17 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
   --     exact (fun x => q - x.1)
   --   · constructor
   --     · constructor
-  --       · simp[game_hopping_unfold, GameHoppingSimplifyPMF]
+  --       · simp[game_hopping_unfold, sPMF]
   --       · constructor
   --         · simp [goodValuation, game_hopping_unfold]
   --           intro query
   --           cases query
   --           · intro a b
-  --             simp [RStateSimplifier]
+  --             simp [sRState]
   --             have : q ≤ q - a + 1 + a := by omega
   --             exact_mod_cast this
   --           · intro a b
-  --             simp [RStateSimplifier]
+  --             simp [sRState]
   --             split_ifs <;> try omega
   --             · intro x hx
   --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
@@ -158,13 +158,13 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
   --         · intro q s hs
   --           simp at hs
   --           cases q
-  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
-  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]
+  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
+  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
   --             split_ifs <;> try omega
-  --             simp [GameHoppingSimplifyPMF]
+  --             simp [sPMF]
   --     · simp only [game_hopping_unfold]
   --       intro x hx
-  --       simp [GameHoppingSimplifyPMF]
+  --       simp [sPMF]
   --       simp only [PMF.monad_bind_eq_bind, PMF.monad_pure_eq_pure, PMF.mem_support_bind_iff, PMF.mem_support_pure_iff] at hx
   --       have ⟨a, ⟨ ha₁, ha₂⟩⟩ := hx
   --       simp_all

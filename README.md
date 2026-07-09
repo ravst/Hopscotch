@@ -3,14 +3,22 @@
 This is a repository corresponding to a joint project of
 S. Dziembowski, G. Fabiański, D. Micciancio, and R. Stefański
 
-The goal of this project is to implement a game hopping framwework in Lean.
-We are inspired by the tool ProofFrog, and we try to combine ProofFrogs's
-intuitive user's interface, with Lean's correctness guarantees and flexibility.
+The goal of this project is to implement a game hopping framework in Lean.
+We are inspired by the tool ProofFrog, and we try to combine ProofFrog's
+intuitive user interface, with Lean's correctness guarantees and flexibility.
 
-The project is being developed using the LLM-based tool Codex from OpenAi and Aristotele from harmonic.
+The project is being developed using the LLM-based tool Codex from OpenAI and Aristotle from harmonic.
 
 ## Documentation
- documentation for this project can find in [GameHoppingInLean/Doc/Intro.md](game-hopping-intro/SKILL.md).
+ Documentation for how to use this project can be found in [game-hopping-intro/SKILL.md](game-hopping-intro/SKILL.md).
+
+## Internal Structure
+ Below we describe content of various directories:
+  * **Comp**: Computational layer. Definition of oracle implementation, reduction, composition of reduction with implementation.
+  * **ObservationalEq**: Definition of observational equality (ObsEq). Definition of abstraction technique (used to prove ObsEq). Proof of correctness of abstraction.
+  * **Indistinguishability**: Definition of `IndistinguishabilityI`: type of indistinguishability proof.
+  * **ComputationalIndistinguishibility**: Definition and proof of soundness theorem. Definition of computational semantics (adversarial advantage).
+  * **Tactic**: Useful tactics. 
 
 ## Dependencies
 

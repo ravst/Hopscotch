@@ -51,15 +51,15 @@ theorem obsEq_PRF_ideal_PRF_ideal2 (X Y : Type)
     simp only [PRF_ideal, PRF_ideal2, OracleSpec.Domain, SecurePRFSpec]
     intro query
     ext1 st
-    simp only [correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
-      GameHoppingSimplifyPMF, PRF_ideal, PRF_ideal2]
+    simp only [correctAbstractionDiagSimps, sStateT, sRState,
+      sPMF, PRF_ideal, PRF_ideal2]
     cases hgm : Finmap.lookup query st with
     | none =>
-      simp only [GameHoppingSimplifyPMF, StateTSimps, RStateSimplifier, StateT.set, bindSecond]
+      simp only [sPMF, sStateT, sRState, StateT.set, bindSecond]
       exact completePRFCache_diagram_fresh X Y st query
         (Finmap.lookup_eq_none_iff_not_mem_keys.mp hgm)
     | some v =>
-      simp only [GameHoppingSimplifyPMF, StateTSimps, RStateSimplifier, bindSecond]
+      simp only [sPMF, sStateT, sRState, bindSecond]
       exact completePRFCache_diagram_cached X Y st query v hgm
 
 /-- Lift the cached random-function equivalence to indistinguishability. -/
@@ -108,18 +108,18 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pair (X Y : Type)
     simp only [PRF_ideal, PRF_ideal_cache_batch, OracleSpec.Domain, SecurePRFSpec]
     intro query
     ext1 st
-    simp only [correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
-      GameHoppingSimplifyPMF, PRF_ideal, PRF_ideal_cache_batch]
+    simp only [correctAbstractionDiagSimps, sStateT, sRState,
+      sPMF, PRF_ideal, PRF_ideal_cache_batch]
     by_cases hq : query ∈ st.keys
     · -- cached branch
       obtain ⟨v, hv⟩ : ∃ v, Finmap.lookup query st = some v :=
         Option.isSome_iff_exists.mp (Finmap.lookup_isSome.mpr (Finmap.mem_keys.mp hq))
-      simp only [hq, dif_pos, hv, Option.getD_some, GameHoppingSimplifyPMF, StateTSimps,
-        RStateSimplifier, bindSecond]
+      simp only [hq, dif_pos, hv, Option.getD_some, sPMF, sStateT,
+        sRState, bindSecond]
       exact completePRFCache_diagram_cached X Y st query v hv
     · -- fresh batched branch
-      simp only [hq, dif_neg, not_false_eq_true, GameHoppingSimplifyPMF, StateTSimps,
-        RStateSimplifier, StateT.set, bindSecond, liftM, monadLift, MonadLift.monadLift,
+      simp only [hq, dif_neg, not_false_eq_true, sPMF, sStateT,
+        sRState, StateT.set, bindSecond, liftM, monadLift, MonadLift.monadLift,
         StateT.lift]
       exact completePRFCache_diagram_batch X Y st query ({x' ∈ f query | x' ∉ st.keys})
         (Finset.mem_filter.mpr ⟨hf query, hq⟩) (fun x hx => (Finset.mem_filter.mp hx).2)
@@ -282,15 +282,15 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pairs' {i : ℕ} (Y : Type)
   · -- per-query diagram
     intro query
     ext1 st
-    simp only [correctAbstractionDiagSimps, StateTSimps, RStateSimplifier,
-      GameHoppingSimplifyPMF, PRF_ideal, PRF_ideal_cache_batch_pairs]
+    simp only [correctAbstractionDiagSimps, sStateT, sRState,
+      sPMF, PRF_ideal, PRF_ideal_cache_batch_pairs]
     by_cases hq : query.extractLsb' 0 i ∈ st.keys
     · -- cached branch
       have hv : (expandPairs Y st).lookup query =
           some (choosePair query[i]
             ((st.lookup (query.extractLsb' 0 i)).getD (Classical.choice inferInstance))) := by
         rw [expandPairs_lookup, dif_pos hq]
-      simp only [hq, dif_pos, GameHoppingSimplifyPMF, StateTSimps, RStateSimplifier, bindSecond]
+      simp only [hq, dif_pos, sPMF, sStateT, sRState, bindSecond]
       unfold completePairsToFun
       exact completePRFCache_diagram_cached (BitVec i.succ) Y (expandPairs Y st) query _ hv
     · -- fresh branch
@@ -300,7 +300,7 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pairs' {i : ℕ} (Y : Type)
         hq ((expandPairs_mem_keys Y st query).mp h)
       cases hbit : query[i] with
       | true =>
-        simp only [hbit, hq, GameHoppingSimplifyPMF, StateTSimps, RStateSimplifier,
+        simp only [hbit, hq, sPMF, sStateT, sRState,
           StateT.set, StateT.bind, bind, StateT.pure, pure, bindSecond, PMF.pure_bind,
           liftM, monadLift, MonadLift.monadLift, StateT.lift, reduceDIte, reduceIte,
           reduceCtorEq, completePairsToFun, expandPairs_insert]
@@ -317,7 +317,7 @@ theorem obsEq_PRF_ideal_PRF_ideal_cache_pairs' {i : ℕ} (Y : Type)
         exact completePRFCache_diagram_fresh2' (BitVec i.succ) Y (expandPairs Y st) query
           (BitVec.cons false (query.extractLsb' 0 i)) hne h1 h2
       | false =>
-        simp only [hbit, hq, GameHoppingSimplifyPMF, StateTSimps, RStateSimplifier,
+        simp only [hbit, hq, sPMF, sStateT, sRState,
           StateT.set, StateT.bind, bind, StateT.pure, pure, bindSecond, PMF.pure_bind,
           liftM, monadLift, MonadLift.monadLift, StateT.lift, reduceDIte, reduceIte,
           reduceCtorEq, completePairsToFun, expandPairs_insert]

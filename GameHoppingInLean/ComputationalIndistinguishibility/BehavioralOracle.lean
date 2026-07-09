@@ -36,7 +36,7 @@ lemma runQueriesOnlyOut_map_input {I : Type} {O : OracleSpec I} (o : OracleImpl 
       (runQueries2Aux o.queries qs s).map (fun p => p.1.map (QueryWithResult.input)) = PMF.pure qs := by
     intro qs
     induction qs with
-    | nil => intro s; simp [runQueries2Aux, GameHoppingSimplifyPMF]
+    | nil => intro s; simp [runQueries2Aux, sPMF]
     | cons q rest ih =>
         intro s
         have key : ∀ s', (runQueries2Aux o.queries rest s').bind

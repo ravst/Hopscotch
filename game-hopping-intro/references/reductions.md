@@ -7,7 +7,6 @@ A reduction from specification `O₁` to `O₂` is an object of type `OracleRedu
 ### Fields
 
 - **`stateType`** – the type of internal state kept by the reduction
-- **`stateType`** – the type of internal state kept by the reduction
 
 - **`initialState : OracleComp (withPMFSpec O₁) stateType`** – distribution on initial state
   - During initialization, you can already make queries to `O₂`
@@ -54,7 +53,7 @@ The internal state space of `R ◇ x` is `R.stateType × x.stateType`. Define an
 When `x.stateType` is `Unit`, the abstraction is trivial. The `game_hopping` tactic automatically handles such cases.
 
 * Simplifying Reductions
-When proving correct abstraction, a "diagram commutativity" goal is generated about `(R ◇ x).queries`. To guerantee good simp-s, add the names of `R` and `x` to the attribute:
+When proving correct abstraction, a "diagram commutativity" goal is generated about `(R ◇ x).queries`. To guarantee good simp, add the names of `R` and `x` to the attribute:
 ```lean
 attribute [local game_hopping_unfold] R x
 ```

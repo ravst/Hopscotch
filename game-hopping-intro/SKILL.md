@@ -13,7 +13,7 @@ This skill provides an introduction to writing cryptographic proofs using the ga
 
 To use this library, follow these steps:
 
-1. **Formulate indistinguishability Statement**: Formulate the cryptographic statement you want to prove as an indistinguishability (IND) statement, that is  define two oracle implementations that no adversary can distinguish from each other. Also formulate all assumptions as indistinguishability assumptions (they have the same form: a pair of oracle implementations).
+1. **Formulate indistinguishability statement**: Formulate the cryptographic statement you want to prove as an indistinguishability (IND) statement: define two oracle implementations that no adversary can distinguish from each other. Also formulate all assumptions as indistinguishability assumptions (they have the same form: a pair of oracle implementations).
    
    For more information on defining oracle implementations, see the [oracle implementation reference](./references/oracle-implementation.md).
 
@@ -23,7 +23,16 @@ To use this library, follow these steps:
    
    - **Reduction Step**: The left hybrid has the syntactic form of a reduction `r` applied to the left side of assumption `X`. The right hybrid is equal to the same reduction applied to the right side of the same assumption `X`. See [reductions reference](./references/reductions.md).
 
-3. **Complete with game_hopping Tactic**: Use the `game_hopping` tactic to complete your proof. (More information coming in TODO.)
+Use the `game_hopping` tactic to write sequence of hybrids.
+
+## Key tactics
+- **game_hopping** is used to create IndistinguishabilityI proof from sequence of hybrids.
+- **by_abstraction** is used to create IndistinguishabilityI proof by providing abstraction. It has variant **obs_eq_by_abstraction** that proves ObsEq.
+- simp [X] where X is:
+   - **sRState** - to simplify RState monad term to PMF monad.
+   - **sStateT** - to unfold StateT.get/set/map
+   - **sPMF** - to simplify term in PMF monad (result is still in PMF, never unfold PMF definitions!)
+   - **sReduction** - simplify OracleImpl expressed as composition reduction \Diamond implementation.
 
 ## Key Concepts
 
@@ -31,7 +40,7 @@ To use this library, follow these steps:
 - **Oracle Implementation**: Concrete definition of oracle behavior with state and queries
 - **Hybrid**: An intermediate oracle implementation in the proof sequence
 - **Abstraction**: A technique to prove observational equivalence
-- **Reduction**: A structured way to transform one oracle implementation into another. There are involved when using an assumption in the proof.
+- **Reduction**: A structured way to transform one oracle implementation into another. They are involved when using an assumption in the proof.
 
 ## References
 

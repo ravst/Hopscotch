@@ -172,7 +172,7 @@ theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 {G : Type} [Group G] [F
         (fun st => (st.eavesdropCount != 0, st.pk)) := by
     constructor
     · simp only [OneTimeUniformCyphertextsPubReal, once, OnceRed, IndCpaRandPubReal,
-        applySRReduction, monad_norm, GameHoppingSimplifyPMF]
+        applySRReduction, monad_norm, sPMF]
       rfl
     · intro i q
       ext1 st
@@ -183,11 +183,11 @@ theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 {G : Type} [Group G] [F
         cases q
         simp [otucPubEavesdropIq]
         simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
-        simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+        simp only [sPMF, monad_norm, mapSecond]
       case eavesdrop =>
         simp [otucPubEavesdropIq]
         simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
-        simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+        simp only [sPMF, monad_norm, mapSecond]
         split_ifs with h₁ <;> try simp [h₁]
         congr
         simp [h₁]
@@ -250,7 +250,7 @@ theorem obsEq_G0_G1
   constructor
   · simp [ElGamalOTUCPubG0, ElGamalOTUCPubG1, once, OnceRed, simpleGlobalRandomness,
       IndCpaRandPubReal, ElGamal, applySRReduction, elGamalG0ToG1State,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      sPMF, monad_norm, mapSecond]
   · intro i query
     ext1 st
     rcases st with ⟨done, b, pk⟩
@@ -261,7 +261,7 @@ theorem obsEq_G0_G1
           IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
           FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
           elGamalG0ToG1State, mapInputState, mapOutputState, otucPubEavesdropIq,
-          RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+          RState.modify, sPMF, monad_norm, mapSecond]
     | eavesdrop =>
         cases done with
         | false =>
@@ -269,15 +269,15 @@ theorem obsEq_G0_G1
             IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
             FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
             elGamalG0ToG1State, mapInputState, mapOutputState, otucPubEavesdropIq,
-            GameHoppingSimplifyPMF, monad_norm, mapSecond]
+            sPMF, monad_norm, mapSecond]
             rw [RState.run_modify]
-            simp [GameHoppingSimplifyPMF]
+            simp [sPMF]
         | true =>
             simp [ElGamalOTUCPubG0, ElGamalOTUCPubG1, once, OnceRed, simpleGlobalRandomness,
             IndCpaRandPubReal, ElGamal, applySRReduction, OracleComp.simulateQ,
             FreeMonad.mapM, FreeMonad.lift, query_impl_convert, elGamalLocalRandQuery,
             elGamalG0ToG1State, mapInputState, mapOutputState, otucPubEavesdropIq,
-            RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+            RState.modify, sPMF, monad_norm, mapSecond]
 
 /-- `OTUCPubReal` for ElGamal is observationally equivalent to `G1`. -/
 theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
@@ -295,7 +295,7 @@ theorem obsEq_G1_applyComplexInit_dhReal
     (ro₂ := applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
     ?_
   refine ⟨(Equiv.prodUnit _).symm, ?_, ?_⟩
-  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG1, applyreduction,
+  · simp [sPMF, ElGamalOTUCPubG1, applyreduction,
       DDHToElGamalOTUCPubReduction, dhReal, OracleComp.simulateQ, FreeMonad.mapM,
       query_impl_convert, pow_mul]
   · intro i query
@@ -305,14 +305,14 @@ theorem obsEq_G1_applyComplexInit_dhReal
         simp [DDHToElGamalOTUCPubReduction]
         dsimp [applyreduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF,
+        simp [monad_norm, sPMF,
           OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTUCPubReduction, dhReal,
           ElGamalOTUCPubG1, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTUCPubReduction]
         dsimp [applyreduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
+        simp [monad_norm, sPMF, OracleComp.simulateQ, FreeMonad.mapM,
           DDHToElGamalOTUCPubReduction, dhReal, ElGamalOTUCPubG1, RState.modify]
 
 /-- Applying the DDH reduction to the random DDH oracle is observationally equivalent to `G3`. -/
@@ -325,7 +325,7 @@ theorem obsEq_applyComplexInit_dhRand_G3
     (ro₂ := ElGamalOTUCPubG3 g)
     ?_
   refine ⟨Equiv.prodUnit _, ?_, ?_⟩
-  · simp [GameHoppingSimplifyPMF, ElGamalOTUCPubG3, applyreduction,
+  · simp [sPMF, ElGamalOTUCPubG3, applyreduction,
       DDHToElGamalOTUCPubReduction, dhRand, OracleComp.simulateQ, FreeMonad.mapM,
       query_impl_convert]
   · intro i query
@@ -335,14 +335,14 @@ theorem obsEq_applyComplexInit_dhRand_G3
         simp [DDHToElGamalOTUCPubReduction]
         dsimp [applyreduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF,
+        simp [monad_norm, sPMF,
           OracleComp.simulateQ, FreeMonad.mapM, DDHToElGamalOTUCPubReduction, dhRand,
           ElGamalOTUCPubG3, RState.modify]
     | eavesdrop =>
         simp [DDHToElGamalOTUCPubReduction]
         dsimp [applyreduction]
         simp [query_impl_convert]
-        simp [monad_norm, GameHoppingSimplifyPMF, OracleComp.simulateQ, FreeMonad.mapM,
+        simp [monad_norm, sPMF, OracleComp.simulateQ, FreeMonad.mapM,
           DDHToElGamalOTUCPubReduction, dhRand, ElGamalOTUCPubG3, RState.modify]
 
 private noncomputable def elGamalG3G4Rand {G : Type} [Group G] [Fintype G] [Nontrivial G]
@@ -393,7 +393,7 @@ private theorem obsEq_G3Global_G3 {G : Type} [Group G] [Fintype G] [Nontrivial G
   constructor
   · simp [ElGamalOTUCPubG3Global, ElGamalOTUCPubG3, once, OnceRed, simpleGlobalRandomness,
       IndCpaRandPubReal, ElGamal, elGamalG3G4Rand, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      sPMF, monad_norm, mapSecond]
   · intro i query
     ext1 st
     simp [once, OnceRed, applySRReduction, ElGamalOTUCPubG3Global, ElGamalOTUCPubG3,
@@ -404,11 +404,11 @@ private theorem obsEq_G3Global_G3 {G : Type} [Group G] [Fintype G] [Nontrivial G
       cases query
       simp [otucPubEavesdropIq]
       simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
-      simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      simp only [sPMF, monad_norm, mapSecond]
     case eavesdrop =>
       cases h₁ : st.1 <;>
         simp [h₁, otucPubEavesdropIq, OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift,
-          RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond]
+          RState.modify, sPMF, monad_norm, mapSecond]
 
 /-- Internal helper: `G4` is observationally equivalent to `G4Local`. -/
 private theorem obsEq_G4_G4Local {G : Type} [Group G] [Fintype G] [Nontrivial G]
@@ -422,7 +422,7 @@ private theorem obsEq_G4_G4Local {G : Type} [Group G] [Fintype G] [Nontrivial G]
   constructor
   · simp [ElGamalOTUCPubG4, ElGamalOTUCPubG4Local, once, OnceRed, simpleLocalRandomness,
       IndCpaRandPubReal, ElGamal, elGamalG3G4Rand, applySRReduction,
-      GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      sPMF, monad_norm, mapSecond]
   · intro i query
     ext1 st
     simp [once, OnceRed, applySRReduction, ElGamalOTUCPubG4, ElGamalOTUCPubG4Local,
@@ -433,11 +433,11 @@ private theorem obsEq_G4_G4Local {G : Type} [Group G] [Fintype G] [Nontrivial G]
       cases query
       simp [otucPubEavesdropIq]
       simp [OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift, RState.modify]
-      simp only [GameHoppingSimplifyPMF, monad_norm, mapSecond]
+      simp only [sPMF, monad_norm, mapSecond]
     case eavesdrop =>
       cases h₁ : st.eavesdropCount <;>
         simp [h₁, otucPubEavesdropIq, OracleComp.simulateQ, FreeMonad.mapM, FreeMonad.lift,
-          RState.modify, GameHoppingSimplifyPMF, monad_norm, mapSecond, elGamalG3G4Rand]
+          RState.modify, sPMF, monad_norm, mapSecond, elGamalG3G4Rand]
 
 /-- `G3` is observationally equivalent to `G4`, where the computation of `B` and `C`
 is moved back into the query implementation. -/
@@ -478,7 +478,7 @@ theorem obsEq_G4_oneTimeUniformCyphertextsPubRandElGamal {G : Type} [Group G] [F
       simp
   | eavesdrop =>
       ext1 m
-      simp [GameHoppingSimplifyPMF, GH_group_norm, hgen]
+      simp [sPMF, GH_group_norm, hgen]
 
 /-- DDH implies one-time uniform-ciphertexts public-key for ElGamal via the DDH reduction and the game hops above. -/
 noncomputable def ddhImpliesElGamalOTUCPub

@@ -20,15 +20,15 @@ lemma identity_roundtrip {Output I : Type} {O : OracleSpec I}
   | query_bind t oa ih =>
     cases t with
     | oracle i =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           addPMFtoImpl2]
         simp [ih]
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           identity, OracleSpec.query
         ]
         simp [bind, pure]
     | sample p =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           addPMFtoImpl2]
         simp [ih]
         simp [bind, pure]
@@ -104,7 +104,7 @@ lemma embedSnd_simulate {I₁ : Type} {O₁ : OracleSpec I₁} {S₂ S₁ Y : Ty
   | pure x => rfl
   | query_bind t oa ih =>
     cases t <;>
-    · simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+    · simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           embedSnd, addPMFtoImpl2, OracleSpec.query, OracleReduction.modify,
           OracleReduction.get, OracleReduction.set, ih]
       try rfl
@@ -137,16 +137,16 @@ lemma combineImpl_simulate {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : O
         simp only [map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp]
         apply bind_congr; intro a; rfl
     | sample p =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           combineImpl, addPMFtoImpl2, OracleSpec.query, OracleReduction.sample, ih]
         try rfl
     | getState =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           combineImpl, addPMFtoImpl2, OracleSpec.query, OracleReduction.get,
           OracleReduction.modify, OracleReduction.set, ih]
         try rfl
     | setState s =>
-        simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+        simp [goodDoubleActionSimps, sStateT, sReduction, sRState,
           combineImpl, addPMFtoImpl2, OracleSpec.query, OracleReduction.get,
           OracleReduction.modify, OracleReduction.set, ih]
         try rfl

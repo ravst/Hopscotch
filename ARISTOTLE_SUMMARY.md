@@ -3,7 +3,7 @@ Completed the original task on `GameHoppingInLean/Examples/Proofs/GGMSecurePRF.l
 
 The file did not contain literal `sorry`s but had three broken proof steps inside `obsEq_PRF_ideal_cache_batch_flipMsb2_flipMsb` that caused the build to fail (an unsolved-goals error and two `simp made no progress` errors). All three were in the state-monad/PMF reduction of the cache-abstraction commuting square.
 
-Fixes, following the requested style (`simp [correctAbstractionDiagSimps, RStateSimplifier, GameHoppingSimplifyPMF]` and the project's `StateTSimps` set):
+Fixes, following the requested style (`simp [correctAbstractionDiagSimps, sRState, sPMF]` and the project's `sStateT` set):
 - In the cached-query (`pos`) branch, extended the closing `simp` with `bind, pure, StateT.bind, StateT.pure` and the project simp sets so the `StateT.pure`/`PMF.bind` reduction goes through.
 - In both uncached-query sub-branches (`query[i] = true` / `false`), added `bind` and `pure` to the `simp only` so the `StateT.set >>= …` (a genuine `Bind.bind`) actually unfolds, letting the subsequent `expandCache_insert_union` rewrite apply.
 

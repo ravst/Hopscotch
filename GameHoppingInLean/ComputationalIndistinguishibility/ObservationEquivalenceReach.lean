@@ -35,7 +35,7 @@ lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Typ
     change
       ((cs τ).bind fun s => PMF.map Prod.fst (PMF.pure (val, s))) =
         PMF.map Prod.fst (PMF.pure (val, τ))
-    simp [GameHoppingSimplifyPMF, PMF.bind_const]
+    simp [sPMF, PMF.bind_const]
   case roll q cont Hind =>
     cases q
     case oracle l =>

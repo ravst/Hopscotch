@@ -9,11 +9,11 @@ open scoped OracleReduction
 
 attribute [local game_hopping_unfold] doubleSymEnc doubleSymEncFamily OTUC_Real OTUC_Rand
 
-@[local simp, local OracleReductionSimps]
+@[local simp, local sReduction]
 theorem OTUCSpec_range_ctxt {C : ℕ → Type} {n : ℕ} (m : BitVec n) :
     (OTUCSpec C).Range (OTUCDomain.ctxt n m) = C n := rfl
 
-@[local simp, local OracleReductionSimps]
+@[local simp, local sReduction]
 theorem OTUCDomain_ctxt_fst {n : ℕ} (m : BitVec n) :
     (OTUCDomain.ctxt n m).1 = n := rfl
 

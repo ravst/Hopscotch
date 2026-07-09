@@ -33,14 +33,14 @@ lemma simulateQ_pure2 (x : α) {ι} {spec : OracleSpec ι} {r : Type u → Type*
     [Monad r] (impl : QueryImpl spec r) :
     simulateQ impl (PFunctor.FreeM.pure x : OracleComp spec α) = pure x := rfl
 
-attribute [GameHoppingSimplifyPMF]
+attribute [sPMF]
   PMF.monad_bind_eq_bind
   PMF.monad_pure_eq_pure
   PMF.monad_map_eq_map
   PMF.map_id
   PMF.bind_const
 
-attribute [OracleReductionSimps]
+attribute [sReduction]
   OracleReduction.apply
   simulateQ_roll
   simulateQ_bind
@@ -69,7 +69,7 @@ attribute [correctAbstractionDiagSimps]
   bindOutputState
   bindSecond
 
-attribute [StateTSimps]
+attribute [sStateT]
   StateT.lift
   StateT.pure
   StateT.run
@@ -113,19 +113,19 @@ macro_rules
               (ext1 st;
                try let ⟨st1, st₂⟩ := st;
                try simp [game_hopping_unfold];
-               try simp [OracleReductionSimps];
+               try simp [sReduction];
                try simp [correctAbstractionDiagSimps];
-               try simp [StateTSimps];
-               try simp [RStateSimplifier];
-               try simp [OracleReductionSimps];
+               try simp [sStateT];
+               try simp [sRState];
+               try simp [sReduction];
                try simp [correctAbstractionDiagSimps];
                try unfold mapSecond
                try unfold bindSecond
                try simp [game_hopping_unfold]
-               try simp [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*];
+               try simp [sPMF, sRState, game_hopping_unfold, $simps,*];
                try rfl;
                try split_ifs
-               all_goals try simp_all [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*]
+               all_goals try simp_all [sPMF, sRState, game_hopping_unfold, $simps,*]
                all_goals try rfl))
 
 /--
@@ -141,11 +141,11 @@ macro_rules
               (ext1 st;
                try let ⟨st1, st₂⟩ := st;
                try simp [game_hopping_unfold];
-               try simp [OracleReductionSimps];
+               try simp [sReduction];
                try simp [correctAbstractionDiagSimps];
-               try simp [StateTSimps];
-               try simp [RStateSimplifier];
-               try simp [OracleReductionSimps];
+               try simp [sStateT];
+               try simp [sRState];
+               try simp [sReduction];
                try simp [correctAbstractionDiagSimps];
                try unfold mapSecond
                try unfold bindSecond
@@ -159,8 +159,8 @@ macro_rules
           | `(tactic| solveCorrectAbstractionInit [$simps,*]) =>
             `(tactic|
               (try simp [OracleReduction.apply, game_hopping_unfold];
-               try simp [OracleReductionSimps];
-               try simp [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*];
+               try simp [sReduction];
+               try simp [sPMF, sRState, game_hopping_unfold, $simps,*];
                try rfl))
 
 /-- Solve both initialization and query branches of a correct-abstraction proof. -/

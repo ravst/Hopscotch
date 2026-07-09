@@ -177,7 +177,7 @@ lemma correctAbstractionImpliesObsEqInnerBind {I : Type} {O : OracleSpec I}
             (StateT.run (ro₁.queries head) init).bind (bindSecond f) := by
         simpa [mapInputState, mapOutputState] using hStep.symm
       simp [runQueries2Aux]
-      -- simp only [GameHoppingSimplifyPMF]
+      -- simp only [sPMF]
       -- simp []
       rw [<-PMF.bind_bind]
       rw [hStep']
@@ -459,8 +459,8 @@ lemma correctAbstractionBindBoundImpliesObsEqBounded2 {I : Type} {O : OracleSpec
   have hRun2Aux := correctAbstractionBind_bound_ImpliesObsEqInner ro₁ ro₂ f val HCor.2.1 HCor.2.2 queriesList
   have hRun2AuxFst := fun init Hinit =>  congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init Hinit)
   try (simp at hRun2AuxFst)
-  try (simp only [GameHoppingSimplifyPMF])
-  try (simp only [GameHoppingSimplifyPMF] at hRun2AuxFst)
+  try (simp only [sPMF])
+  try (simp only [sPMF] at hRun2AuxFst)
   try (simp at hRun2AuxFst)
   simp only [GameHoppingPrettyPrintPMF]
   simp only [GameHoppingPrettyPrintPMF] at hRun2AuxFst
@@ -575,9 +575,9 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
                 have hStepDropInit := congrFun hStepDrop init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepDropInit
                 simp [runQueries2Aux, PMF.map]
-                try (simp only [GameHoppingSimplifyPMF, mapSecond] at hStepDropInit)
+                try (simp only [sPMF, mapSecond] at hStepDropInit)
                 simp [← hStepDropInit, ← ih', PMF.map, Function.comp, mapSecond]
-                try (simp only [GameHoppingSimplifyPMF])
+                try (simp only [sPMF])
                 try simp
           | inr hStepKeep =>
               obtain ⟨k', hk', ih'⟩ := ih (b + 1) HStep hq_tail_succ
@@ -588,9 +588,9 @@ lemma correctAbstractionBImpliesObsEqInner {I : Type} {O : OracleSpec I}
                 have hStepKeepInit := congrFun hStepKeep init
                 simp [mapOutputState, mapInputState, mapSecond] at hStepKeepInit
                 simp [runQueries2Aux, PMF.map]
-                try (simp only [GameHoppingSimplifyPMF, mapSecond] at hStepKeepInit)
+                try (simp only [sPMF, mapSecond] at hStepKeepInit)
                 simp [← hStepKeepInit, ← ih', PMF.map, Function.comp, mapSecond]
-                try (simp only [GameHoppingSimplifyPMF])
+                try (simp only [sPMF])
                 try simp
 
 lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
@@ -610,8 +610,8 @@ lemma correctAbstractionBImpliesObsEqBounded {I : Type} {O : OracleSpec I}
     intro init
     exact congrArg (fun p => PMF.map Prod.fst p) (hRun2Aux init)
   try (simp at hRun2AuxFst)
-  try (simp only [GameHoppingSimplifyPMF])
-  try (simp only [GameHoppingSimplifyPMF] at hRun2AuxFst)
+  try (simp only [sPMF])
+  try (simp only [sPMF] at hRun2AuxFst)
   try (simp at hRun2AuxFst)
   simp only [GameHoppingPrettyPrintPMF]
   simp only [GameHoppingPrettyPrintPMF] at hRun2AuxFst

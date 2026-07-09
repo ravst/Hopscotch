@@ -201,21 +201,21 @@ private def mkUniformFunctionEvalRewriteProof? (e : Expr) : MetaM (Option (Expr 
 end PMFSimp
 
 /-- Simproc: remove a `PMF` bind when the continuation ignores the sampled value. -/
-simproc [GameHoppingSimplifyPMF] pmfBindConst
+simproc [sPMF] pmfBindConst
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkBindConstRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Raw `PMF.bind` version of `pmfBindConst`, for goals after monad notation has unfolded. -/
-simproc [GameHoppingSimplifyPMF] pmfRawBindConst
+simproc [sPMF] pmfRawBindConst
   (PMF.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkRawPMFBindConstRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: pull an `if` out of a `PMF` bind when using the game-hopping PMF simp set. -/
-simproc [GameHoppingSimplifyPMF] pmfIteBind
+simproc [sPMF] pmfIteBind
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkIteBindRewriteProof? e | return .continue
@@ -224,7 +224,7 @@ simproc [GameHoppingSimplifyPMF] pmfIteBind
 
 /-- Simproc: replace a uniform function draw used only at one fixed input by a uniform draw of
 the corresponding output value. -/
-simproc [GameHoppingSimplifyPMF] pmfUniformFunctionEval
+simproc [sPMF] pmfUniformFunctionEval
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFSimp.mkUniformFunctionEvalRewriteProof? e | return .continue
@@ -463,14 +463,14 @@ end PMFLiftOrder
 
 /-- Simproc: order adjacent independent `PMF` draws and adjacent lifted `PMF` draws in `RState`
 by the first continuation use of the bound variables. -/
-simproc [simp, GameHoppingSimplifyPMF] pmfLiftOrderBindComm
+simproc [simp, sPMF] pmfLiftOrderBindComm
   (Bind.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFLiftOrder.mkRewriteProof? e | return .continue
     return .visit { expr := rhs, proof? := some pf }
 
 /-- Simproc: raw `PMF.bind` version of `pmfLiftOrderBindComm`. -/
-simproc [simp, GameHoppingSimplifyPMF] pmfBindOrderComm
+simproc [simp, sPMF] pmfBindOrderComm
   (PMF.bind _ _)
   := fun e => do
     let some (rhs, pf) ← PMFLiftOrder.mkRewriteProof? e | return .continue

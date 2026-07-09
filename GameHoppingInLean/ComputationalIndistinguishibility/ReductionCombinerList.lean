@@ -102,13 +102,13 @@ noncomputable def combine_red_singleton
       )
     · intro query
       ext1 s1
-      simp [mapInputState, RStateSimplifier, StateTSimps]
+      simp [mapInputState, sRState, sStateT]
       have X : Nonempty [l][0].stateType := by
         simp [List.get]
         apply reductionNonEmpty
         apply non_trivial_spec impl
       rw [<-addToStateG_spec (Ns1:=X)]
-      · simp [mapOutputState, RStateSimplifier, StateTSimps, internal_type, OracleReductionSimps]
+      · simp [mapOutputState, sRState, sStateT, internal_type, sReduction]
         simp [getElem]
       · intro X
         simp []
@@ -217,7 +217,7 @@ lemma simulateQ_initSample_run {I : Type} {O : OracleSpec I} {st α β : Type}
       = d.bind (fun x => StateT.run (simulateQ (addPMFtoImpl impl) (k x)) s) := by
   rw [OracleReduction.initSample, OracleSpec.query, simulateQ_query_bind]
   simp only [addPMFtoImpl, OracleQuery.cont, OracleQuery.query, id_eq]
-  simp only [bind, StateT.bind, StateT.lift, liftM, monadLift, MonadLift.monadLift, StateTSimps,
+  simp only [bind, StateT.bind, StateT.lift, liftM, monadLift, MonadLift.monadLift, sStateT,
     PMF.map_bind, PMF.pure_bind, PMF.bind_bind, Functor.map]
   simp only [Pure.pure, PMF.pure_bind]
   rfl
@@ -664,23 +664,23 @@ lemma addToStateG_defaultImpl_spec {J : Type} {O : OracleSpec J} {s1 s2 : Type}
     | oracle q =>
       simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
         OracleReduction.set, OracleReduction.modify]
-      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier]
+      simp [simulateQ, goodDoubleActionSimps, sStateT, sReduction, sRState]
       apply bind_congr; intro a; exact Hind a st
     | sample p =>
       simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
         OracleReduction.set, OracleReduction.modify]
-      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier]
+      simp [simulateQ, goodDoubleActionSimps, sStateT, sReduction, sRState]
       apply bind_congr; intro a; exact Hind a st
     | getState =>
       simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
         OracleReduction.set, OracleReduction.modify]
-      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+      simp [simulateQ, goodDoubleActionSimps, sStateT, sReduction, sRState,
         f_ret]
       exact Hind st st
     | setState stNew =>
       simp only [OracleReduction.query, OracleReduction.get, OracleReduction.sample,
         OracleReduction.set, OracleReduction.modify]
-      simp [simulateQ, goodDoubleActionSimps, StateTSimps, OracleReductionSimps, RStateSimplifier,
+      simp [simulateQ, goodDoubleActionSimps, sStateT, sReduction, sRState,
         f_ret]
       exact Hind PUnit.unit stNew
 
