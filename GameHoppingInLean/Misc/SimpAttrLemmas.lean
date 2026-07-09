@@ -141,10 +141,10 @@ macro_rules
                try unfold mapSecond
                try unfold bindSecond
                try simp [game_hopping_unfold]
-               try simp [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*];
+               try simp [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*];
                try rfl;
                try split_ifs
-               all_goals try simp_all [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*]
+               all_goals try simp_all [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*]
                all_goals try rfl))
 
 /--
@@ -179,7 +179,7 @@ macro_rules
             `(tactic|
               (try simp [OracleReduction.apply, game_hopping_unfold];
                try simp [OracleReductionSimps];
-               try simp [GameHoppingSimplifyPMF, RStateSimplifier, $simps,*];
+               try simp [GameHoppingSimplifyPMF, RStateSimplifier, game_hopping_unfold, $simps,*];
                try rfl))
 
 /-- Solve both initialization and query branches of a correct-abstraction proof. -/

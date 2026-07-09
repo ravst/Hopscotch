@@ -93,36 +93,16 @@ noncomputable def IndCcaLFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (κ : ℕ) → RStateOracle (IndCcaSpec (C κ)) :=
   fun κ => IndCcaL (schemeFam.scheme κ)
 
-/-- The oracle pair corresponding to the IND-CCA assumption. -/
-noncomputable def IndCcaAssumption {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
-    (scheme : SymEncScheme K C) : RStateOracle (IndCcaSpec C) × RStateOracle (IndCcaSpec C) :=
-  (IndCcaL scheme, IndCcaR scheme)
-
-noncomputable def IndCcaAssumptionFull {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
-    (scheme : SymEncScheme K C) : SingleAssumption :=
-  { i := IndCcaAssumption scheme }
-
--- noncomputable def IndCcaAssumption' {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)]
---     (scheme : SymEncScheme K C) :     IndAssumptions Unit where
---   assumptions := fun _ => IndCcaAssumptionFull scheme
-
-/-- IND-CCA security definition as an instance of `Indistinguishable`. -/
-def IndCcaDef
-    {Idx : Type} (Assumptions : IndAssumptions Idx)
-    {K : Type} {C : ℕ → Type} [∀ n, DecidableEq (C n)] (scheme : SymEncScheme K C) : Type 1 :=
-  IndistinguishableSingle Assumptions
-    (IndCcaL scheme) (IndCcaR scheme)
-
 /-- Pointwise IND-CCA assumptions for a symmetric-encryption scheme family. -/
 noncomputable def IndCcaAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     [∀ κ n, DecidableEq (C κ n)]
     (schemeFam : SymEncSchemeFamily K C) :
     IndAssumptionsFam where
     Idx := Unit
-    val κ := {assumptions := fun _ => IndCcaAssumptionFull (schemeFam.scheme κ)}
+    val κ := {assumptions := fun _ => ⟨(IndCcaL (schemeFam.scheme κ), IndCcaR (schemeFam.scheme κ))⟩}
 
 /-- IND-CCA security for a symmetric-encryption scheme family. -/
-def IndCcaIFam
+def IndCcaProof
     (Assumptions : IndAssumptionsFam)
     {K : ℕ → Type} {C : ℕ → ℕ → Type}
     [∀ κ n, DecidableEq (C κ n)] (schemeFam : SymEncSchemeFamily K C) : Type 1 :=
