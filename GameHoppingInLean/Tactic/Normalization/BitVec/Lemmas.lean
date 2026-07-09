@@ -1,5 +1,5 @@
-import GameHoppingInLean.Normalization.BitVec.Attrs
-import GameHoppingInLean.Normalization.PMF.Lemmas
+import GameHoppingInLean.Tactic.Normalization.BitVec.Attrs
+import GameHoppingInLean.Tactic.Normalization.PMF.Lemmas
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import ToMathlib.General
 

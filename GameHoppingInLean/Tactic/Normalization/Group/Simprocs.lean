@@ -1,4 +1,4 @@
-import GameHoppingInLean.Normalization.Group.Lemmas
+import GameHoppingInLean.Tactic.Normalization.Group.Lemmas
 
 open Lean Meta
 

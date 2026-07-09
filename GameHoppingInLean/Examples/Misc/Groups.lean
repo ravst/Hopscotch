@@ -1,4 +1,4 @@
-import GameHoppingInLean.Normalization.Group.Simprocs
+import GameHoppingInLean.Tactic.Normalization.Group.Simprocs
 
 /-- A security-parameter-indexed family of finite nontrivial groups with chosen generators. -/
 structure GroupGeneratorFamily where

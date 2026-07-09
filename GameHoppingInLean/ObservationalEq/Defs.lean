@@ -1,7 +1,7 @@
 import GameHoppingInLean.Comp.RState
 import GameHoppingInLean.Comp.StatefulRandomOracle
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 
 /- # Observational Equivalence -/
 

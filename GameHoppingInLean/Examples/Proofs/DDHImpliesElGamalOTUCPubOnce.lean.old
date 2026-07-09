@@ -8,8 +8,8 @@ import GameHoppingInLean.Examples.Misc.Once
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.FreeMonadLemmas
 import GameHoppingInLean.Tactic.Isos
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 
 open SRReduction
 open RReduction

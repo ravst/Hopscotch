@@ -1,5 +1,5 @@
-import GameHoppingInLean.Normalization.PMF.Lemmas
-import GameHoppingInLean.Normalization.RState.Lemmas
+import GameHoppingInLean.Tactic.Normalization.PMF.Lemmas
+import GameHoppingInLean.Tactic.Normalization.RState.Lemmas
 import GameHoppingInLean.Tactic.SimprocHelpers
 
 open Lean Meta

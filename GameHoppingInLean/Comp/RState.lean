@@ -1,8 +1,8 @@
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform
-import GameHoppingInLean.Normalization.PMF.Lemmas
-import GameHoppingInLean.Normalization.RState.Attrs
+import GameHoppingInLean.Tactic.Normalization.PMF.Lemmas
+import GameHoppingInLean.Tactic.Normalization.RState.Attrs
 
 
 -- RState: A monad combining stateful computation with randomness

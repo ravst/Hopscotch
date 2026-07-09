@@ -1,8 +1,8 @@
 import GameHoppingInLean.Tactic.SimpAttrs
 import GameHoppingInLean.ObservationalEq.Defs
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.PMF.Lemmas
-import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Lemmas
+import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Indistinguishability.Def
 import Lean

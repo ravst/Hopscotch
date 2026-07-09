@@ -4,8 +4,8 @@ import GameHoppingInLean.Examples.Constructions.ElGamal
 
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.Defs
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.Group.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.Group.Simprocs
 import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 

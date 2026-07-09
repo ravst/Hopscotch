@@ -1,5 +1,5 @@
 import GameHoppingInLean.Comp.RState
-import GameHoppingInLean.Normalization.Group.Attrs
+import GameHoppingInLean.Tactic.Normalization.Group.Attrs
 
 
 /-- Sample an exponent uniformly in the range `0, ..., |G| - 1`. -/

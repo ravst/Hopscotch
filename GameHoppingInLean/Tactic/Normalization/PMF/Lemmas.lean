@@ -1,4 +1,4 @@
-import GameHoppingInLean.Normalization.PMF.Attrs
+import GameHoppingInLean.Tactic.Normalization.PMF.Attrs
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Mathlib.Probability.ProbabilityMassFunction.Monad
 import Mathlib.Probability.Distributions.Uniform

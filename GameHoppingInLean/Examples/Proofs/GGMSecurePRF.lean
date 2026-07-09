@@ -2,8 +2,8 @@ import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRG
 import GameHoppingInLean.Examples.SecurityDefinitions.SecurePRF
 import GameHoppingInLean.Examples.Constructions.GGM
 import GameHoppingInLean.Examples.Misc.RF_caching
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 section

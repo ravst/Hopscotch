@@ -1,8 +1,8 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.Normalization.PMF.Simprocs
-import GameHoppingInLean.Normalization.BitVec.Simprocs
+import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
+import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
 import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.ObservationalEq.Defs
 
