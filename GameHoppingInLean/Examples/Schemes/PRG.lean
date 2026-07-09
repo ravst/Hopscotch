@@ -1,5 +1,5 @@
 
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 
 structure PRG (k l : ℕ) where
   draw : (seed : BitVec k) -> BitVec (k + l)

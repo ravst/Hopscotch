@@ -1,8 +1,8 @@
-import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.StatefulRandomOracle
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.IndistinguishabilityAssumption
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> RStateOracle (Spec κ)
 def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
@@ -81,7 +81,7 @@ lemma goodDoubleAction_step {I1 : Type} {O1 : OracleSpec I1} {s X : Type}
       -- `simp` does not perform on its own here.
       cases t with
       | setState st =>
-          simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure]
+          simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure, StateT.set]
       | _ =>
         simp [goodDoubleActionSimps, StateTSimps, OracleReductionSimps, h, RStateSimplifier, pure] <;> try rfl
 

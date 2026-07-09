@@ -1,6 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.SymEnc
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 
 /-- IND-CPA eavesdropping oracle spec.
 The query indexed by `n` takes a pair of `n`-bit messages and returns an `n`-bit ciphertext. -/

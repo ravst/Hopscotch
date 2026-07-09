@@ -1,5 +1,5 @@
-import GameHoppingInLean.MonadRandomState
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.RState
+import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 
@@ -508,7 +508,7 @@ lemma correctAbstractionBoundImpliesCorrectAbstractionBindBound {I : Type} {O : 
         simp [PMF.map_eq_bind_pure]
         rw [← HB']
         · simp [PMF.map_eq_bind_pure]
-        · assumption 
+        · assumption
   · apply HB.2
 
 lemma correctAbstractionBoundImpliesObsEqBounded {I : Type} {O : OracleSpec I}

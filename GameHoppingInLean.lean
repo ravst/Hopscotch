@@ -1,9 +1,9 @@
-import GameHoppingInLean.MonadRandomState
-import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.RState
+import GameHoppingInLean.Comp.StatefulRandomOracle
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.IndistinguishabilityTactics
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 import GameHoppingInLean.Examples.Proofs.IndCpaRandImpliesIndCpa
 

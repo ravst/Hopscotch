@@ -1,6 +1,6 @@
 import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
 import GameHoppingInLean.IndistinguishabilityTactics
-import GameHoppingInLean.OracleReductionsLemmas
+import GameHoppingInLean.Comp.OracleReductionsLemmas
 
 structure internal_type {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (l : List (OracleReduction O1 O2)) where

@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 
 /-- Symmetric encryption scheme with abstract key type `K`.
 Encryption/decryption preserve message length by type. -/

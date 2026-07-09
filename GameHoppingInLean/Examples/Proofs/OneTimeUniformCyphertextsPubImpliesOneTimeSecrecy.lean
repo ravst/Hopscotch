@@ -1,5 +1,5 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 import GameHoppingInLean.IndistinguishabilityTactics
 
 

@@ -1,6 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.SymEnc
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 
 /-- IND-CPA "real vs random ciphertext" oracle spec.
 The query indexed by `n` takes a single `n`-bit message and returns an `n`-bit ciphertext. -/

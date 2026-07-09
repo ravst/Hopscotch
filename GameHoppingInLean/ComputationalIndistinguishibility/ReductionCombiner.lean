@@ -1,4 +1,4 @@
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage

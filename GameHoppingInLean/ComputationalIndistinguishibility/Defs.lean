@@ -1,12 +1,12 @@
-import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.OracleReductions
-import GameHoppingInLean.OracleReductionsLemmas
+import GameHoppingInLean.Comp.StatefulRandomOracle
+import GameHoppingInLean.Comp.OracleReductions
+import GameHoppingInLean.Comp.OracleReductionsLemmas
 import GameHoppingInLean.ObservationalEquvialence
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.OracleComp.OracleSpec
 import GameHoppingInLean.IndistinguishabilityDef
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 import GameHoppingInLean.ComputationalIndistinguishibility.Distance
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ComputationalIndistinguishibility.Sums

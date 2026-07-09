@@ -1,7 +1,6 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.OTUC
 import GameHoppingInLean.Examples.Constructions.DoubleSymEnc
-import GameHoppingInLean.MonadRandomState
-import GameHoppingInLean.PMFLiftOrder
+import GameHoppingInLean.Comp.RState
 import GameHoppingInLean.IndistinguishabilityTactics
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs

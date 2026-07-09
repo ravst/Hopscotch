@@ -1,5 +1,5 @@
 import GameHoppingInLean.Normalization.BitVec.Lemmas
-import GameHoppingInLean.Misc.SimprocHelpers
+import GameHoppingInLean.Tactic.SimprocHelpers
 
 open Lean Meta
 

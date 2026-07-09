@@ -1,6 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.SymEnc
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 
 /-- Ciphertexts tracked by the IND-CCA oracles, bundled with their bit-length. -/
 abbrev IndCcaCiphertext (C : ℕ → Type) := Σ n : ℕ, C n

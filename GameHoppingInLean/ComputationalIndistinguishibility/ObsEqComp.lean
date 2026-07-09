@@ -3,7 +3,7 @@ import GameHoppingInLean.ComputationalIndistinguishibility.BehavioralOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.PMFDisintegration
 import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenceReach
 import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 /- # Prove that Observation Equivalence (ObsEq) imply that no adversary distinguishes (called AdvEq here)
 It is easy to proof, that varios form of correctAbstractin lead both to ObsEq and AdvEq.

@@ -1,5 +1,5 @@
-import GameHoppingInLean.OracleReductions
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Comp.OracleReductions
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 
 open OracleReduction
 

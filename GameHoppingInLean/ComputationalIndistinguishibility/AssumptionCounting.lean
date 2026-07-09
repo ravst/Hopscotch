@@ -76,7 +76,7 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
   {I : Type} {O : OracleSpec I} {o₁ o₂ : RStateOracle O} :
   (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
   AssumptionsUseTSimple Assumptions O × AssumptionsUseTSimple Assumptions O
-:= 
+:=
   haveI : DecidableEq Idx := Assumptions.decEq
   fun ind => match ind with
   | IndistinguishableI.assumption idx =>
@@ -101,7 +101,6 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
   | IndistinguishableI.longSequence a q_b ro Hseq =>
     long_step_combinator_simple a
       (fun j Hq => assumptionCounting (Hseq j Hq))
-
 
 
 -- for the soundness proof, it is more convient to use different assumption function counting function, defined below:

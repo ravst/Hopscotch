@@ -4,7 +4,7 @@ import GameHoppingInLean.Examples.Constructions.GGM
 import GameHoppingInLean.Examples.Misc.RF_caching
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
-
+import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 section
 attribute [-simp] bind_pure_comp
@@ -464,7 +464,7 @@ noncomputable def GGMHybrid2_step_indistinguishable_of_securePRG
 /-- All GGM hybrids are indistinguishable assuming the length-doubling PRG is secure. -/
 noncomputable def GGMHybrids_indistinguishable_of_securePRG
     {k n : ℕ} (prg : lengthDoublingPRG k) :
-    IndistinguishableSingle (SecurePRGAssumption' prg)
+    IndistinguishableI (SecurePRGAssumption' prg) none
       (GGMHybrid2 prg 0)
       (GGMHybrid2 prg (Fin.last n)) := by
   refine Indistinguishable.long_step n
@@ -482,20 +482,55 @@ noncomputable def GGMHybrids_indistinguishable_of_securePRG
 
 /-- GGM is secure assuming the underlying length-doubling PRG is secure. -/
 noncomputable def secureGGM_of_securePRG
-    {k n : ℕ} (prg : lengthDoublingPRG k) :
-    SecurePRFDef (SecurePRGAssumption' prg) (GGM prg n) := by
+    (prgFam : PRGFamily id id) :
+    SecurePRFDef (SecurePRGAssumptionFam prgFam) (fun κ => GGM (prgFam.prg κ) κ) := by
+  intro κ
+  simp [SecurePRGAssumptionFam]
+  generalize (prgFam.prg κ) = prg
   game_hopping_basic [
-    PRF_real (GGM prg n),
+    PRF_real (GGM prg κ),
     GGMHybrid prg 0,
-    GGMHybrid2 prg 0,
-    GGMHybrid2 prg (Fin.last n),
-    GGMHybrid prg (Fin.last n),
-    PRF_ideal (BitVec n) (BitVec k)]
+    GGMHybrid2 (prg) 0,
+    GGMHybrid2 (prg) (Fin.last κ),
+    GGMHybrid (prg) (Fin.last κ),
+    PRF_ideal (BitVec κ) (BitVec κ)]
   · exact Indistinguishable.of_ObsEq (obsEq_real_GGMHybrid_zero prg)
   · exact liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg 0)
   · exact GGMHybrids_indistinguishable_of_securePRG prg
   · exact Indistinguishable.symmetric
-      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg ((Fin.last n))))
+      (liftEmptyAssumptions (obsEq_rand_GGMHybrid_1_2 prg ((Fin.last κ))))
   · exact Indistinguishable.of_ObsEq (obsEq_GGMHybrid_last_ideal prg)
-
 end
+
+
+/-- how to see bounds that we proved? The best way it to write
+"assumptionCounting (secureGGM_of_securePRG prgFam κ) = sorry"
+abd then to simplify as below. Do not simplify reduction names!
+Then replace sorry with resulting term.
+Here, we see that the only reduction that affect concrete security bound is GGMHybridStepReduction2PRG -/
+noncomputable def GGM_proof_constants_simp {κ : ℕ} (prgFam : PRGFamily id id)
+    :
+    (assumptionCounting (secureGGM_of_securePRG prgFam κ)) =
+    (fun _idx ↦
+      (List.ofFn fun (x : Fin κ) ↦
+        [rcompose
+          (OracleReduction.identity (SecurePRGSpec κ κ))
+          (GGMHybridStepReduction2PRG (prgFam.prg κ) x)]
+      ).flatten,
+    fun _idx ↦ [])
+     := by
+  simp [secureGGM_of_securePRG, GGMHybrids_indistinguishable_of_securePRG, GGMHybrid2_step_indistinguishable_of_securePRG]
+  have T : forall xp : Unit, Decidable (xp = PUnit.unit) := by
+    intro xp
+    infer_instance
+  have T2 : forall x : Unit, x = PUnit.unit := by
+    simp []
+  simp [transitive_step_val_simple, assumptionCounting,
+    Indistinguishable.of_ObsEq, Indistinguishable.symmetric, Indistinguishable.reflexive, Indistinguishable.long_step, liftEmptyAssumptions
+  ]
+  simp [obsEq_rand_GGMHybrid_1_2, indistinguishable_PRF_ideal_PRF_ideal2]
+  simp [transitive_step_val_simple, assumptionCounting,
+    Indistinguishable.of_ObsEq, Indistinguishable.symmetric, Indistinguishable.reflexive, Indistinguishable.long_step, liftEmptyAssumptions
+  ]
+  simp [T2, long_step_combinator_simple, long_step_combinator_simple_half]
+  simp [SecurePRGAssumptionFam, SecurePRGAssumption', SecurePRGAssumptionFull]

@@ -1,4 +1,4 @@
-import GameHoppingInLean.MonadRandomState
+import GameHoppingInLean.Comp.RState
 import GameHoppingInLean.Normalization.Group.Attrs
 
 
@@ -19,7 +19,8 @@ noncomputable def generatorEquiv {G : Type} [Group G] [Fintype G] {g : G}
     (hgen : IsGenerator g) : Fin (Fintype.card G) ≃ G :=
   Equiv.ofBijective (fun x : Fin (Fintype.card G) => g ^ (x : Nat)) hgen
 
-@[simp] theorem generatorEquiv_apply {G : Type} [Group G] [Fintype G] {g : G}
+@[GH_group_norm]
+theorem generatorEquiv_apply {G : Type} [Group G] [Fintype G] {g : G}
     (hgen : IsGenerator g) (x : Fin (Fintype.card G)) :
     generatorEquiv hgen x = g ^ (x : Nat) := rfl
 
@@ -61,7 +62,7 @@ theorem bind_sampleExponent_pow_eq_bind_uniformOfFintype
             rw [sampleExponent, PMF.bind_map]
             rfl
     _ = (PMF.uniformOfFintype (Fin (Fintype.card G))).bind (fun x => rest (e x)) := by
-          simp [e]
+          simp [e, generatorEquiv_apply]
     _ = (PMF.uniformOfFintype G).bind rest := by
           simpa using (PMF.bind_uniformOfFintype_equiv (e := e) (g := rest)).symm
 

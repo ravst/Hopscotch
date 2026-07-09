@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.OracleComp.OracleSpec

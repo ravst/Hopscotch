@@ -1,6 +1,6 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCPAPub
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 import GameHoppingInLean.IndistinguishabilityTactics

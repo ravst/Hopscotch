@@ -1,4 +1,4 @@
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.OracleReductions
 
 lemma pmf_nonempty (x : PMF X) : Nonempty X :=
   open Classical in

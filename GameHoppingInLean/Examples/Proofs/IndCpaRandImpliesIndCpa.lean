@@ -1,7 +1,7 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpa
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRand
 import GameHoppingInLean.IndistinguishabilityTactics
-import GameHoppingInLean.ComputationalIndistinguishibility.Defs
+import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
 
 -- the proof that 'indCpaRand' definition imply 'indCpa'.
 

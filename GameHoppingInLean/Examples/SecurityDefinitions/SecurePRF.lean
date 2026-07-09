@@ -55,10 +55,23 @@ noncomputable def SecurePRFAssumption' {K X Y : Type}
     IndAssumptions Unit where
   assumptions := fun _ => SecurePRFAssumptionFull prf
 
+
+noncomputable def SecurePRFAssumptionFam {K X Y : (κ : ℕ) -> Type}
+    [forall κ, Fintype (X κ)]
+    [forall κ, Fintype (Y κ)]
+    [forall κ, Nonempty (Y κ)]
+    (prf : (κ : ℕ) -> PRF (K κ) (X κ) (Y κ)) :
+    IndAssumptionsFam where
+    Idx := Unit
+    val κ := {assumptions := fun _ => SecurePRFAssumptionFull (prf κ)}
+
 /-- PRF security definition as an instance of `Indistinguishable`. -/
-def SecurePRFDef
-    {Idx : Type} (Assumptions : IndAssumptions Idx)
-    -- (Reductions : IndistinguishabilityReductions)
-    {K X Y : Type} [Fintype X] [Fintype Y] [Nonempty Y] (prf : PRF K X Y) : Type 1 :=
-  IndistinguishableSingle Assumptions
-    (PRF_real prf) (PRF_ideal X Y)
+@[reducible] def SecurePRFDef
+    (Assumptions : IndAssumptionsFam)
+    {K X Y : (κ : ℕ) -> Type}
+    [forall κ, Fintype (X κ)]
+    [forall κ, Fintype (Y κ)]
+    [forall κ, Nonempty (Y κ)]
+    (prf : (κ : ℕ) -> PRF (K κ) (X κ) (Y κ)) : Type 1 :=
+  Indistinguishable Assumptions
+    (fun κ => PRF_real (prf κ)) (fun κ => PRF_ideal (X κ) (Y κ))

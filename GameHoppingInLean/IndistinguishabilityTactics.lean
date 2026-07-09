@@ -1,5 +1,5 @@
 import GameHoppingInLean.IndistinguishabilityDef
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 import Lean
 
 open Lean Elab Tactic Meta

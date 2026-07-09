@@ -1,6 +1,6 @@
 import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
 import GameHoppingInLean.ObservationalEquvialence
-import GameHoppingInLean.Misc.SimpAttrLemmas
+import GameHoppingInLean.Tactic.SimpAttrLemmas
 import Mathlib.Data.ENat.Lattice
 
 

@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 
 /-- Message authentication code (MAC) scheme with abstract key and tag types.
 Messages are length-indexed bitvectors, key generation is probabilistic,

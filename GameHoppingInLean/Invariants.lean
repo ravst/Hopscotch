@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.ObservationalEquvialence
 import Mathlib.Logic.Function.Basic
 

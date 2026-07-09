@@ -7,8 +7,7 @@ import GameHoppingInLean.Examples.Misc.Once
 
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.FreeMonadLemmas
-import GameHoppingInLean.PMFLiftOrder
-import GameHoppingInLean.Misc.Isos
+import GameHoppingInLean.Tactic.Isos
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.BitVec.Simprocs
 

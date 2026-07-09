@@ -1,5 +1,5 @@
-import GameHoppingInLean.StatefulRandomOracle
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.StatefulRandomOracle
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.IndistinguishabilityAssumption
 

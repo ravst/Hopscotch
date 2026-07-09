@@ -1,10 +1,9 @@
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 import GameHoppingInLean.ObservationalEquvialence
 import GameHoppingInLean.Normalization.PMF.Simprocs
 import GameHoppingInLean.Normalization.PMF.Lemmas
 import GameHoppingInLean.Normalization.BitVec.Simprocs
-import GameHoppingInLean.OracleReductions
-import GameHoppingInLean.PMFLiftOrder
+import GameHoppingInLean.Comp.OracleReductions
 import GameHoppingInLean.IndistinguishabilityDef
 import Lean
 
@@ -30,27 +29,9 @@ lemma simulateQ_roll {ι} {spec : OracleSpec ι} (t : spec.Domain) {m} {β}
   unfold simulateQ
   rw [PFunctor.FreeM.mapM.eq_def]; rfl
 
-
-/-- Running `StateT.get`. -/
-@[goodDoubleActionSimps] lemma stateT_run_get {m} [Monad m] {σ} (s : σ) :
-    (StateT.get s : m (σ × σ)) = pure (s, s) := rfl
-
-/-- Running `f <$> StateT.get`. -/
-@[goodDoubleActionSimps] lemma stateT_run_map_get {σ α} (f : σ → α) (s : σ) :
-    ((f <$> StateT.get) s : PMF (α × σ)) = pure (f s, s) := by
-  change PMF.map (fun p : σ × σ => (f p.1, p.2)) (PMF.pure (s, s)) =
-    PMF.pure (f s, s)
-  exact PMF.pure_map (fun p : σ × σ => (f p.1, p.2)) (s, s)
-
-/-- Running `StateT.set`. -/
-@[goodDoubleActionSimps] lemma stateT_run_set {m} [Monad m] {σ} (st s : σ) :
-    (StateT.set st) s = (pure (PUnit.unit, st) : m (PUnit × σ)) := rfl
-
-@[simp]
 lemma simulateQ_pure2 (x : α) {ι} {spec : OracleSpec ι} {r : Type u → Type*}
     [Monad r] (impl : QueryImpl spec r) :
     simulateQ impl (PFunctor.FreeM.pure x : OracleComp spec α) = pure x := rfl
-
 
 attribute [GameHoppingSimplifyPMF]
   PMF.monad_bind_eq_bind
@@ -112,9 +93,9 @@ attribute [StateTSimps]
   -- MonadStateOf.get
 
 attribute [goodDoubleActionSimps]
-  OracleReduction.liftWithPMFAndState
+  -- OracleReduction.liftWithPMFAndState
   OracleReduction.defaultImpl
-  addPMFtoImpl
+  -- addPMFtoImpl
   OracleComp.queryBind
   OracleQuery.query
   OracleQuery.cont

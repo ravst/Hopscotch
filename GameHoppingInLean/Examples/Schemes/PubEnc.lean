@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 
 /-- Public-key encryption scheme with abstract public/secret key, message,
 and ciphertext types. -/

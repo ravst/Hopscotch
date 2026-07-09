@@ -1,6 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.MAC
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 
 /-- A length-indexed `(message, tag)` pair stored by the ideal oracle. -/
 abbrev MACTaggedMessage (Tag : Type) := Σ n : ℕ, BitVec n × Tag

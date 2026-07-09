@@ -1,6 +1,6 @@
 import GameHoppingInLean.IndistinguishabilityDef
 import GameHoppingInLean.Examples.Schemes.PRG
-import GameHoppingInLean.Misc.SimpAttrs
+import GameHoppingInLean.Tactic.SimpAttrs
 
 /-- PRG security oracle spec.
 Single query returns a `(k + l)`-bit output. -/
@@ -53,13 +53,13 @@ def SecurePRGDef
 
 /-- Pointwise PRG assumptions for a PRG family. -/
 noncomputable def SecurePRGAssumptionFam {k l : ℕ → ℕ}
-    (prgFam : PRGFamily k l) (κ : ℕ) : IndAssumptions Unit :=
-  SecurePRGAssumption' (prgFam.prg κ)
+    (prgFam : PRGFamily k l) : IndAssumptionsFam where
+  Idx := Unit
+  val κ := SecurePRGAssumption' (prgFam.prg κ)
 
 /-- PRG security for a PRG family. -/
 def SecurePRGIFam
-    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
+    (Assumptions : IndAssumptionsFam)
     {k l : ℕ → ℕ} (prgFam : PRGFamily k l) : Type 1 :=
-  ∀ κ,
-    IndistinguishableI (Assumptions κ) none
-      (PRG_real (prgFam.prg κ)) (PRG_rand (k κ) (l κ))
+    Indistinguishable (Assumptions)
+      (fun κ => PRG_real (prgFam.prg κ)) (fun κ => PRG_rand (k κ) (l κ))

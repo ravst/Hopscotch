@@ -1,4 +1,4 @@
-import GameHoppingInLean.StatefulRandomOracle
+import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
 import Mathlib
 

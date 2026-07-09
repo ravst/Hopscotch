@@ -1,4 +1,4 @@
-import GameHoppingInLean.MonadRandomState
+import GameHoppingInLean.Comp.RState
 
 /-!
 Applied normalization lemmas for `RState`.

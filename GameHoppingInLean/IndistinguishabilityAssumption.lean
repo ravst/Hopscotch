@@ -1,4 +1,4 @@
-import GameHoppingInLean.OracleReductions
+import GameHoppingInLean.Comp.OracleReductions
 
 
 /- ## Indisringuishability Assumptions -/
