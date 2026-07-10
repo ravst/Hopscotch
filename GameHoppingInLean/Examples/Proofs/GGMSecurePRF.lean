@@ -20,36 +20,120 @@ open scoped OracleReduction
 -/
 
 
-/- # 1. Definition of hybrids and reductions.
- We define GGMHybrid, GGMHybrid2 and GGMHybrid3.
-We want to do the following sequence:
-[
-    PRF_real (GGM prg n),
-    GGMHybrid prg 0,
-    GGMHybrid2 prg 0,
-    ...
-    GGMHybrid2 prg i,
-    ...
-    GGMHybrid2 prg (Fin.last n),
-    GGMHybrid prg (Fin.last n),
-    PRF_ideal (BitVec n) (BitVec k)]
+/-!
+# Security of the GGM construction
 
-step (..) is justified by long_step. To do this we need the following sequence (presented as from GGMHybrid2 (i+1) to GGMHybrid2 i):
-[
-GGMHybrid2 prg i.succ,
-(GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal2 (BitVec i.succ.1) (BitVec k)),
-(GGMHybridStepReduction2RF prg i.succ) ◇ (PRF_ideal_cache_batch_pairs i (BitVec k)),
-GGMHybrid3 prg i,
-(GGMHybridStepReduction2PRG prg i) ◇ (PRG_rand k k),
-(GGMHybridStepReduction2PRG prg i) ◇ (PRG_real prg),
-GGMHybrid2 prg i.castSucc (=i : Fin (n+1))
-]
+This file proves that the GGM construction turns a secure length-doubling PRG
+into a secure PRF.
 
-Move from GGMHybrid to GGMHybrid2 uses the following:
-[GGMHybrid prg i,
-(GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal (BitVec i.1) (BitVec k)),
-(GGMHybridStepReduction2RF prg i) ◇ (PRF_ideal2 (BitVec i.1) (BitVec k)),
-GGMHybrid2 prg i]
+## Hybrids
+
+The proof follows the usual GGM hybrid argument.  In the paper, the `i`-th
+hybrid is described as follows.  It samples a random function
+
+    f_i : BitVec i → BitVec k
+
+and, on input `x : BitVec n`, uses the first `i` bits of `x` to look up a
+random label, then applies the PRG along the remaining bits:
+
+    H_i(x) =
+      prg_{x_n} (
+        prg_{x_{n-1}} (
+          ...
+            prg_{x_{i+1}} (f_i(x_1, ..., x_i))
+          ...
+        )
+      ).
+
+In the code, bits are read in the same order as `applyPRGs`: the prefix
+`(x_1, ..., x_i)` is represented by
+
+    BitVec.extractLsb' 0 i x
+
+and the remaining suffix by
+
+    BitVec.extractLsb' i (n - i) x.
+
+Thus `H_0` is the real GGM oracle: `BitVec 0` is a singleton, so sampling
+`f_0 : BitVec 0 → BitVec k` is the same as sampling one seed.  At the other
+endpoint, `H_n` is the ideal random-function oracle, because no PRG applications
+remain.
+
+The final theorem instantiates `n = k`, so the PRF input length and the seed
+length are both the security parameter.
+
+## Cache representations
+
+The same mathematical hybrid appears in several cache representations.
+
+* `GGMHybrid prg i` is the eager version of `H_i`.
+  Its state is a total table
+
+      BitVec i → BitVec k
+
+  sampled during initialization.
+
+* `GGMHybrid2 prg i` is the ordinary lazy-cache version of `H_i`.
+  Its state is a partial table
+
+      Finmap (fun _ : BitVec i => BitVec k).
+
+  On a query, it looks up the `i`-bit prefix.  If the prefix is missing, it
+  samples a fresh uniform label and stores it.
+
+* `GGMHybrid3 prg i` is the paired-cache version used in one adjacent-hybrid
+  step.  Its state is a partial table
+
+      Finmap (fun _ : BitVec i => BitVec (k + k)).
+
+  Each cached value represents two `k`-bit labels at once.  The next input bit
+  chooses which half is used.
+
+The random-function oracles have analogous cache variants.
+
+* `PRF_ideal X Y` is eager: it samples a total function `X → Y`.
+
+* `PRF_ideal2 X Y` is lazy: it stores a partial cache `X ⇀ Y`.
+
+* `PRF_ideal_cache_batch_pairs i Y` is lazy but fills the cache in pairs:
+  when queried on `x : BitVec (i+1)`, it caches values for both inputs with the
+  same low `i` bits.
+
+## Proof shape
+
+The top-level proof has the following shape:
+
+    PRF_real (GGM prg n)
+      ≈ GGMHybrid  prg 0
+      ≈ GGMHybrid2 prg 0
+      ≈ ...
+      ≈ GGMHybrid2 prg (Fin.last n)
+      ≈ GGMHybrid  prg (Fin.last n)
+      ≈ PRF_ideal (BitVec n) (BitVec k)
+
+The conversions between eager and lazy caches are observational equivalences,
+proved by randomized abstractions that complete a partial cache by sampling all
+missing values uniformly.
+
+The only step using the PRG security assumption is the adjacent-hybrid step
+
+    GGMHybrid2 prg i.succ  ≈  GGMHybrid2 prg i.castSucc.
+
+It is proved by the chain
+
+    GGMHybrid2 prg i.succ
+      ≈ (GGMHybridStepReduction2RF  prg i.succ) ◇ (PRF_ideal2 (BitVec i.succ.1) (BitVec k))
+      ≈ (GGMHybridStepReduction2RF  prg i.succ) ◇ ((PRF_ideal_cache_batch_pairs i (BitVec k))
+      ≈ GGMHybrid3 prg i
+      ≈ (GGMHybridStepReduction2PRG prg i) ◇ PRG_rand k k
+      ≈ (GGMHybridStepReduction2PRG prg i) ◇ PRG_real prg
+      ≈ GGMHybrid2 prg i.castSucc.
+
+The reduction `GGMHybridStepReduction2PRG` maintains a paired cache indexed by
+`i`-bit prefixes.  For each new prefix, it queries the PRG challenger once and
+uses the resulting `BitVec (k + k)` as the two possible next labels.  With
+`PRG_rand`, these two labels are uniformly random; with `PRG_real prg`, they are
+the two halves of `prg.draw s` for a fresh seed `s`.
 
 Note, that only application of assumption is under reduction (GGMHybridStepReduction2PRG prg i). This reduction is clearly polynomial!
 It is interesting that some hybrids in this proof and even left side of thesis (PRF_ideal) are *not* polynomial. That does not affect correctness, because soundness theorem only cares about reduction used above application of assumption (only GGMHybridStepReduction2PRG).
@@ -169,10 +253,10 @@ noncomputable def GGMHybrid3 {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
 
 /-- Skeleton reduction for one adjacent hybrid step in the GGM proof.
 
-The intended implementation should:
-1. maintain a cache of labels for depth-`i+1` nodes,
-2. query the underlying PRG challenger once per unseen depth-`i` prefix, and
-3. interpret the challenge output as the two child labels for that prefix. -/
+The implementation:
+1. maintains a cache of labels for depth-`i+1` nodes,
+2. querys the underlying PRG challenger once per unseen depth-`i` prefix, and
+3. interprets the challenge output as the two child labels for that prefix. -/
 noncomputable def GGMHybridStepReduction2PRG {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n) :
     OracleReduction (SecurePRGSpec k k) (SecurePRFSpec (BitVec n) (BitVec k)) where
   stateType := Finmap (fun _x : BitVec i.1 => BitVec (k+k))
@@ -215,7 +299,6 @@ attribute [local game_hopping_unfold]
 -- Consecutive GGM hybrids differ by one use of the underlying PRG.
 
 
--- easy/medium
 theorem obsEq_GGMHybrid2_reduction_rf {k n : ℕ}
     (prg : lengthDoublingPRG k) (i : Fin (n + 1)) :
     ObsEq (GGMHybrid2 prg i)
