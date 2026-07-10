@@ -23,7 +23,7 @@ import GameHoppingInLean.Tactic.Defs
 
   Here R_i, n_i are computed from result of assumption counting function `assumptionCountingFin` (see AssumptionCounting.lean for more on it). For each assumption, `assumptionCountingFin` returns a list of reductions l. R_i is a reduction that picks one reduction from l uniformly at random and executes it. n_i = l.length .
 
-  We express this sum using function `advBound`. The soundness theorem is called `symbolicSoundness` and can be found at the very end of file. The name comes from the fact that syntactic proofs presented as IndistinguishabilityI are shown to have semantic meaning. See paper for more high level discussion.
+  We express this sum using function `advBound`. The soundness theorem is called `computationalSoundness` and can be found at the very end of file. The name comes from the fact that syntactic proofs presented as IndistinguishabilityI are shown to have semantic meaning. See paper for more high level discussion.
 
   The soundness theorem is proven by induction on the IndistinguishabilityI. The trans step requires reasoning about 'pick-one-at-random' reduction combination -- more details on it are in ReductionCombiner.lean.
 -/
@@ -226,7 +226,7 @@ lemma long_Step_proof_induction
   )
 
 /-- version of symbolic soundness theorem that uses `assumptionCounting_low` counting function -/
-lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
+lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
@@ -255,7 +255,7 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
     simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
 | IndistinguishableI.reduction r b ind => by
-    let Hasc := symbolicSoundness_internal ind
+    let Hasc := computationalSoundness_internal ind
     simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist
     rw [advantage_reduction]
@@ -284,7 +284,7 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       rw [<-goodDoubleAction]
       simp [compose_combine]
 | IndistinguishableI.symm q_b ind  =>
-    let re := symbolicSoundness_internal ind
+    let re := computationalSoundness_internal ind
     by
       simp [advBoundQ, advBound, assumptionCounting_low]
       intro dist
@@ -294,12 +294,12 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       · simp []
       · assumption
 | IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_proof rm _ _ (symbolicSoundness_internal ind1) (symbolicSoundness_internal ind2)
+    transitive_step_proof rm _ _ (computationalSoundness_internal ind1) (computationalSoundness_internal ind2)
 | IndistinguishableI.longSequence a q_b ro Hseq => by
   simp [assumptionCounting_low]
   let Hxx := fun (i : ℕ) (Hi : i < a) =>
     assumptionCounting_low (Hseq i Hi)
-  let HxxInd := (fun (i : ℕ) (Hi : i < a) => symbolicSoundness_internal (Hseq i Hi))
+  let HxxInd := (fun (i : ℕ) (Hi : i < a) => computationalSoundness_internal (Hseq i Hi))
   have X := long_Step_proof_induction Hxx (
       by
         simp [Hxx, assumptionCounting_low]
@@ -309,11 +309,11 @@ lemma symbolicSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
   exact lt_add_one a
 
 /- Symbolic soundness theorem - syntactic proofs presented as IndistinguishabilityI have semantic meaning! -/
-theorem symbolicSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
+theorem computationalSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCountLower (assumptionCountingFin ind)) :=
 by
   rw [simpleCorrect]
-  apply symbolicSoundness_internal
+  apply computationalSoundness_internal
