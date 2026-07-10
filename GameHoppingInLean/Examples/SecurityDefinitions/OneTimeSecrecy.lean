@@ -88,9 +88,10 @@ noncomputable def OneTimeSecrecyAssumption' {PubK SecK M C : Type}
 noncomputable def OneTimeSecrecyAssumptionFam
     {PubK SecK M C : ℕ → Type}
     [∀ κ, Inhabited (C κ)]
-    (schemeFam : PubEncSchemeFamily PubK SecK M C) (κ : ℕ) :
-    IndAssumptions Unit :=
-  OneTimeSecrecyAssumption' (schemeFam.scheme κ)
+    (schemeFam : PubEncSchemeFamily PubK SecK M C) :
+    IndAssumptionsFam where
+  Idx := Unit
+  val κ := OneTimeSecrecyAssumption' (schemeFam.scheme κ)
 
 /-- One-time secrecy security definition as an instance of `Indistinguishable`. -/
 def OneTimeSecrecyDef
@@ -101,10 +102,9 @@ def OneTimeSecrecyDef
     (OneTimeSecrecyR scheme)
 
 def OneTimeSecrecyIFam
-    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
+    (Assumptions : IndAssumptionsFam)
     {PubK SecK M C : ℕ → Type} [∀ κ, Inhabited (C κ)]
     (schemeFam : PubEncSchemeFamily PubK SecK M C) : Type 1 :=
-  ∀ κ,
-    IndistinguishableI (Assumptions κ) none
-      (OneTimeSecrecyL (schemeFam.scheme κ))
-      (OneTimeSecrecyR (schemeFam.scheme κ))
+  Indistinguishable Assumptions
+      (fun κ => OneTimeSecrecyL (schemeFam.scheme κ))
+      (fun κ => OneTimeSecrecyR (schemeFam.scheme κ))

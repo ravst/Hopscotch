@@ -89,7 +89,7 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
     {PubK SecK M C : ℕ → Type}
     (schemeFam : PubEncSchemeFamily PubK SecK M C) [∀ κ, Inhabited (C κ)] :
     IndCpaPubBoundedIFam (OneTimeSecrecyAssumptionFam schemeFam) schemeFam := by
-  intro κ q
+  intro q κ
   let scheme := schemeFam.scheme κ
   game_hopping [
     IndCpaPubL scheme,
@@ -115,56 +115,3 @@ noncomputable def OneTimeSecrecyImpliesIndCPAPubQFam
         ext1 st
         simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
         split_ifs <;> try grind
-
-
-
-  -- · apply IndistinguishableI.obsEqB
-  --   refine (correctAbstractionBoundImpliesObsEqBounded _ _ ?_  ?_ q ?_)
-  --   · simp [game_hopping_unfold]
-  --     exact (fun x => x.2)
-  --   · simp [game_hopping_unfold]
-  --     exact (fun x => q - x.1)
-  --   · constructor
-  --     · constructor
-  --       · simp[game_hopping_unfold, sPMF]
-  --       · constructor
-  --         · simp [goodValuation, game_hopping_unfold]
-  --           intro query
-  --           cases query
-  --           · intro a b
-  --             simp [sRState]
-  --             have : q ≤ q - a + 1 + a := by omega
-  --             exact_mod_cast this
-  --           · intro a b
-  --             simp [sRState]
-  --             split_ifs <;> try omega
-  --             · intro x hx
-  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
-  --               have ⟨a, ⟨b, c⟩ ⟩ := hx
-  --               simp_all
-  --               expose_names
-  --               have : q ≤ q - (a_1 + 1) + 1 + a_1 := by omega
-  --               exact_mod_cast this
-  --             · intro x hx
-  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
-  --               simp_all
-  --             · intro x hx
-  --               simp only [PMF.monad_bind_eq_bind, PMF.mem_support_bind_iff, PMF.monad_pure_eq_pure, PMF.mem_support_pure_iff] at hx
-  --               have ⟨a, ⟨b, c⟩ ⟩ := hx
-  --               simp_all
-  --               expose_names
-  --               have : q ≤ q - (a_1 + 1) + 1 + a_1 := by omega
-  --               exact_mod_cast this
-  --         · intro q s hs
-  --           simp at hs
-  --           cases q
-  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
-  --           · simp [game_hopping_unfold, correctAbstractionDiagSimps, sRState, sPMF]
-  --             split_ifs <;> try omega
-  --             simp [sPMF]
-  --     · simp only [game_hopping_unfold]
-  --       intro x hx
-  --       simp [sPMF]
-  --       simp only [PMF.monad_bind_eq_bind, PMF.monad_pure_eq_pure, PMF.mem_support_bind_iff, PMF.mem_support_pure_iff] at hx
-  --       have ⟨a, ⟨ ha₁, ha₂⟩⟩ := hx
-  --       simp_all

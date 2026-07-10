@@ -102,7 +102,7 @@ noncomputable def IndCcaAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Ty
     val κ := {assumptions := fun _ => ⟨(IndCcaL (schemeFam.scheme κ), IndCcaR (schemeFam.scheme κ))⟩}
 
 /-- IND-CCA security for a symmetric-encryption scheme family. -/
-def IndCcaProof
+def IndCcaDef
     (Assumptions : IndAssumptionsFam)
     {K : ℕ → Type} {C : ℕ → ℕ → Type}
     [∀ κ n, DecidableEq (C κ n)] (schemeFam : SymEncSchemeFamily K C) : Type 1 :=

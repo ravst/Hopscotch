@@ -32,14 +32,17 @@ attribute [local game_hopping_unfold] OneTimeSecrecyL OneTimeUniformCyphertextsP
 
 /-- One-time secrecy follows from one-time uniform-ciphertexts public-key via the two simple reductions. -/
 noncomputable def otucPubImpliesOTS
-    {PubK SecK M C : Type} [Fintype C] [Inhabited C]
-    (scheme : PubEncScheme PubK SecK M C)
-    : OneTimeSecrecyDef (OneTimeUniformCyphertextsPubAssumption' scheme) scheme := by
+    {PubK SecK M C : ℕ -> Type} [forall κ, Fintype (C κ)] [forall κ, Inhabited (C κ)]
+    (schemeFam : PubEncSchemeFamily PubK SecK M C)
+    : OneTimeSecrecyIFam (OneTimeUniformCyphertextsPubAssumptionFam schemeFam) schemeFam := by
+  intro κ
+  simp [OneTimeUniformCyphertextsPubAssumptionFam]
+  generalize schemeFam.scheme κ = schemek
   game_hopping [
-    (OneTimeSecrecyL scheme),
-    OTUCPubToOTSL ◇ (OneTimeUniformCyphertextsPubReal scheme),
-    OTUCPubToOTSL ◇ (OneTimeUniformCyphertextsPubRand scheme),
-    OTUCPubToOTSR ◇ (OneTimeUniformCyphertextsPubRand scheme),
-    OTUCPubToOTSR ◇ (OneTimeUniformCyphertextsPubReal scheme),
-    (OneTimeSecrecyR scheme)
+    (OneTimeSecrecyL schemek),
+    OTUCPubToOTSL ◇ (OneTimeUniformCyphertextsPubReal schemek),
+    OTUCPubToOTSL ◇ (OneTimeUniformCyphertextsPubRand schemek),
+    OTUCPubToOTSR ◇ (OneTimeUniformCyphertextsPubRand schemek),
+    OTUCPubToOTSR ◇ (OneTimeUniformCyphertextsPubReal schemek),
+    (OneTimeSecrecyR schemek)
   ]

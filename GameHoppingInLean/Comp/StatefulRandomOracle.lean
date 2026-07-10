@@ -15,6 +15,7 @@ structure QueryWithResult {I : Type u} (O : OracleSpec I) where
   output : O input
 
 
+/-- Implementation of oracle in RState monad. -/
 structure OracleImpl {I : Type u} (O : OracleSpec I) where
   stateType : Type u
   initialState : PMF stateType

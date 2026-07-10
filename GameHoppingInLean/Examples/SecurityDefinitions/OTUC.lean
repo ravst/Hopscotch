@@ -61,14 +61,14 @@ def OTUCDef
 noncomputable def OTUCAssumptionFam {K : ℕ → Type} {C : ℕ → ℕ → Type}
     (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)]
-    (κ : ℕ) : IndAssumptions Unit :=
-  OTUCAssumption' (schemeFam.scheme κ)
+    : IndAssumptionsFam where
+  Idx := Unit
+  val κ := OTUCAssumption' (schemeFam.scheme κ)
 
 /-- OTUC security for a symmetric-encryption scheme family. -/
 def OTUCIFam
-    {Idx : Type} (Assumptions : (κ : ℕ) → IndAssumptions Idx)
+    (Assumptions : IndAssumptionsFam)
     {K : ℕ → Type} {C : ℕ → ℕ → Type} (schemeFam : SymEncSchemeFamily K C)
     [∀ κ n, Fintype (C κ n)] [∀ κ n, Nonempty (C κ n)] : Type 1 :=
-  ∀ κ,
-    IndistinguishableI (Assumptions κ) none
-      (OTUC_Real (schemeFam.scheme κ)) (OTUC_Rand (schemeFam.scheme κ))
+  Indistinguishable Assumptions
+      (fun κ => OTUC_Real (schemeFam.scheme κ)) (fun κ => OTUC_Rand (schemeFam.scheme κ))
