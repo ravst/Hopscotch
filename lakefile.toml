@@ -1,6 +1,6 @@
 name = "GameHoppingInLean"
 version = "0.1.0"
-keywords = ["math"]
+keywords = ["cryptography", "computational-indistinguishability", "game-hopping"]
 defaultTargets = ["GameHoppingInLean"]
 
 [leanOptions]
