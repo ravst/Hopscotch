@@ -1,4 +1,4 @@
-import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishability.AdversaryAdvantage
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 import Mathlib.Data.ENat.Lattice

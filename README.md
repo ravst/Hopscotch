@@ -17,7 +17,7 @@ The project is being developed using the LLM-based tool Codex from OpenAI and Ar
   * **Comp**: Computational layer. Definition of oracle implementation, reduction, composition of reduction with implementation.
   * **ObservationalEq**: Definition of observational equality (ObsEq). Definition of abstraction technique (used to prove ObsEq). Proof of correctness of abstraction.
   * **Indistinguishability**: Definition of `IndistinguishabilityI`: type of indistinguishability proof.
-  * **ComputationalIndistinguishibility**: Definition and proof of soundness theorem. Definition of computational semantics (adversarial advantage).
+  * **ComputationalIndistinguishability**: Definition and proof of soundness theorem. Definition of computational semantics (adversarial advantage).
   * **Tactic**: Useful tactics. 
 
 ## Dependencies

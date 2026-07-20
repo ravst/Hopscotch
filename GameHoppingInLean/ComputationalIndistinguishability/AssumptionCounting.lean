@@ -1,6 +1,6 @@
 import GameHoppingInLean.Indistinguishability.Def
-import GameHoppingInLean.ComputationalIndistinguishibility.Sums
-import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
+import GameHoppingInLean.ComputationalIndistinguishability.Sums
+import GameHoppingInLean.ComputationalIndistinguishability.ReductionCombinerList
 
 /-
 # Assumption Counting
@@ -296,7 +296,7 @@ noncomputable def finite_support {Idx : Type} {Assumptions : IndAssumptions Idx}
   ((assumptionCounting_finite ind).1.fintype,
    (assumptionCounting_finite ind).2.fintype)
 
-/- # Eqivalence of assumptionCounting functions
+/- # Equivalence of assumptionCounting functions
   The ismorphism is given by `AssumptionsUseTSimple2other`
 -/
 

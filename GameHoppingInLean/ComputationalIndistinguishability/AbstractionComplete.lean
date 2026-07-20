@@ -1,4 +1,4 @@
-import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
+import GameHoppingInLean.ComputationalIndistinguishability.ObsEqComp
 
 /-
 # Facts about ObsEq and Abstraction
@@ -461,7 +461,7 @@ noncomputable def behavioralRestricted_complete {I : Type} {O : OracleSpec I}
 
 /- ## Completeness of distinguishing advantage for observational equivalence
 
-The following develops the converse direction to `obsEq_distinquishing`: if *every*
+The following develops the converse direction to `obsEq_distinguishing`: if *every*
 distinguisher has zero advantage separating two oracles `o1` and `o2`, then the two oracles
 are observationally equivalent (`ObsEq o1 o2`).
 
@@ -519,10 +519,10 @@ noncomputable def mkDist {I : Type} {O : OracleSpec I} (ql : List I)
 
 /-- The output distribution of `mkDist ql P` against `o` is exactly the push-forward of the
 transcript distribution `runQueriesOnlyOut o ql` along `P`. -/
-theorem runDinstinguisher_mkDist {I : Type} {O : OracleSpec I} (o : OracleImpl O)
+theorem runDistinguisher_mkDist {I : Type} {O : OracleSpec I} (o : OracleImpl O)
     (ql : List I) (P : List (QueryWithResult O) → Bool) :
-    runDinstinguisher (mkDist ql P) o = (runQueriesOnlyOut o ql).map P := by
-  rw [runDinstinguisher_unfold, runQueriesOnlyOut, runQueries2]
+    runDistinguisher (mkDist ql P) o = (runQueriesOnlyOut o ql).map P := by
+  rw [runDistinguisher_unfold, runQueriesOnlyOut, runQueries2]
   simp only [PMF.map_comp, ← PMF.bind_map]
   rw [show (o.initialState >>= runQueries2Aux o.queries ql)
       = o.initialState.bind (runQueries2Aux o.queries ql) from rfl]
@@ -543,13 +543,13 @@ advantage separating `o1` and `o2`, then `o1` and `o2` are observationally equiv
 theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O)
     (H : ∀ d : adversaryT O, advantage d o1 o2 = 0) : ObsEq o1 o2 := by
   classical
-  have Hd : ∀ d : adversaryT O, runDinstinguisher d o1 = runDinstinguisher d o2 :=
+  have Hd : ∀ d : adversaryT O, runDistinguisher d o1 = runDistinguisher d o2 :=
     fun d => distanceOnBoolIrreflexive _ _ (H d)
   intro ql
   apply PMF.ext
   intro target
   have h := Hd (mkDist ql (fun x => decide (x = target)))
-  rw [runDinstinguisher_mkDist, runDinstinguisher_mkDist] at h
+  rw [runDistinguisher_mkDist, runDistinguisher_mkDist] at h
   have h2 := congrArg (fun (p : PMF Bool) => p true) h
   simp only [PMF.map_apply] at h2
   rw [tsum_eq_single target, tsum_eq_single target] at h2
@@ -557,12 +557,12 @@ theorem obsEq_of_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImp
   · intro b hb; simp [hb]
   · intro b hb; simp [hb]
 
--- eqivalence
+-- equivalence
 theorem obsEq_eq_advantage_zero {I : Type} {O : OracleSpec I} (o1 o2 : OracleImpl O) :
      ObsEq o1 o2 ↔ ∀ d : adversaryT O, advantage d o1 o2 = 0 := by
     constructor
     · intro H d
       simp [advantage, pdistancePMF]
-      rw [obsEq_distinquishing_ub o1 o2 H]
+      rw [obsEq_distinguishing_ub o1 o2 H]
       simp []
     · apply obsEq_of_advantage_zero

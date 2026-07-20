@@ -1,11 +1,11 @@
 import GameHoppingInLean.Indistinguishability.Def
-import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
+import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCiphertextsPub
 
 /-- Public-key IND-CPA-rand oracle spec with a public-key reveal query and a
 single-message ciphertext query. This is definitionally the same interface as
-`OneTimeUniformCyphertextsPubSpec`, but without the one-query restriction. -/
-abbrev IndCpaRandPubSpec (PubK M C : Type) : OracleSpec (OneTimeUniformCyphertextsPubQ M) :=
-  OneTimeUniformCyphertextsPubSpec PubK M C
+`OneTimeUniformCiphertextsPubSpec`, but without the one-query restriction. -/
+abbrev IndCpaRandPubSpec (PubK M C : Type) : OracleSpec (OneTimeUniformCiphertextsPubQ M) :=
+  OneTimeUniformCiphertextsPubSpec PubK M C
 
 /-- Convenience query constructor for revealing the public key. -/
 @[reducible, inline] def indCpaRandPubGetPk {PubK M C : Type} :

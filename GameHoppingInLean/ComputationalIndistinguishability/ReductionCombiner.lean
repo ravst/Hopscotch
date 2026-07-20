@@ -1,8 +1,8 @@
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
+import GameHoppingInLean.ComputationalIndistinguishability.EmptyTypes
 import GameHoppingInLean.ObservationalEq.Defs
-import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
-import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
+import GameHoppingInLean.ComputationalIndistinguishability.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishability.ObsEqComp
 
 /- # Reduction combination.
 
@@ -271,12 +271,12 @@ def reductionStateInclusionMiniR_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 :
   [Nonempty x2.stateType] [Nonempty x1.stateType]
   (impl : OracleImpl O1) :
   forall dist,
-  runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1 x2).apply impl) =
-  runDinstinguisher dist (x2.apply impl)
+  runDistinguisher dist ((reductionCombinerMiniR_nontrivial x1 x2).apply impl) =
+  runDistinguisher dist (x2.apply impl)
 :=
 by
   intro dist
-  apply obsEq_distinquishing_ub
+  apply obsEq_distinguishing_ub
   apply ObsEqSymm
   apply reductionStateInclusionMiniR_spec
 
@@ -285,16 +285,16 @@ def reductionStateInclusionMiniL_spec2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 :
   [Nonempty x2.stateType] [Nonempty x1.stateType]
   (impl : OracleImpl O1) :
   forall dist,
-  runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) =
-  runDinstinguisher dist (x1.apply impl)
+  runDistinguisher dist ((reductionCombinerMiniL_nontrivial x1 x2).apply impl) =
+  runDistinguisher dist (x1.apply impl)
 := by
   intro dist
-  apply obsEq_distinquishing_ub
+  apply obsEq_distinguishing_ub
   apply ObsEqSymm
   apply reductionStateInclusionMiniL_spec
 
 
-noncomputable def bernulli_ratio (a b : ℕ) : PMF Bool :=
+noncomputable def bernoulli_ratio (a b : ℕ) : PMF Bool :=
   PMF.bernoulli (a/(a+b)) (
         by
           have H : a <= a + b :=  by
@@ -313,7 +313,7 @@ noncomputable def reductionCombiner_nontrivial
   (x1.1+x2.1, {
     stateType := (x1.2.stateType ⊕ x2.2.stateType)
     initialState := (do
-      let x : Bool <- OracleReduction.initSample (bernulli_ratio x1.1 x2.1)
+      let x : Bool <- OracleReduction.initSample (bernoulli_ratio x1.1 x2.1)
       if x then
         let init <- x1.2.initialState
         return Sum.inl init
@@ -348,15 +348,15 @@ lemma reductionOfIf {X : Type _} (r : PMF Bool) (x1 x2 : PMF X) (t : X) :
   · exact ENNReal.mul_ne_top (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)
   · exact ENNReal.mul_ne_top (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)
 
-lemma getBernulli (x : NNReal) (Hx : x <= 1) : getPMF (PMF.bernoulli x Hx) true = x := by
+lemma getBernoulli (x : NNReal) (Hx : x <= 1) : getPMF (PMF.bernoulli x Hx) true = x := by
   simp [getPMF, PMF.bernoulli_apply]
-lemma getBernullif (x : NNReal) (Hx : x <= 1) : getPMF (PMF.bernoulli x Hx) false = 1-x := by
+lemma getBernoullif (x : NNReal) (Hx : x <= 1) : getPMF (PMF.bernoulli x Hx) false = 1-x := by
   simp [getPMF, PMF.bernoulli_apply]
 
-lemma getBernullir (x1 x2 : ℕ) : getPMF (bernulli_ratio x1 x2) true = x1/(x1+x2) := by
-  simp [bernulli_ratio, getBernulli]
-lemma getBernullir2 (x1 x2 : ℕ) (H : x1 + x2 >= 1) : getPMF (bernulli_ratio x1 x2) false = x2/(x1+x2) := by
-  simp only [bernulli_ratio, getBernullif]
+lemma getBernoullir (x1 x2 : ℕ) : getPMF (bernoulli_ratio x1 x2) true = x1/(x1+x2) := by
+  simp [bernoulli_ratio, getBernoulli]
+lemma getBernoullir2 (x1 x2 : ℕ) (H : x1 + x2 >= 1) : getPMF (bernoulli_ratio x1 x2) false = x2/(x1+x2) := by
+  simp only [bernoulli_ratio, getBernoullif]
   have hne : (x1 : NNReal) + x2 ≠ 0 := by
     have : (1:NNReal) ≤ (x1:NNReal) + x2 := by exact_mod_cast H
     intro h; rw [h] at this; simp at this
@@ -369,7 +369,7 @@ lemma reductionCombiner_initialState_split {I : Type} {O : OracleSpec I} {I1 : T
   (x1 x2 : ℕ × (OracleReduction O1 O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
   ((reductionCombiner_nontrivial x1 x2).2.apply impl).initialState =
-  (bernulli_ratio x1.1 x2.1) >>= fun b =>
+  (bernoulli_ratio x1.1 x2.1) >>= fun b =>
     if b then ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl).initialState
     else ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl).initialState
 := by
@@ -384,7 +384,7 @@ lemma reductionCombiner_initialState_split {I : Type} {O : OracleSpec I} {I1 : T
   have hpb : ∀ {β γ : Type} (a : β) (f : β → PMF γ), (pure a : PMF β).bind f = f a :=
     fun a f => by rw [show (pure a : PMF _) = PMF.pure a from rfl, PMF.pure_bind]
   simp only [hpb]
-  rw [PMF.bind_comm impl.initialState (bernulli_ratio x1.1 x2.1)]
+  rw [PMF.bind_comm impl.initialState (bernoulli_ratio x1.1 x2.1)]
   congr 1
   ext b
   cases b <;> simp only [Bool.false_eq_true, reduceIte, if_true]
@@ -394,16 +394,16 @@ lemma reductionCombinerCorrect_nontrivial_helper {I : Type} {O : OracleSpec I} {
   (impl : OracleImpl O1)
   (x1 x2 : ℕ × (OracleReduction O1 O))
   [Nonempty x2.2.stateType] [Nonempty x1.2.stateType] :
-  runDinstinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =
-  (weightedCases (bernulli_ratio x1.1 x2.1)
-    (runDinstinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl))
-    (runDinstinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl))
+  runDistinguisher dist ((reductionCombiner_nontrivial x1 x2).2.apply impl) =
+  (weightedCases (bernoulli_ratio x1.1 x2.1)
+    (runDistinguisher dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl))
+    (runDistinguisher dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl))
   )
 := by
   unfold weightedCases
-  rw [runDinstinguisher2inner dist ((reductionCombiner_nontrivial x1 x2).2.apply impl),
-      runDinstinguisher2inner dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl),
-      runDinstinguisher2inner dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl)]
+  rw [runDistinguisher2inner dist ((reductionCombiner_nontrivial x1 x2).2.apply impl),
+      runDistinguisher2inner dist ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl),
+      runDistinguisher2inner dist ((reductionCombinerMiniR_nontrivial x1.2 x2.2).apply impl)]
   rw [reductionCombiner_initialState_split]
   have hqL : ((reductionCombiner_nontrivial x1 x2).2.apply impl).queries
       = ((reductionCombinerMiniL_nontrivial x1.2 x2.2).apply impl).queries := by
@@ -451,16 +451,16 @@ by
     simp [reductionCombinerCorrect_nontrivial_helper]
   simp [pdistancePMF]
   simp [reductionOfIf _ _ _ true]
-  simp [getBernullir, getBernullir2 x1.1 x2.1 (by
+  simp [getBernoullir, getBernoullir2 x1.1 x2.1 (by
     refine Nat.le_add_right_of_le ?_
     · apply Hneq.1
     )]
   simp [reductionStateInclusionMiniR_spec2]
   simp [reductionStateInclusionMiniL_spec2]
-  generalize (getPMF (runDinstinguisher dist (x1.2.apply assumption.i.1)) true).toReal = l1
-  generalize (getPMF (runDinstinguisher dist (x1.2.apply assumption.i.2)) true).toReal = l2
-  generalize (getPMF (runDinstinguisher dist (x2.2.apply assumption.i.1)) true).toReal = z1
-  generalize (getPMF (runDinstinguisher dist (x2.2.apply assumption.i.2)) true).toReal = z2
+  generalize (getPMF (runDistinguisher dist (x1.2.apply assumption.i.1)) true).toReal = l1
+  generalize (getPMF (runDistinguisher dist (x1.2.apply assumption.i.2)) true).toReal = l2
+  generalize (getPMF (runDistinguisher dist (x2.2.apply assumption.i.1)) true).toReal = z1
+  generalize (getPMF (runDistinguisher dist (x2.2.apply assumption.i.2)) true).toReal = z2
   grind
 
 -- def NatPlus := {x : ℕ // x>0}

@@ -1,5 +1,5 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
-import GameHoppingInLean.ComputationalIndistinguishibility.EmptyTypes
+import GameHoppingInLean.ComputationalIndistinguishability.EmptyTypes
 import Mathlib
 
 /- # Behavioral Oracle

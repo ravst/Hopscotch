@@ -1,7 +1,7 @@
-import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
-import GameHoppingInLean.ComputationalIndistinguishibility.BehavioralOracle
-import GameHoppingInLean.ComputationalIndistinguishibility.PMFDisintegration
-import GameHoppingInLean.ComputationalIndistinguishibility.ObservationEquivalenceReach
+import GameHoppingInLean.ComputationalIndistinguishability.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishability.BehavioralOracle
+import GameHoppingInLean.ComputationalIndistinguishability.PMFDisintegration
+import GameHoppingInLean.ComputationalIndistinguishability.ObservationEquivalenceReach
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
@@ -405,20 +405,20 @@ lemma Hstep_reach {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) 
     rw [heq2]; exact hpw_mem0.2
   · rw [hpw1]; simp [List.reverse_cons]
 
--- /-- `runDinstinguisher` expressed through the generic `geval`. -/
--- lemma runDinstinguisher_geval {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
---     runDinstinguisher dist o =
+-- /-- `runDistinguisher` expressed through the generic `geval`. -/
+-- lemma runDistinguisher_geval {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
+--     runDistinguisher dist o =
 --       o.initialState.bind (fun s => (geval (fun i s => (o.queries i) s) (toGTree dist) s).map Prod.fst) := by
---   simp only [runDinstinguisher]
+--   simp only [runDistinguisher]
 --   congr 1; funext init
 --   rw [← geval_simulate_corr o dist init]
 --   rfl
 
-/-- `runDinstinguisher` expressed through the generic `geval`. -/
-lemma runDinstinguisher_unfold {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
-    runDinstinguisher dist o =
+/-- `runDistinguisher` expressed through the generic `geval`. -/
+lemma runDistinguisher_unfold {I : Type} {O : OracleSpec I} (o : OracleImpl O) (dist : adversaryT O) :
+    runDistinguisher dist o =
       o.initialState.bind (fun s => (simulateQ (addPMFtoImpl (o.queries)) (dist) s).map Prod.fst) := by
-  simp only [runDinstinguisher]
+  simp only [runDistinguisher]
   congr 1
 
 
@@ -431,39 +431,39 @@ queries.  It is reduced (via the generic `geval_reconstruct`) to the conditional
 `condState_nil`, `condState_lvl` and `hstep`. -/
 lemma rState2Rstate_non_dist {I : Type} {O : OracleSpec I} (o : OracleImpl O) (q_b : ENat) (dist : adversaryT O)
   (Hdist : FreeM.depth dist <= q_b) :
-  runDinstinguisher dist o = runDinstinguisher dist (rState2Rstate q_b o) := by
+  runDistinguisher dist o = runDistinguisher dist (rState2Rstate q_b o) := by
   have key2 := abstraction_with_levels_and_reach q_b (fun i s => (o.queries i) s)
       (fun i τ => ((rState2Rstate q_b o).queries i) τ) (condState o) (fun τ => (τ.length : ℕ∞))
       (reachT o) (Hstep_reach o q_b) (hstep o q_b) (dist) [] (reachT_nil o)
       (by simpa [] using Hdist)
   rw [condState_nil] at key2
-  rw [runDinstinguisher_unfold o dist]
-  rw [runDinstinguisher_unfold (rState2Rstate q_b o) dist]
+  rw [runDistinguisher_unfold o dist]
+  rw [runDistinguisher_unfold (rState2Rstate q_b o) dist]
   rw [key2]
   rw [show (rState2Rstate q_b o).initialState = PMF.pure [] from rfl, PMF.pure_bind]
 
 
 
 
-lemma obsEq_distinquishing (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+lemma obsEq_distinguishing (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
-    runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
+    runDistinguisher dist ro₁ = runDistinguisher dist ro₂ :=
 by
   have H1 := rState2Rstate_non_dist ro₁ q_b dist Hdist
   have H2 := rState2Rstate_non_dist ro₂ q_b dist Hdist
   have H3p : BehavioralOracle.into q_b ro₁ = BehavioralOracle.into q_b ro₂ := behavioral_eq_from_obsEq ro₁ ro₂ q_b obs_eq
-  have H3 : runDinstinguisher dist (rState2Rstate q_b ro₁) = runDinstinguisher dist (rState2Rstate q_b ro₂)
+  have H3 : runDistinguisher dist (rState2Rstate q_b ro₁) = runDistinguisher dist (rState2Rstate q_b ro₂)
   := by
     simp [rState2Rstate]
     rw [H3p]
   rw [H1, H2, H3]
 
-lemma obsEq_distinquishing_adv (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
+lemma obsEq_distinguishing_adv (ro₁ ro₂ : OracleImpl O) (q_b : ENat) (obs_eq : ObsEqBounded ro₁ ro₂ q_b)
   (dist : adversaryT O) (Hdist : FreeM.depth dist <= q_b) :
     advantage dist ro₁ ro₂ = 0 :=
 by
   simp [advantage, pdistancePMF]
-  rw [obsEq_distinquishing ro₁ ro₂ q_b]
+  rw [obsEq_distinguishing ro₁ ro₂ q_b]
   · simp []
   · assumption
   · assumption
@@ -471,7 +471,7 @@ by
 
 lemma adv_from_bobseq (ro₁ ro₂ : OracleImpl O)
   (dist1 dist2 : adversaryT O)
-  (Hd : forall impl, runDinstinguisher dist1 impl = runDinstinguisher dist2 impl)
+  (Hd : forall impl, runDistinguisher dist1 impl = runDistinguisher dist2 impl)
    :
     advantage dist1 ro₁ ro₂ = advantage dist2 ro₁ ro₂ :=
 by
@@ -479,11 +479,11 @@ by
   rw [Hd]
   rw [Hd]
 
-lemma obsEq_distinquishing_ub (ro₁ ro₂ : OracleImpl O) (obs_eq : ObsEq ro₁ ro₂)
+lemma obsEq_distinguishing_ub (ro₁ ro₂ : OracleImpl O) (obs_eq : ObsEq ro₁ ro₂)
   (dist : adversaryT O) :
-    runDinstinguisher dist ro₁ = runDinstinguisher dist ro₂ :=
+    runDistinguisher dist ro₁ = runDistinguisher dist ro₂ :=
 by
-  apply obsEq_distinquishing (q_b := none)
+  apply obsEq_distinguishing (q_b := none)
   · exact (ObsEq_from_none ro₁ ro₂).mp obs_eq
   · exact le_of_sup_eq' rfl
 
@@ -503,9 +503,9 @@ by
   simp [advantage]
   repeat rw [<-goodDoubleAction]
   congr 1
-  · apply obsEq_distinquishing_ub
+  · apply obsEq_distinguishing_ub
     apply H2
-  · apply obsEq_distinquishing_ub
+  · apply obsEq_distinguishing_ub
     apply H2
 
 
@@ -518,25 +518,25 @@ by
 --       bindInputState f (ro₂ query)) :
 --   forall (init : stateType₁),
 --   pdistancePMF
---     (runDinstinguisher_inner dist ro₁ init)
+--     (runDistinguisher_inner dist ro₁ init)
 --     (do
 --       let init_v <- f init
---       runDinstinguisher_inner dist ro₂ init_v)= 0
+--       runDistinguisher_inner dist ro₂ init_v)= 0
 --   :=  by
 --   induction dist
 --   case pure v =>
---     simp [advantage, runDinstinguisher_inner, simulateQ]
+--     simp [advantage, runDistinguisher_inner, simulateQ]
 --     simp [pdistancePMF, distSelf]
 --   case roll β cont Hind =>
 --     intro init
---     simp [runDinstinguisher_inner_bind]
+--     simp [runDistinguisher_inner_bind]
 --     have X := congr_fun (Habs β) init
 --     simp [bindOutputState, bindInputState] at X
 --     simp [StateT.run] at X
 --     rw [<-PMF.bind_bind]
 --     rw [<-X]
 --     simp [bindSecond]
---     apply obseEq_from_2_steps
+--     apply obsEq_from_2_steps
 --     intro a
 --     apply Hind a.1
 -- lemma correctAbstractionAfterwithPMFSpec {I : Type _} {stateType₁ stateType₂ : Type _} {O : OracleSpec I}
@@ -568,10 +568,10 @@ by
 --   advantage dist ro₁ ro₂ = 0
 -- := by
 --     simp [advantage]
---     simp [runDinstinguisher2inner]
+--     simp [runDistinguisher2inner]
 --     rw [<-Habs.1]
 --     simp []
---     apply obseEq_from_2_steps
+--     apply obsEq_from_2_steps
 --     intro a
 --     simp [adversaryT] at dist
 --     have X := correctAbstraction2ind_inner (O := withPMFSpec O) dist (addPMFtoImpl ro₁.queries) (addPMFtoImpl ro₂.queries) f

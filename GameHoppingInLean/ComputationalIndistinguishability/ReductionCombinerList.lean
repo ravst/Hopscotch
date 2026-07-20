@@ -1,4 +1,4 @@
-import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
+import GameHoppingInLean.ComputationalIndistinguishability.ReductionCombiner
 import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Comp.OracleReductionsLemmas
 
@@ -22,7 +22,7 @@ noncomputable def reduction_combiner_list
   : OracleReduction O1 O2
   :=
   have lNoEmpty (x : Fin l.length) : Nonempty l[x].stateType :=
-    oracleCompToObject _ (implementableWihtPMF _ He) l[x].initialState
+    oracleCompToObject _ (implementableWithPMF _ He) l[x].initialState
   {
     stateType := internal_type l
     initialState := (do
@@ -150,17 +150,17 @@ noncomputable def flatToSumProd {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Oracle
   fun p => (flatToSum l1 l2 p.1, p.2)
 
 /-
-Splitting a uniform draw over `Fin (n1 + n2)` as a `bernulli_ratio`-weighted
+Splitting a uniform draw over `Fin (n1 + n2)` as a `bernoulli_ratio`-weighted
 choice between uniform draws over the two halves.
 -/
 lemma uniform_fin_add_split {X : Type} (n1 n2 : ℕ) [NeZero n1] [NeZero n2] [NeZero (n1 + n2)]
     (g : Fin (n1 + n2) → PMF X) :
     (PMF.uniformOfFintype (Fin (n1 + n2))).bind g =
-      (bernulli_ratio n1 n2).bind (fun b =>
+      (bernoulli_ratio n1 n2).bind (fun b =>
         if b then (PMF.uniformOfFintype (Fin n1)).bind (fun j => g (j.castAdd n2))
         else (PMF.uniformOfFintype (Fin n2)).bind (fun j => g (j.natAdd n1))) := by
   ext x;
-  simp +decide [ PMF.bind_apply, PMF.uniformOfFintype_apply, bernulli_ratio ];
+  simp +decide [ PMF.bind_apply, PMF.uniformOfFintype_apply, bernoulli_ratio ];
   simp +decide [ div_eq_mul_inv, mul_assoc, mul_left_comm, Finset.mul_sum _ _ _, Finset.sum_add_distrib, Finset.sum_mul, Nat.cast_add, Nat.cast_one, NeZero.ne ];
   rw [ show ( 1 - ( n1 : ENNReal ) * ( n1 + n2 : ENNReal ) ⁻¹ ) = ( n2 : ENNReal ) * ( n1 + n2 : ENNReal ) ⁻¹ from ?_ ];
   · simp +decide [ ← mul_assoc, ← Finset.mul_sum _ _ _, ← Finset.sum_mul, NeZero.ne ];
@@ -195,7 +195,7 @@ lemma uniform_list_append_split {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : Oracle
     (hr : ∀ j : Fin l2.length,
       g ⟨l1.length + ↑j, by have := j.isLt; simp only [List.length_append]; omega⟩ = gr j) :
     (PMF.uniformOfFintype (Fin (l1 ++ l2).length)).bind g =
-      (bernulli_ratio l1.length l2.length).bind (fun b =>
+      (bernoulli_ratio l1.length l2.length).bind (fun b =>
         if b then (PMF.uniformOfFintype (Fin l1.length)).bind gl
         else (PMF.uniformOfFintype (Fin l2.length)).bind gr) := by
   have hlen : (l1 ++ l2).length = l1.length + l2.length := List.length_append ..
@@ -613,12 +613,12 @@ by
     apply reduction_combiner_correct
 
 
-/-- Pull an initial uniform (or arbitrary `PMF`) sample outside of `runDinstinguisher`. -/
-lemma runDinstinguisher_initSample {I : Type} {O : OracleSpec I} {α : Type}
+/-- Pull an initial uniform (or arbitrary `PMF`) sample outside of `runDistinguisher`. -/
+lemma runDistinguisher_initSample {I : Type} {O : OracleSpec I} {α : Type}
     (impl : OracleImpl O) (p : PMF α) (k : α → adversaryT O) :
-    runDinstinguisher (OracleReduction.initSample p >>= k) impl
-      = p.bind (fun x => runDinstinguisher (k x) impl) := by
-  simp only [runDinstinguisher]
+    runDistinguisher (OracleReduction.initSample p >>= k) impl
+      = p.bind (fun x => runDistinguisher (k x) impl) := by
+  simp only [runDistinguisher]
   have h : ∀ init : impl.stateType,
       PMF.map (fun x => x.1)
           (simulateQ (addPMFtoImpl impl.queries) (OracleReduction.initSample p >>= k) init)
@@ -802,9 +802,9 @@ lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
   (r1 : OracleReduction O2 O3)
   (l : {x : List (OracleReduction O1 O2) // x.length > 0})
   (impl : OracleImpl O1) (dist : adversaryT O3) :
-  runDinstinguisher dist
+  runDistinguisher dist
     ((rcompose (reduction_combiner_list_full l) r1).apply impl) =
-  runDinstinguisher dist
+  runDistinguisher dist
     ((reduction_combiner_list_full ⟨l.val.map (fun x => rcompose x r1),
       by simp [l.2]
     ⟩).apply impl)
@@ -814,7 +814,7 @@ lemma compose_combine {I1 : Type} (O1 : OracleSpec I1)
     simp only [reduction_combiner_list_full, dif_pos He]
     rw [goodDoubleAction, goodDoubleAction, rcompose_apply]
     rw [combiner_apply_uniform l.val l.2 He, combiner_apply_uniform _ _ He]
-    rw [runDinstinguisher_initSample, runDinstinguisher_initSample]
+    rw [runDistinguisher_initSample, runDistinguisher_initSample]
     have hmap : (l.val.map (fun x => rcompose x r1)).length = l.val.length := by
       simp
     haveI : Nonempty (Fin l.val.length) := ⟨⟨0, l.2⟩⟩

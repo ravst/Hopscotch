@@ -1,12 +1,12 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.DecisionalDH
-import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
+import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCiphertextsPub
 import GameHoppingInLean.Examples.Constructions.ElGamal
 
 import GameHoppingInLean.ObservationalEq.Defs
 import GameHoppingInLean.Tactic.Defs
 import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
 import GameHoppingInLean.Tactic.Normalization.Group.Simprocs
-import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
+import GameHoppingInLean.ComputationalIndistinguishability.AssumptionCounting
 
 
 open OracleReduction
@@ -18,7 +18,7 @@ structure ElGamalRealState (G : Type) where
 
 noncomputable def G1 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRealState G
   initialState := do
     let a <- sampleExponent G
@@ -48,7 +48,7 @@ noncomputable def G1 {G : Type}
 
 noncomputable def G2 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRealState G
   initialState := do
     let a <- sampleExponent G
@@ -92,7 +92,7 @@ proof, this reduction does not use complex initialization to fetch the DDH tuple
 it asks the DDH oracle lazily inside the first public-key or message query. -/
 noncomputable def DDHToElGamalOTUCPubReduction (G : Type)
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] :
-    OracleReduction (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleReduction (DecisionalDHSpec G) (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := ElGamalToDDHReductionState G
   initialState := do
     let (A, B, C) ← initQuery DecisionalDHQ.query
@@ -116,7 +116,7 @@ structure ElGamalRandState (G : Type) where
 
 noncomputable def G3 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRandState G
   initialState := do
     let a <- sampleExponent G
@@ -145,7 +145,7 @@ noncomputable def G3 {G : Type}
 
 noncomputable def G4 {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := ElGamalRandState G
   initialState := do
     let a <- sampleExponent G
@@ -187,10 +187,10 @@ def G4toG3Abstraction {G : Type} [Group G] [Fintype G] [Inhabited G] [Nontrivial
     }
 
 attribute [local game_hopping_unfold]
-  OneTimeUniformCyphertextsPubDef
-  OneTimeUniformCyphertextsPubReal
-  OneTimeUniformCyphertextsPubRand
-  OneTimeUniformCyphertextsPubSpec
+  OneTimeUniformCiphertextsPubDef
+  OneTimeUniformCiphertextsPubReal
+  OneTimeUniformCiphertextsPubRand
+  OneTimeUniformCiphertextsPubSpec
   DecisionalDHSpec
   dhReal
   dhRand
@@ -204,7 +204,7 @@ attribute [local game_hopping_unfold]
 /-- Family version of DDH implying one-time uniform-ciphertexts public-key security for
 ElGamal, over a security-parameter-indexed family of generated finite groups. -/
 noncomputable def ddhImpliesElGamalOTUCPubFam (Γ : GroupGeneratorFamily) :
-    OneTimeUniformCyphertextsPubIFam
+    OneTimeUniformCiphertextsPubIFam
       (DecisionalDHAssumptionFam Γ)
       (ElGamalFamily Γ) := by
   intro κ
@@ -216,14 +216,14 @@ noncomputable def ddhImpliesElGamalOTUCPubFam (Γ : GroupGeneratorFamily) :
   have hgen : IsGenerator g := by
     simpa [g] using Γ.isGenerator κ
   game_hopping [
-    OneTimeUniformCyphertextsPubReal (ElGamal g),
+    OneTimeUniformCiphertextsPubReal (ElGamal g),
     G1 g,
     G2 g,
     (DDHToElGamalOTUCPubReduction (Γ.G κ)) ◇ (dhReal g),
     (DDHToElGamalOTUCPubReduction (Γ.G κ)) ◇ (dhRand g),
     G3 g,
     G4 g,
-    OneTimeUniformCyphertextsPubRand (ElGamal g)
+    OneTimeUniformCiphertextsPubRand (ElGamal g)
   ] using GH_group_norm
   · by_abstraction ← (fun x => ⟨x.A, x.eavesdropDone⟩)
   · by_rand_abstraction (G1toG2Abstraction g)

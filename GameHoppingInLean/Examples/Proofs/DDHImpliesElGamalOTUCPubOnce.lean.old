@@ -1,7 +1,7 @@
 import GameHoppingInLean.Examples.SecurityDefinitions.DecisionalDH
 import GameHoppingInLean.Examples.SecurityDefinitions.IndCpaRandPub
 import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeSecrecy
-import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCyphertextsPub
+import GameHoppingInLean.Examples.SecurityDefinitions.OneTimeUniformCiphertextsPub
 import GameHoppingInLean.Examples.Constructions.ElGamal
 import GameHoppingInLean.Examples.Misc.Once
 
@@ -53,7 +53,7 @@ initialization to obtain `(A, B, C)`, then publishes `A` as the public key and a
 message query with `(B, m * C)`. -/
 noncomputable def DDHToElGamalOTUCPubReduction {G : Type}
     [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (_g : G) :
-    reduction (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    reduction (DecisionalDHSpec G) (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let (A, B, C) <- RReduction.query DecisionalDHQ.querry ()
@@ -76,7 +76,7 @@ noncomputable def DDHToElGamalOTUCPubReduction {G : Type}
 reused through `once`, so this is definitionally the global-randomness hop. -/
 noncomputable def ElGamalOTUCPubG0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleGlobalRandomness
       (IndCpaRandPubReal (ElGamal g))
@@ -88,7 +88,7 @@ noncomputable def ElGamalOTUCPubG0 {G : Type} [Group G] [Fintype G] [Nontrivial 
 eavesdropping query with `(B, m * C)`. -/
 noncomputable def ElGamalOTUCPubG1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let a <- sampleExponent G
@@ -115,7 +115,7 @@ noncomputable def ElGamalOTUCPubG1 {G : Type} [Group G] [Fintype G] [Nontrivial 
 message query with `(B, m * C)`. -/
 noncomputable def ElGamalOTUCPubG3 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := DDHElGamalOTSState G
   initialState := do
     let a <- sampleExponent G
@@ -140,7 +140,7 @@ noncomputable def ElGamalOTUCPubG3 {G : Type} [Group G] [Fintype G] [Nontrivial 
 independent `b, c` and return `(g^b, m * g^c)`. -/
 noncomputable def ElGamalOTUCPubG4 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) where
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) where
   stateType := OneTimeSecrecyState G
   initialState := do
     let (pk, _sk) <- (ElGamal g).keyGen
@@ -162,21 +162,21 @@ noncomputable def ElGamalOTUCPubG4 {G : Type} [Group G] [Fintype G] [Nontrivial 
   }
 
 /-- `OTUCPubReal` for ElGamal is observationally equivalent to `G0`. -/
-theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+theorem obsEq_oneTimeUniformCiphertextsPubRealElGamal_G0 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    ObsEq (OneTimeUniformCyphertextsPubReal (ElGamal g)) (ElGamalOTUCPubG0 g) := by
+    ObsEq (OneTimeUniformCiphertextsPubReal (ElGamal g)) (ElGamalOTUCPubG0 g) := by
   have hCorrectAbstraction :
       correctAbstraction
-        (OneTimeUniformCyphertextsPubReal (ElGamal g))
+        (OneTimeUniformCiphertextsPubReal (ElGamal g))
         (once otucPubEavesdropIq (IndCpaRandPubReal (ElGamal g)))
         (fun st => (st.eavesdropCount != 0, st.pk)) := by
     constructor
-    · simp only [OneTimeUniformCyphertextsPubReal, once, OnceRed, IndCpaRandPubReal,
+    · simp only [OneTimeUniformCiphertextsPubReal, once, OnceRed, IndCpaRandPubReal,
         applySRReduction, monad_norm, sPMF]
       rfl
     · intro i q
       ext1 st
-      simp [once, OnceRed, applySRReduction, OneTimeUniformCyphertextsPubReal, mapInputState,
+      simp [once, OnceRed, applySRReduction, OneTimeUniformCiphertextsPubReal, mapInputState,
         mapOutputState, query_impl_convert, IndCpaRandPubReal]
       cases i
       case getPk =>
@@ -194,10 +194,10 @@ theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 {G : Type} [Group G] [F
 
   have hObsEqRealOnce :
       ObsEq
-        (OneTimeUniformCyphertextsPubReal (ElGamal g))
+        (OneTimeUniformCiphertextsPubReal (ElGamal g))
         (once otucPubEavesdropIq (IndCpaRandPubReal (ElGamal g))) := by
     exact correctAbstractionImpliesObsEq
-      (OneTimeUniformCyphertextsPubReal (ElGamal g))
+      (OneTimeUniformCiphertextsPubReal (ElGamal g))
       (once otucPubEavesdropIq (IndCpaRandPubReal (ElGamal g)))
       (fun st => (st.eavesdropCount != 0, st.pk))
       hCorrectAbstraction
@@ -222,7 +222,7 @@ theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 {G : Type} [Group G] [F
         cases input
         simp
       case neg.eavesdrop =>
-        simp [IndCpaRandPubSpec, OneTimeUniformCyphertextsPubSpec] at input
+        simp [IndCpaRandPubSpec, OneTimeUniformCiphertextsPubSpec] at input
         symm
         simp [ElGamal]
 
@@ -280,10 +280,10 @@ theorem obsEq_G0_G1
             RState.modify, sPMF, monad_norm, mapSecond]
 
 /-- `OTUCPubReal` for ElGamal is observationally equivalent to `G1`. -/
-theorem obsEq_oneTimeUniformCyphertextsPubRealElGamal_G1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
+theorem obsEq_oneTimeUniformCiphertextsPubRealElGamal_G1 {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    ObsEq (OneTimeUniformCyphertextsPubReal (ElGamal g)) (ElGamalOTUCPubG1 g) := by
-  exact obsEq_trans (obsEq_oneTimeUniformCyphertextsPubRealElGamal_G0 g) (obsEq_G0_G1 g)
+    ObsEq (OneTimeUniformCiphertextsPubReal (ElGamal g)) (ElGamalOTUCPubG1 g) := by
+  exact obsEq_trans (obsEq_oneTimeUniformCiphertextsPubRealElGamal_G0 g) (obsEq_G0_G1 g)
 
 /-- `G1` is observationally equivalent to applying the DDH reduction to the real DDH oracle. -/
 theorem obsEq_G1_applyComplexInit_dhReal
@@ -363,7 +363,7 @@ private noncomputable def elGamalG3G4LocalRandQuery {G : Type} [Group G]
 
 private noncomputable def ElGamalOTUCPubG3Global {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleGlobalRandomness
       (IndCpaRandPubReal (ElGamal g))
@@ -373,7 +373,7 @@ private noncomputable def ElGamalOTUCPubG3Global {G : Type} [Group G] [Fintype G
 
 private noncomputable def ElGamalOTUCPubG4Local {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) :
-    OracleImpl (OneTimeUniformCyphertextsPubSpec G G (G × G)) :=
+    OracleImpl (OneTimeUniformCiphertextsPubSpec G G (G × G)) :=
   once otucPubEavesdropIq
     (simpleLocalRandomness
       (IndCpaRandPubReal (ElGamal g))
@@ -464,12 +464,12 @@ theorem obsEq_G3_G4 {G : Type} [Group G] [Fintype G] [Nontrivial G]
   exact obsEq_trans hG3G3Global (obsEq_trans hGlobalLocal hLocalG4)
 
 /-- `G4` is observationally equivalent to the random one-time uniform-ciphertexts public-key oracle for ElGamal. -/
-theorem obsEq_G4_oneTimeUniformCyphertextsPubRandElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G]
+theorem obsEq_G4_oneTimeUniformCiphertextsPubRandElGamal {G : Type} [Group G] [Fintype G] [Nontrivial G]
     [Inhabited G] (g : G) (hgen : IsGenerator g) :
     ObsEq (ElGamalOTUCPubG4 g)
-      (OneTimeUniformCyphertextsPubRand (ElGamal g)) := by
+      (OneTimeUniformCiphertextsPubRand (ElGamal g)) := by
   apply obsEqReflexive
-  simp [ElGamalOTUCPubG4, OneTimeUniformCyphertextsPubRand, ElGamal]
+  simp [ElGamalOTUCPubG4, OneTimeUniformCiphertextsPubRand, ElGamal]
   ext1 α
   cases α with
   | getPk =>
@@ -486,8 +486,8 @@ noncomputable def ddhImpliesElGamalOTUCPub
     {G : Type} [Group G] [Fintype G] [Nontrivial G] [Inhabited G] (g : G)
     (hgen : IsGenerator g)
     (hReduction : DDHToElGamalOTUCPubReduction g ∈
-      Reductions.reductions (DecisionalDHSpec G) (OneTimeUniformCyphertextsPubSpec G G (G × G)))
-    : OneTimeUniformCyphertextsPubDef (DecisionalDHAssumption' g) Reductions (ElGamal g) := by
+      Reductions.reductions (DecisionalDHSpec G) (OneTimeUniformCiphertextsPubSpec G G (G × G)))
+    : OneTimeUniformCiphertextsPubDef (DecisionalDHAssumption' g) Reductions (ElGamal g) := by
   intro κ
   have hRealRand :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
@@ -499,21 +499,21 @@ noncomputable def ddhImpliesElGamalOTUCPub
 
   have h1 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
-        (OneTimeUniformCyphertextsPubReal (ElGamal g))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubReal (ElGamal g))
         (ElGamalOTUCPubG1 g) :=
-    Indistinguishable.of_ObsEq (obsEq_oneTimeUniformCyphertextsPubRealElGamal_G1 g)
+    Indistinguishable.of_ObsEq (obsEq_oneTimeUniformCiphertextsPubRealElGamal_G1 g)
 
   have h2 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
         (ElGamalOTUCPubG1 g)
         (applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g)) :=
     Indistinguishable.of_ObsEq (obsEq_G1_applyComplexInit_dhReal g)
 
   have h3 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
         (applyreduction (DDHToElGamalOTUCPubReduction g) (dhReal g))
         (applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g)) :=
     IndistinguishableI.reduction
@@ -521,35 +521,35 @@ noncomputable def ddhImpliesElGamalOTUCPub
 
   have h4 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
         (applyreduction (DDHToElGamalOTUCPubReduction g) (dhRand g))
         (ElGamalOTUCPubG3 g) :=
     Indistinguishable.of_ObsEq (obsEq_applyComplexInit_dhRand_G3 g)
 
   have h5 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
         (ElGamalOTUCPubG3 g) (ElGamalOTUCPubG4 g) :=
     Indistinguishable.of_ObsEq (obsEq_G3_G4 g)
 
   have h6 :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
         (ElGamalOTUCPubG4 g)
-        (OneTimeUniformCyphertextsPubRand (ElGamal g)) :=
-    Indistinguishable.of_ObsEq (obsEq_G4_oneTimeUniformCyphertextsPubRandElGamal g hgen)
+        (OneTimeUniformCiphertextsPubRand (ElGamal g)) :=
+    Indistinguishable.of_ObsEq (obsEq_G4_oneTimeUniformCiphertextsPubRandElGamal g hgen)
 
   have h :
       IndistinguishableI (DecisionalDHAssumption' g) Reductions κ none
-        (OneTimeUniformCyphertextsPubSpec G G (G × G))
-        (OneTimeUniformCyphertextsPubReal (ElGamal g))
-        (OneTimeUniformCyphertextsPubRand (ElGamal g)) :=
+        (OneTimeUniformCiphertextsPubSpec G G (G × G))
+        (OneTimeUniformCiphertextsPubReal (ElGamal g))
+        (OneTimeUniformCiphertextsPubRand (ElGamal g)) :=
     Indistinguishable.transitive h1 <|
       Indistinguishable.transitive h2 <|
         Indistinguishable.transitive h3 <|
           Indistinguishable.transitive h4 <|
             Indistinguishable.transitive h5 h6
 
-  simpa [OneTimeUniformCyphertextsPubDef] using h
+  simpa [OneTimeUniformCiphertextsPubDef] using h
 
 end

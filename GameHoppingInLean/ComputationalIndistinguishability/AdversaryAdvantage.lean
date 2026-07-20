@@ -1,6 +1,6 @@
 import GameHoppingInLean.Comp.StatefulRandomOracle
 import GameHoppingInLean.Comp.OracleReductions
-import GameHoppingInLean.ComputationalIndistinguishibility.Distance
+import GameHoppingInLean.ComputationalIndistinguishability.Distance
 import GameHoppingInLean.Indistinguishability.Assumption
 import GameHoppingInLean.Tactic.SimpAttrLemmas
 
@@ -12,7 +12,7 @@ def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
 
 
 
-noncomputable def runDinstinguisher {I : Type} {O : OracleSpec I}
+noncomputable def runDistinguisher {I : Type} {O : OracleSpec I}
   (d : adversaryT O) (impl : OracleImpl O) : PMF Bool :=
   let comp := simulateQ (addPMFtoImpl impl.queries) d
   do
@@ -20,36 +20,36 @@ noncomputable def runDinstinguisher {I : Type} {O : OracleSpec I}
     (comp init).map (fun x => x.1)
 
 
-noncomputable def runDinstinguisher_inner {I stateType : Type _} {O : OracleSpec I}
+noncomputable def runDistinguisher_inner {I stateType : Type _} {O : OracleSpec I}
   (d : OracleComp O Bool) (impl : QueryImpl O (RState stateType)) (init : stateType) : PMF Bool :=
   let comp := simulateQ impl d
   (comp init).map (fun x => x.1)
 
-lemma runDinstinguisher_inner_bind {I stateType : Type _} {O : OracleSpec I}
+lemma runDistinguisher_inner_bind {I stateType : Type _} {O : OracleSpec I}
   (ro : QueryImpl O (RState stateType)) (init : stateType)
   (q : O.Domain)
   (cont : O q → PFunctor.FreeM O.toPFunctor Bool)
-  : @runDinstinguisher_inner I stateType O (PFunctor.FreeM.roll q cont) ro init =
+  : @runDistinguisher_inner I stateType O (PFunctor.FreeM.roll q cont) ro init =
   (do
     let (out, state) <- ro q init
-    runDinstinguisher_inner (cont out) ro state
+    runDistinguisher_inner (cont out) ro state
   )
 := by
-  simp [runDinstinguisher_inner, simulateQ]
+  simp [runDistinguisher_inner, simulateQ]
   change PMF.map (fun x => x.1)
       ((ro q init).bind (fun __discr => PFunctor.FreeM.mapM ro (cont __discr.1) __discr.2)) =
     (ro q init).bind
       (fun __discr => PMF.map (fun x => x.1) (PFunctor.FreeM.mapM ro (cont __discr.1) __discr.2))
   rw [PMF.map_bind]
 
-lemma runDinstinguisher2inner {I : Type} {O : OracleSpec I}
+lemma runDistinguisher2inner {I : Type} {O : OracleSpec I}
   (d : OracleComp (withPMFSpec O) Bool) (impl : OracleImpl O) :
-  runDinstinguisher d impl =
+  runDistinguisher d impl =
   (do
     let init <- impl.initialState
-    runDinstinguisher_inner d (addPMFtoImpl impl.queries) init)
+    runDistinguisher_inner d (addPMFtoImpl impl.queries) init)
 := by
-  simp [runDinstinguisher, runDinstinguisher_inner]
+  simp [runDistinguisher, runDistinguisher_inner]
 
 /-- Equation lemma for the queries of an applied reduction, phrased so that it only
 rewrites the *applied* form `(apply r o).queries i` (leaving the partially-applied
@@ -150,10 +150,10 @@ lemma goodDoubleAction_core2 {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpe
 /-  probably could be proven by induction over dist -/
 lemma goodDoubleAction {I1 I2 : Type} {O1 : OracleSpec I1} {O2 : OracleSpec I2}
   (dist : adversaryT O2) (r : OracleReduction O1 O2) (o : OracleImpl O1) :
-  runDinstinguisher dist (OracleReduction.apply r o) =
-  runDinstinguisher (OracleReduction.applyReductionToAdversary r dist) o :=
+  runDistinguisher dist (OracleReduction.apply r o) =
+  runDistinguisher (OracleReduction.applyReductionToAdversary r dist) o :=
 by
-  simp [runDinstinguisher]
+  simp [runDistinguisher]
   conv =>
     lhs
     arg 1
@@ -205,9 +205,9 @@ by
 def compFamT {I : Type} (Spec : ℕ -> OracleSpec I) (Output : ℕ -> Type) := (κ : ℕ) -> OracleComp (withPMFSpec (Spec κ)) (Output κ)
 
 
-noncomputable def runDinstinguisherFam {I : Type} {Spec : ℕ -> OracleSpec I}
+noncomputable def runDistinguisherFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (d : compFamT Spec (fun _κ => Bool)) (impl : famOracle Spec) (κ : ℕ) : PMF Bool :=
-  runDinstinguisher (d κ) (impl κ)
+  runDistinguisher (d κ) (impl κ)
 
 def PolyFamOracleCompPred : Type 1 :=
   {I : Type} -> {Spec : ℕ -> OracleSpec I} -> {Output : ℕ -> Type} -> (compFamT Spec Output) -> Prop
@@ -215,7 +215,7 @@ def PolyFamOracleCompPred : Type 1 :=
 noncomputable
 def advantage {I : Type} {O : OracleSpec I}
   (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) : Real :=
-  pdistancePMF (runDinstinguisher distinguisher o1) (runDinstinguisher distinguisher o2)
+  pdistancePMF (runDistinguisher distinguisher o1) (runDistinguisher distinguisher o2)
 
 lemma advantageReverse {I : Type} {O : OracleSpec I}
   (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) :
@@ -228,7 +228,7 @@ def advantageFam {I : Type} {Spec : ℕ -> OracleSpec I}
   advantage (distinguisher κ) (o1 κ) (o2 κ)
 
 
-lemma advatangeTriangle {I : Type} {O : OracleSpec I}
+lemma advantageTriangle {I : Type} {O : OracleSpec I}
   {distinguisher : adversaryT O} (o1 o2 o3 : OracleImpl O) :
   advantage distinguisher o1 o3 = advantage distinguisher o1 o2 + advantage distinguisher o2 o3 :=
 by
@@ -243,12 +243,12 @@ by
   simp [advantage, pdistancePMF]
 
 
-lemma advatangeTriangleFam {I : Type} {Spec : ℕ -> OracleSpec I}
+lemma advantageTriangleFam {I : Type} {Spec : ℕ -> OracleSpec I}
   (distinguisher : compFamT Spec (fun _κ => Bool)) (o1 o2 o3 : famOracle Spec) :
   forall κ, advantageFam distinguisher o1 o3 κ = advantageFam distinguisher o1 o2 κ + advantageFam distinguisher o2 o3 κ :=
 by
   intro κ
-  apply advatangeTriangle
+  apply advantageTriangle
 
 
 noncomputable
@@ -281,7 +281,7 @@ noncomputable def ascToReal2 {I : Type} {O : OracleSpec I}
       distinguisher
       (x.2.apply assumption.i.1) (x.2.apply assumption.i.2)
 
-lemma ascEqivalence {I : Type} {O : OracleSpec I}
+lemma ascEquivalence {I : Type} {O : OracleSpec I}
   (distinguisher : OracleComp (withPMFSpec O) Bool)
   (assumption : SingleAssumption) (x : ℕ × (OracleReduction assumption.O O)) :
   ascToReal distinguisher assumption x = ascToReal2 distinguisher assumption x :=

@@ -7,14 +7,14 @@ import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.OracleComp.OracleSpec
 import GameHoppingInLean.Indistinguishability.Def
 import GameHoppingInLean.Tactic.SimpAttrLemmas
-import GameHoppingInLean.ComputationalIndistinguishibility.Distance
-import GameHoppingInLean.ComputationalIndistinguishibility.AdversaryAdvantage
-import GameHoppingInLean.ComputationalIndistinguishibility.Sums
--- import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombiner
-import GameHoppingInLean.ComputationalIndistinguishibility.ReductionCombinerList
-import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
+import GameHoppingInLean.ComputationalIndistinguishability.Distance
+import GameHoppingInLean.ComputationalIndistinguishability.AdversaryAdvantage
+import GameHoppingInLean.ComputationalIndistinguishability.Sums
+-- import GameHoppingInLean.ComputationalIndistinguishability.ReductionCombiner
+import GameHoppingInLean.ComputationalIndistinguishability.ReductionCombinerList
+import GameHoppingInLean.ComputationalIndistinguishability.AssumptionCounting
 
-import GameHoppingInLean.ComputationalIndistinguishibility.ObsEqComp
+import GameHoppingInLean.ComputationalIndistinguishability.ObsEqComp
 import GameHoppingInLean.Tactic.Defs
 
 
@@ -58,7 +58,7 @@ lemma obse_eq_step2
   by
     simp [advBoundQ, advBound, AssumptionsUseT.empty, advantage, noAssumptionUse]
     intro dist
-    apply obsEq_distinquishing_adv
+    apply obsEq_distinguishing_adv
     apply Hb
 
 
@@ -71,7 +71,7 @@ noncomputable def obse_eq_step
   ⟨(AssumptionsUseT.empty _ _, AssumptionsUseT.empty _ _), by
     simp [advBoundQ, advBound, AssumptionsUseT.empty, advantage]
     intro dist
-    apply obsEq_distinquishing_adv
+    apply obsEq_distinguishing_adv
     apply Hb
   ⟩
 
@@ -184,7 +184,7 @@ noncomputable def transitive_step_proof
       simp [sumJoining] at HHx
       rw [<-HHx]
       clear HHx
-      rw [(advatangeTriangle _ rm _)]
+      rw [(advantageTriangle _ rm _)]
       rw [(Hasc1 dist Hdepth)]
       rw [(Hasc2 dist Hdepth)]
       simp []

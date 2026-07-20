@@ -4,7 +4,7 @@ import GameHoppingInLean.Examples.Constructions.GGM
 import GameHoppingInLean.Examples.Misc.RF_caching
 import GameHoppingInLean.Tactic.Normalization.PMF.Simprocs
 import GameHoppingInLean.Tactic.Normalization.BitVec.Simprocs
-import GameHoppingInLean.ComputationalIndistinguishibility.AssumptionCounting
+import GameHoppingInLean.ComputationalIndistinguishability.AssumptionCounting
 
 section
 attribute [-simp] bind_pure_comp

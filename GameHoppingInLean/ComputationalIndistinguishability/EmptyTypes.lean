@@ -36,7 +36,7 @@ lemma non_trivial_spec {I : Type _} {O : OracleSpec I} (ro : OracleImpl O) :
     have Hstate : Nonempty ro.stateType := pmf_nonempty ro.initialState
     apply QueryImpl2NonEmpty ro.stateType ro.queries
 
-lemma implementableWihtPMF {I : Type _} (O : OracleSpec I) (H : forall x : I, Nonempty (O x)) :
+lemma implementableWithPMF {I : Type _} (O : OracleSpec I) (H : forall x : I, Nonempty (O x)) :
   forall x, Nonempty ((withPMFSpec O) x) := by
   intro input
   cases input
@@ -71,4 +71,4 @@ lemma reductionNonEmpty
   (x : OracleReduction O1 O2)
   (He : forall x : I1, Nonempty (O1 x)):
   Nonempty x.stateType :=
-    oracleCompToObject _ (implementableWihtPMF _ He) x.initialState
+    oracleCompToObject _ (implementableWithPMF _ He) x.initialState

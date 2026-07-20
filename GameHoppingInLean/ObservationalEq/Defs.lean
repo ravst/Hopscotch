@@ -236,7 +236,7 @@ lemma mapSecond2bind {A X Y} {f : X -> Y} : (PMF.pure ∘ (mapSecond (α := A) f
   ext1
   simp [bindSecond, mapSecond]
 
-lemma correctAbstration2Bind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O)
+lemma correctAbstraction2Bind {I : Type} {O : OracleSpec I} (ro₁ ro₂ : OracleImpl O)
     (f : ro₁.stateType → ro₂.stateType) :
       correctAbstraction ro₁ ro₂ f <-> correctAbstractionBind ro₁ ro₂ (PMF.pure ∘ f)
 := by
@@ -259,7 +259,7 @@ lemma correctAbstractionImpliesObsEqInner {I : Type} {O : OracleSpec I}
   := by
     intro init
     have H := correctAbstractionImpliesObsEqInnerBind ro₁ ro₂ (PMF.pure ∘ f)
-      (by rw [<-correctAbstration2Bind]; assumption) queriesList init
+      (by rw [<-correctAbstraction2Bind]; assumption) queriesList init
     simp at H
     rw [<-H]
     simp [PMF.map, mapSecond2bind]
@@ -268,7 +268,7 @@ lemma correctAbstractionImpliesObsEq {I : Type} {O : OracleSpec I}
   (ro₁ ro₂ : OracleImpl O) (f : ro₁.stateType → ro₂.stateType) (HCor : correctAbstraction ro₁ ro₂ f)
   : ObsEq ro₁ ro₂ := by
     apply correctAbstractionBindImpliesObsEq (f := (PMF.pure ∘ f))
-    rw [<-correctAbstration2Bind]
+    rw [<-correctAbstraction2Bind]
     assumption
 
 -- MAP STATE section

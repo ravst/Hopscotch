@@ -148,7 +148,7 @@ lemma distanceOnBoolIrreflexive (x y : PMF Bool) (H : pdistancePMF x y = 0) : x 
     rw [htrue] at hx
     exact (ENNReal.add_right_inj (PMF.apply_ne_top y true)).mp (hx.trans hy.symm)
 
-lemma obseEq_from_2_steps {A : Type _}
+lemma obsEq_from_2_steps {A : Type _}
   (init : PMF A)
   (f g : A -> PMF Bool)
   (H : forall a : A, pdistancePMF (f a) (g a) = 0)
