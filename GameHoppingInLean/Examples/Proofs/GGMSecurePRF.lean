@@ -247,8 +247,8 @@ noncomputable def GGMHybrid3 {k n : ℕ} (prg : lengthDoublingPRG k) (i : Fin n)
           return out
         )
       let remainingBits : BitVec (n - i.1) := BitVec.extractLsb' i.1 (n - i.1) x
-      let choosenLabel := PRG.chooseHalfI labels (remainingBits.getLsbD 0)
-      pure (applyPRGs prg choosenLabel (BitVec.extractLsb' 1 (n-i.1-1) remainingBits))
+      let chosenLabel := PRG.chooseHalfI labels (remainingBits.getLsbD 0)
+      pure (applyPRGs prg chosenLabel (BitVec.extractLsb' 1 (n-i.1-1) remainingBits))
 
 
 /-- Skeleton reduction for one adjacent hybrid step in the GGM proof.
@@ -275,8 +275,8 @@ noncomputable def GGMHybridStepReduction2PRG {k n : ℕ} (prg : lengthDoublingPR
           return out
       )
     let remainingBits : BitVec (n - i.1) := BitVec.extractLsb' i.1 (n - i.1) x
-    let choosenHalf := PRG.chooseHalfI labels (remainingBits.getLsbD 0)
-    let output : BitVec k := applyPRGs prg choosenHalf (BitVec.extractLsb' 1 (n-i.1-1) remainingBits)
+    let chosenHalf := PRG.chooseHalfI labels (remainingBits.getLsbD 0)
+    let output : BitVec k := applyPRGs prg chosenHalf (BitVec.extractLsb' 1 (n-i.1-1) remainingBits)
     return output
 
 

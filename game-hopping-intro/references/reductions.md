@@ -62,7 +62,7 @@ This helps `by_abstraction` simplify away the composition implementation.
 
 ### Handling Stuck Simplification
 
-Sometimes `by_abstraction` cannot fully simplify `simulateQ` (e.g., gets stuck on pattern matches in reduction code). Use the reduction-simplification tactic (TODO) to simplify further.
+Sometimes `by_abstraction` cannot fully simplify `simulateQ` (e.g., gets stuck on pattern matches in reduction code). Use the reduction-simplification tactic to simplify further.
 
 The simplification tactic works when the reduction is:
 - A `bind` expression

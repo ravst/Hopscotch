@@ -331,9 +331,6 @@ noncomputable def reductionCombiner_nontrivial
       )
   })
 
--- TODO: fomrulate lemma, that reductionCombiner_nontrivial.2 is eqivalnet to running 'do
-
-
 noncomputable def weightedCases (r : PMF Bool) (x1 x2 : PMF X) : PMF X :=
   (do
     let z : Bool <- r

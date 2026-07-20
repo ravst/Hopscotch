@@ -23,9 +23,9 @@ import GameHoppingInLean.Tactic.Defs
 
   Here R_i, n_i are computed from result of assumption counting function `assumptionCountingFin` (see AssumptionCounting.lean for more on it). For each assumption, `assumptionCountingFin` returns a list of reductions l. R_i is a reduction that picks one reduction from l uniformly at random and executes it. n_i = l.length .
 
-  We express this sum using function `advBound`. The soundness theorem is called `computationalSoundness` and can be found at the very end of file. The name comes from the fact that syntactic proofs presented as IndistinguishabilityI are shown to have semantic meaning. See paper for more high level discussion.
+  We express this sum using function `advBound`. The soundness theorem is called `computationalSoundness` and can be found at the very end of file. The name comes from the fact that syntactic proofs presented as IndistinguishableI are shown to have semantic meaning. See paper for more high level discussion.
 
-  The soundness theorem is proven by induction on the IndistinguishabilityI. The trans step requires reasoning about 'pick-one-at-random' reduction combination -- more details on it are in ReductionCombiner.lean.
+  The soundness theorem is proven by induction on the IndistinguishableI. The trans step requires reasoning about 'pick-one-at-random' reduction combination -- more details on it are in ReductionCombiner.lean.
 -/
 
 /-- bound produced by soundness theorem, given pairs of n_i and R_i -/
@@ -308,7 +308,7 @@ lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions
   apply X
   exact lt_add_one a
 
-/- Symbolic soundness theorem - syntactic proofs presented as IndistinguishabilityI have semantic meaning! -/
+/- Symbolic soundness theorem - syntactic proofs presented as IndistinguishableI have semantic meaning! -/
 theorem computationalSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}

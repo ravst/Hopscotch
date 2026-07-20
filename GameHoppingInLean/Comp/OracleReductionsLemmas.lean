@@ -88,7 +88,7 @@ def rcompose {I₁ I₂ I₃ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec
   queries := fun i => simulateQ (combineImpl r1 r2.stateType) (r2.queries i)
 
 /- # Lemma about composition of oracles
-We prove that compostions (adversary, reduction1), reduction2 is equal to (adversary, (reduction1, reduction2))
+We prove that compositions (adversary, reduction1), reduction2 is equal to (adversary, (reduction1, reduction2))
 Note that composing reduction with each other is an different operation then composing it with adversary.
 -/
 

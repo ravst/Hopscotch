@@ -190,11 +190,6 @@ lemma beforeFirstHeavyQuery {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.r
               simp [PMF.bind_bind, insA]
               rfl
 
--- lemma ObsEqLonger {I : Type} {s : OracleSpec I} (o1 o2 : OracleImpl s) (queries l : List (QueryS s))
---   (H : runQueries o1 (queries++l) = runQueries o2 (queries++l)) :
---   runQueries o1 (queries) = runQueries o2 (queries)
---   := by sorry
-
 noncomputable def decomp (p : A -> Prop) (l : List A) :
     (forall x, x ∈ l -> ¬ p x) ⊕'
       {x // (let (l1, e ,l2) := x; l = l1++(e::l2) /\ p e /\ forall x, x ∈ l1 -> ¬ p x)} :=
@@ -322,7 +317,7 @@ by
       simp [hTailFalse]
 
 set_option maxHeartbeats 1000000 in
-theorem OnceRedSimpleRandomnesGlobalLocalObsEq {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)):
+theorem OnceRedSimpleRandomnessGlobalLocalObsEq {I : Type} {s : OracleSpec I} [∀ n, Inhabited (s.range n)] (iq : I → Bool) (o : OracleImpl s) (r : PMF A) (f : A → (ι : I) → s.domain ι → RState o.stateType (s.range ι)):
   ObsEq
     (once iq (simpleLocalRandomness o iq r f))
     (once iq (simpleGlobalRandomness o iq r f)) := by

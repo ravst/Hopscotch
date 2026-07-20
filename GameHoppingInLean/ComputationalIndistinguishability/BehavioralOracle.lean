@@ -276,7 +276,7 @@ noncomputable def behavioralOracle2toRstate {I : Type} {O : OracleSpec I} {q_b :
           set ({input := q, output := out : QueryWithResult O} :: state)
           pure out
         else
-          -- error branch, we are not processing that many queires in any meaningful way
+          -- error branch, we are not processing that many queries in any meaningful way
           let out : O.Range q := Classical.choice (x.good_spec q)
           pure out
 

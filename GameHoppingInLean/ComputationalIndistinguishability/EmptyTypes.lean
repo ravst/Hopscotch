@@ -40,7 +40,7 @@ lemma implementableWithPMF {I : Type _} (O : OracleSpec I) (H : forall x : I, No
   forall x, Nonempty ((withPMFSpec O) x) := by
   intro input
   cases input
-  case oracle inpu =>
+  case oracle input =>
     simp [withPMFSpec]
     apply H
   case sample d =>

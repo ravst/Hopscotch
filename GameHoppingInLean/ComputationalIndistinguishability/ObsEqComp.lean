@@ -576,6 +576,6 @@ by
 --     simp [adversaryT] at dist
 --     have X := correctAbstraction2ind_inner (O := withPMFSpec O) dist (addPMFtoImpl ro₁.queries) (addPMFtoImpl ro₂.queries) f
 --     apply X
---     -- correct abstraction after addPMFtoIMPL, todo.
+--     -- correct abstraction after addPMFtoIMPL
 --     apply correctAbstractionAfterwithPMFSpec
 --     apply Habs.2

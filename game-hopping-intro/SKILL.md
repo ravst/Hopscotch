@@ -26,8 +26,8 @@ To use this library, follow these steps:
 Use the `game_hopping` tactic to write sequence of hybrids.
 
 ## Key tactics
-- **game_hopping** is used to create IndistinguishabilityI proof from sequence of hybrids.
-- **by_abstraction** is used to create IndistinguishabilityI proof by providing abstraction. It has variant **obs_eq_by_abstraction** that proves ObsEq.
+- **game_hopping** is used to create an IndistinguishableI proof from a sequence of hybrids.
+- **by_abstraction** is used to create an IndistinguishableI proof by providing abstraction. It has variant **obs_eq_by_abstraction** that proves ObsEq.
 - simp [X] where X is:
    - **sRState** - to simplify RState monad term to PMF monad.
    - **sStateT** - to unfold StateT.get/set/map

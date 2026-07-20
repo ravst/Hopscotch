@@ -6,7 +6,7 @@ import GameHoppingInLean.Tactic.Normalization.RState.Attrs
 
 /- # RState monad
   To define oracle implementations, we use RState monad, that enables random sampling and keeping state.
-  Here we define monad and auxilary functions. -/
+  Here we define monad and auxiliary functions. -/
 
 -- RState: A monad combining stateful computation with randomness
 abbrev RState (σ : Type u) (α : Type u) : Type u := StateT σ PMF α

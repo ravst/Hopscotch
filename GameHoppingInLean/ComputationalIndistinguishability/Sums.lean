@@ -8,7 +8,7 @@ import Mathlib.Probability.ProbabilityMassFunction.Basic
 /- # Lemmas about finite sums.
  Especially about sum of two finite sums.  -/
 
--- SUM JOINIG
+-- SUM JOINING
 def finsetSum {X : Type} [DecidableEq X] (s1 s2 : Finset X) : Finset X :=
   s1 ∪ s2
 

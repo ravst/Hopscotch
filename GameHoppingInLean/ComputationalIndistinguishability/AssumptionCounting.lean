@@ -113,7 +113,7 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
 for the soundness proof, it is more convenient to use a different assumption counting function, defined below. It is better for the proof, but worse for humans. We prove equivalence later.
 -/
 
--- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with simplifiaction process (otherwise it get stack)
+-- joiner for two assumption families, from local joiner. We use eta-expansion in values to help with the simplification process (otherwise it gets stuck)
 def assumptionJoiner {Idx : Type} {Assumptions : IndAssumptions Idx} {I : Type} {O : OracleSpec I}
   (val1 val2 : AssumptionsUseT Assumptions O)
   (joiner : {J : Idx} ->

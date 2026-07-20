@@ -7,7 +7,7 @@ def negl (f : ℕ -> Real) : Prop :=
   ∀ k, ∃ (B : ℝ), ∀ i, |(f i)| * (i^k) <= B
 
 
-def getPMF (r : PMF X) (x : X) : NNReal := (r x).toNNReal -- toNNReal map +inf to zero. Lemma below show that this is never happens here.
+def getPMF (r : PMF X) (x : X) : NNReal := (r x).toNNReal -- `toNNReal` maps +inf to zero. The lemma below shows that this never happens here.
 lemma pmf_non_inf (r : PMF X) (x : X) : getPMF r x = r x :=
   by
   simp [getPMF]
