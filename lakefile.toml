@@ -1,7 +1,7 @@
-name = "GameHoppingInLean"
+name = "Hopscotch"
 version = "0.1.0"
 keywords = ["cryptography", "computational-indistinguishability", "game-hopping"]
-defaultTargets = ["GameHoppingInLean"]
+defaultTargets = ["Hopscotch"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -27,4 +27,4 @@ rev = "e7f4c"
 
 
 [[lean_lib]]
-name = "GameHoppingInLean"
+name = "Hopscotch"
