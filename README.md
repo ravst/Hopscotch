@@ -2,7 +2,7 @@
 
 HOPSCOTCH is a framework for formalizing game-hopping proofs in Lean. It is a
 joint project by S. Dziembowski, G. Fabiański, D. Micciancio, and R. Stefański.
-A preprint of an accompanying paper will shortly be available online.
+The accompanying paper is available on [arXiv](https://arxiv.org/abs/2608.06261).
 
 The goal of the framework is to facilitate the formalization of cryptographic proofs
 structured as sequences of games, also known as game-hopping or state-separation
