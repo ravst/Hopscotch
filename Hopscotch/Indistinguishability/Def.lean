@@ -1,6 +1,7 @@
 import Hopscotch.Comp.StatefulRandomOracle
 import Hopscotch.Comp.OracleReductions
 import Hopscotch.ObservationalEq.Defs
+import Hopscotch.ApproxEq.Defs
 import Hopscotch.Indistinguishability.Assumption
 
 /- # Indistinguishability Definition-/
@@ -46,6 +47,10 @@ inductive IndistinguishableI
   | obsEqB {I : Type} {O : OracleSpec I} {ro₁ ro₂ : OracleImpl O} (q_b : ENat):
       ObsEqBounded ro₁ ro₂ q_b →
       IndistinguishableI Assumptions q_b ro₁ ro₂
+  | approxEq {q_b : ENat} {I : Type} {O : OracleSpec I}
+      {ro₁ ro₂ : OracleImpl O} (ε : NNReal)
+      (sound : ApproxEq q_b ε ro₁ ro₂) :
+      IndistinguishableI Assumptions q_b ro₁ ro₂
   | reduction {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
       (r : OracleReduction O₁ O₂) {ro₁ ro₂ : OracleImpl O₁} (q_b : ENat):
       IndistinguishableI Assumptions none ro₁ ro₂ →
@@ -69,6 +74,21 @@ inductive IndistinguishableI
     IndistinguishableI Assumptions q_b (ro ⟨0, zero_in_range _⟩) (ro ⟨l, n_in_range _⟩)
 
 namespace IndistinguishableI
+
+/-- The total statistical error introduced by the approximate-equivalence steps in an
+indistinguishability derivation. -/
+noncomputable def statisticalError
+    {Idx : Type} {Assumptions : IndAssumptions Idx}
+    {q_b : ENat} {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
+    IndistinguishableI Assumptions q_b o₁ o₂ → NNReal
+  | .assumption _ => 0
+  | .obsEqB _ _ => 0
+  | .approxEq ε _ => ε
+  | .reduction _ _ h => statisticalError h
+  | .symm _ h => statisticalError h
+  | .trans _ _ h₁ h₂ => statisticalError h₁ + statisticalError h₂
+  | .longSequence l _ _ h =>
+      ∑ i : Fin l, statisticalError (h i i.isLt)
 
 /-- Let `calc` compose fixed-parameter `IndistinguishableI` proofs transitively. -/
 instance instTrans
@@ -180,6 +200,8 @@ noncomputable def indistinguishabilityI_mono {Idx : Type} {Assumptions : IndAssu
   | obsEqB q H =>
       exact IndistinguishableI.obsEqB q₁
         (ObsEqBounded_monotone _ _ q₁ q H hle)
+  | approxEq ε H =>
+      exact IndistinguishableI.approxEq ε (fun d hd => H d (hd.trans hle))
   | reduction r q h =>
       exact IndistinguishableI.reduction r q₁ h
   | symm q h ih =>

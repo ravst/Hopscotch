@@ -150,6 +150,7 @@ noncomputable def liftEmptyAssumptions
   induction h with
   | assumption i => exact i.elim
   | obsEqB q hObs => exact IndistinguishableI.obsEqB q hObs
+  | approxEq ε sound => exact IndistinguishableI.approxEq ε sound
   | reduction r q h ih => exact IndistinguishableI.reduction r q ih
   | symm q h ih => exact IndistinguishableI.symm q ih
   | trans ro₂ q h₁ h₂ ih₁ ih₂ => exact IndistinguishableI.trans ro₂ q ih₁ ih₂

@@ -93,6 +93,8 @@ noncomputable def assumptionCounting {Idx : Type} {Assumptions : IndAssumptions 
     , fun _ => [])
   | IndistinguishableI.obsEqB a b =>
     (fun _ => [], fun _ => [])
+  | IndistinguishableI.approxEq _ε _sound =>
+    (fun _ => [], fun _ => [])
   | IndistinguishableI.reduction r b ind =>
       let asc := assumptionCounting ind
       (
@@ -178,6 +180,8 @@ noncomputable def assumptionCounting_low {Idx : Type} {Assumptions : IndAssumpti
     }, AssumptionsUseT.empty _ _)
 | IndistinguishableI.obsEqB a b =>
   noAssumptionUse
+| IndistinguishableI.approxEq _ε _sound =>
+  noAssumptionUse
 | IndistinguishableI.reduction r b ind => by
     let asc := assumptionCounting_low ind
     exact
@@ -221,6 +225,8 @@ lemma assumptionCounting_finite {Idx : Type} {Assumptions : IndAssumptions Idx}
     · simp only [assumptionCounting]
       simp
   | obsEqB a b =>
+    refine ⟨?_, ?_⟩ <;> (simp only [assumptionCounting]; simp)
+  | approxEq ε sound =>
     refine ⟨?_, ?_⟩ <;> (simp only [assumptionCounting]; simp)
   | reduction a b ind0 Hih =>
     refine ⟨?_, ?_⟩
@@ -406,6 +412,9 @@ lemma simpleCorrect_in {Idx : Type} {Assumptions : IndAssumptions Idx}
     subst Hi
     simp []
   case obsEqB a b c d f =>
+    simp [agreeWithSimpPair, agreeWithSimp, assumptionCounting_low, assumptionCounting]
+    simp [noAssumptionUse, AssumptionsUseT.empty]
+  case approxEq =>
     simp [agreeWithSimpPair, agreeWithSimp, assumptionCounting_low, assumptionCounting]
     simp [noAssumptionUse, AssumptionsUseT.empty]
   case reduction a b Hind =>

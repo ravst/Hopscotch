@@ -1,6 +1,7 @@
 import Hopscotch.Comp.StatefulRandomOracle
 import Hopscotch.Comp.OracleReductions
 import Hopscotch.ComputationalIndistinguishability.Distance
+import Hopscotch.ComputationalIndistinguishability.AdversaryAdvantageDefs
 import Hopscotch.Indistinguishability.Assumption
 import Hopscotch.Tactic.SimpAttrLemmas
 
@@ -8,16 +9,6 @@ import Hopscotch.Tactic.SimpAttrLemmas
  We define adversary and its advantage. -/
 
 def famOracle {I : Type} (Spec : ℕ -> OracleSpec I) := (κ : ℕ) -> OracleImpl (Spec κ)
-def adversaryT {I : Type} (O : OracleSpec I) := OracleComp (withPMFSpec O) Bool
-
-
-
-noncomputable def runDistinguisher {I : Type} {O : OracleSpec I}
-  (d : adversaryT O) (impl : OracleImpl O) : PMF Bool :=
-  let comp := simulateQ (addPMFtoImpl impl.queries) d
-  do
-    let init <- impl.initialState
-    (comp init).map (fun x => x.1)
 
 
 noncomputable def runDistinguisher_inner {I stateType : Type _} {O : OracleSpec I}
@@ -211,11 +202,6 @@ noncomputable def runDistinguisherFam {I : Type} {Spec : ℕ -> OracleSpec I}
 
 def PolyFamOracleCompPred : Type 1 :=
   {I : Type} -> {Spec : ℕ -> OracleSpec I} -> {Output : ℕ -> Type} -> (compFamT Spec Output) -> Prop
-
-noncomputable
-def advantage {I : Type} {O : OracleSpec I}
-  (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) : Real :=
-  pdistancePMF (runDistinguisher distinguisher o1) (runDistinguisher distinguisher o2)
 
 lemma advantageReverse {I : Type} {O : OracleSpec I}
   (distinguisher : adversaryT O) (o1 o2 : OracleImpl O) :

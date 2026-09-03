@@ -48,6 +48,26 @@ def advBoundQ {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
   forall (distinguisher : adversaryT O),
   advBound Assumptions q_b O ro1 ro2 asc distinguisher
 
+/-- Soundness bound in the presence of approximate-equivalence steps. -/
+def advBoundWithError {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : OracleImpl O)
+  (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+  (error : NNReal) (distinguisher : adversaryT O) : Prop :=
+  FreeM.depth distinguisher ≤ q_b →
+    |advantage distinguisher ro1 ro2| ≤
+      |(∑ j : { x // x ∈ asc.1.subset },
+          ascToReal distinguisher (Assumptions.assumptions j) (combine_red (asc.1.values j)))
+       - (∑ j : { x // x ∈ asc.2.subset },
+          ascToReal distinguisher (Assumptions.assumptions j) (combine_red (asc.2.values j)))| +
+      (error : Real)
+
+def advBoundQWithError {Idx : Type} (Assumptions : IndAssumptions Idx) (q_b : ENat)
+  {I : Type} (O : OracleSpec I) (ro1 ro2 : OracleImpl O)
+  (asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+  (error : NNReal) : Prop :=
+  ∀ distinguisher : adversaryT O,
+    advBoundWithError Assumptions q_b O ro1 ro2 asc error distinguisher
+
 
 lemma obse_eq_step2
   {Idx : Type} {Assumptions : IndAssumptions Idx}
@@ -225,13 +245,15 @@ lemma long_Step_proof_induction
       apply HxxP
   )
 
-/-- version of symbolic soundness theorem that uses `assumptionCounting_low` counting function -/
-lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
+/-- Exact version of symbolic soundness using `assumptionCounting_low`. It applies when
+the derivation's accumulated statistical error is zero. -/
+lemma computationalSoundness_internal_exact {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O} :
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) ->
+      IndistinguishableI.statisticalError ind = 0 ->
       advBoundQ Assumptions q_b O o₁ o₂ (assumptionCounting_low ind)
-| IndistinguishableI.assumption idx =>
+| IndistinguishableI.assumption idx, _ =>
   by
       simp [assumptionCounting_low]
       simp [advBoundQ]
@@ -250,12 +272,20 @@ lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions
         simp [combine_red]
       simp [ascToReal]
       rw [applyreduction2_identity]
-| IndistinguishableI.obsEqB a b =>
+| IndistinguishableI.obsEqB a b, _ =>
   by
     simp [assumptionCounting_low]
     apply obse_eq_step2 _ _ b
-| IndistinguishableI.reduction r b ind => by
-    let Hasc := computationalSoundness_internal ind
+| IndistinguishableI.approxEq ε sound, herror => by
+    change ε = 0 at herror
+    subst ε
+    simp [assumptionCounting_low, advBoundQ, advBound, noAssumptionUse,
+      AssumptionsUseT.empty]
+    intro dist hdist
+    have hs := sound dist hdist
+    exact abs_eq_zero.mp (le_antisymm hs (abs_nonneg _))
+| IndistinguishableI.reduction r b ind, herror => by
+    let Hasc := computationalSoundness_internal_exact ind herror
     simp [advBoundQ, assumptionCounting_low]
     intro dist Hdist
     rw [advantage_reduction]
@@ -283,8 +313,8 @@ lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions
       rw [<-goodDoubleAction]
       rw [<-goodDoubleAction]
       simp [compose_combine]
-| IndistinguishableI.symm q_b ind  =>
-    let re := computationalSoundness_internal ind
+| IndistinguishableI.symm q_b ind, herror =>
+    let re := computationalSoundness_internal_exact ind herror
     by
       simp [advBoundQ, advBound, assumptionCounting_low]
       intro dist
@@ -293,13 +323,28 @@ lemma computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions
       rw [re]
       · simp []
       · assumption
-| IndistinguishableI.trans rm q_b ind1 ind2 =>
-    transitive_step_proof rm _ _ (computationalSoundness_internal ind1) (computationalSoundness_internal ind2)
-| IndistinguishableI.longSequence a q_b ro Hseq => by
+| IndistinguishableI.trans rm q_b ind1 ind2, herror => by
+    change IndistinguishableI.statisticalError ind1 +
+      IndistinguishableI.statisticalError ind2 = 0 at herror
+    have herrors := add_eq_zero.mp herror
+    exact transitive_step_proof rm _ _
+      (computationalSoundness_internal_exact ind1 herrors.1)
+      (computationalSoundness_internal_exact ind2 herrors.2)
+| IndistinguishableI.longSequence a q_b ro Hseq, herror => by
+  change (∑ i : Fin a,
+    IndistinguishableI.statisticalError (Hseq i i.isLt)) = 0 at herror
+  have hstep : ∀ i : ℕ, (Hi : i < a) →
+      IndistinguishableI.statisticalError (Hseq i Hi) = 0 := by
+    intro i Hi
+    have hall := (Fintype.sum_eq_zero_iff_of_nonneg
+      (fun j : Fin a => zero_le
+        (IndistinguishableI.statisticalError (Hseq j j.isLt)))).mp herror
+    exact congrFun hall ⟨i, Hi⟩
   simp [assumptionCounting_low]
   let Hxx := fun (i : ℕ) (Hi : i < a) =>
     assumptionCounting_low (Hseq i Hi)
-  let HxxInd := (fun (i : ℕ) (Hi : i < a) => computationalSoundness_internal (Hseq i Hi))
+  let HxxInd := (fun (i : ℕ) (Hi : i < a) =>
+    computationalSoundness_internal_exact (Hseq i Hi) (hstep i Hi))
   have X := long_Step_proof_induction Hxx (
       by
         simp [Hxx, assumptionCounting_low]
@@ -313,7 +358,22 @@ theorem computationalSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
       {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
       (ind : IndistinguishableI Assumptions q_b o₁ o₂) :
-      advBoundQ Assumptions q_b O o₁ o₂ (assumptionCountLower (assumptionCountingFin ind)) :=
+      advBoundQWithError Assumptions q_b O o₁ o₂
+        (assumptionCountLower (assumptionCountingFin ind))
+        (IndistinguishableI.statisticalError ind) :=
+by
+  sorry
+
+/-- If an indistinguishability derivation has zero total statistical error, soundness
+recovers the original exact equality with the combined assumption contribution. This
+includes, in particular, derivations containing no `approxEq` steps. -/
+theorem computationalSoundness_exact {Idx : Type} {Assumptions : IndAssumptions Idx}
+      {q_b : ENat}
+      {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
+      (ind : IndistinguishableI Assumptions q_b o₁ o₂)
+      (herror : IndistinguishableI.statisticalError ind = 0) :
+      advBoundQ Assumptions q_b O o₁ o₂
+        (assumptionCountLower (assumptionCountingFin ind)) :=
 by
   rw [simpleCorrect]
-  apply computationalSoundness_internal
+  exact computationalSoundness_internal_exact ind herror

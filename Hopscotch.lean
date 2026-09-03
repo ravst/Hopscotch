@@ -2,6 +2,7 @@ import Hopscotch.Comp.RState
 import Hopscotch.Comp.StatefulRandomOracle
 import Hopscotch.Comp.OracleReductions
 import Hopscotch.Indistinguishability.Def
+import Hopscotch.ApproxEq.CorrectUntilBad
 import Hopscotch.Tactic.Defs
 import Hopscotch.Comp.OracleReductions
 import Hopscotch.Examples.SecurityDefinitions.IndCPAPub

@@ -1,16 +1,12 @@
 import Hopscotch.ComputationalIndistinguishability.AdversaryAdvantage
 import Hopscotch.ObservationalEq.Defs
 import Hopscotch.Tactic.SimpAttrLemmas
+import Hopscotch.Comp.FreeMDepth
 import Mathlib.Data.ENat.Lattice
 
 /- # Definition of Abstraction with reachability and levels.
 This version of abstraction is used in ObsEqComp.lean. It relates oracle implementation that track number of queries asked (exposed by function lvl) and accompanied by reachability function on its state space.
 -/
-
-noncomputable def FreeM.depth.{uA, uB, uC} {P : PFunctor.{uA, uB}} {α : Type uC} : PFunctor.FreeM P α -> ℕ∞
-| PFunctor.FreeM.pure _ => 0
-| PFunctor.FreeM.roll _input cont =>
-  1 + iSup (fun u => depth (cont u))
 
 lemma abstraction_with_levels_and_reach {I : Type} {O : I → Type} {S T X : Type}
     (q_b : ℕ∞)
