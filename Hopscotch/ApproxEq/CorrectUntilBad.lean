@@ -39,7 +39,9 @@ noncomputable def initialBadEventBound
   ∑' s, getPMF initial s * bound s q_b
 
 /-- Correct-until-bad oracle implementations are approximately equal, with error bounded
-by the expected initial value of any valid bad-event valuation. -/
+by the expected initial value of a valid bad-event valuation for the first implementation.
+The good subdistributions agree, so bounding the bad probability in either implementation
+is sufficient. -/
 theorem correctUntilBad_approxEq
     {I S : Type} {O : OracleSpec I}
     (bad : S → Bool)
@@ -48,7 +50,6 @@ theorem correctUntilBad_approxEq
     (bound : S → ENat → NNReal)
     (hCorrect : IsCorrectUntilBad O bad initial₁ initial₂ queries₁ queries₂)
     (hBound₁ : IsValidBadEventBound O bad queries₁ bound)
-    (hBound₂ : IsValidBadEventBound O bad queries₂ bound)
     (q_b : ENat) :
     ApproxEq q_b (initialBadEventBound initial₁ bound q_b)
       ({ stateType := S, initialState := initial₁, queries := queries₁ } : OracleImpl O)
