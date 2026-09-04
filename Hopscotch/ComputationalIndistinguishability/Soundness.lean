@@ -277,6 +277,142 @@ lemma long_Step_proof_induction
       apply HxxP
   )
 
+/-- An exact bound is a residual bound with zero error. -/
+lemma advBoundQWithError_of_advBoundQ
+    {Idx : Type} {Assumptions : IndAssumptions Idx} {q_b : ENat}
+    {I : Type} {O : OracleSpec I} {o₁ o₂ : OracleImpl O}
+    {asc : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O}
+    (H : advBoundQ Assumptions q_b O o₁ o₂ asc) :
+    advBoundQWithError Assumptions q_b O o₁ o₂ asc 0 := by
+  intro dist hdepth
+  rw [H dist hdepth]
+  simp
+
+/-- The assumption-use joiner splits the assumption contribution into the two summands. -/
+lemma assumptionJoiner_sum {Idx : Type} {Assumptions : IndAssumptions Idx}
+    {I : Type} {O : OracleSpec I} (dist : adversaryT O)
+    (a1 a2 : AssumptionsUseT Assumptions O) :
+    (∑ j : { x // x ∈ (assumptionJoiner a1 a2 (fun a b => listCombiner a b)).subset },
+        ascToReal dist (Assumptions.assumptions j)
+          (combine_red ((assumptionJoiner a1 a2 (fun a b => listCombiner a b)).values j))) =
+      (∑ j : { x // x ∈ a1.subset },
+          ascToReal dist (Assumptions.assumptions j) (combine_red (a1.values j))) +
+      (∑ j : { x // x ∈ a2.subset },
+          ascToReal dist (Assumptions.assumptions j) (combine_red (a2.values j))) := by
+  classical
+  let _X := Assumptions.decEq
+  have HHx := sumJoinerCorrect' (fun J => asUseType Assumptions O J)
+    a1.values a2.values (fun a b => listCombiner a b)
+    (fun x => ascToReal dist _ (combine_red x)) (by
+      intro j h1 h2
+      apply reduction_combiner_correct_full)
+  simp only [sumJoining] at HHx
+  simp only [assumptionJoiner]
+  rw [← HHx]
+
+/-- Transitive composition of two residual bounds; the errors add. -/
+lemma transitive_step_proof_error
+    {Idx : Type} {Assumptions : IndAssumptions Idx}
+    {q_b : ℕ∞} {I : Type} {O : OracleSpec I}
+    {o₁ o₂ : OracleImpl O} (rm : OracleImpl O)
+    (asc1 asc2 : AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+    (e1 e2 : NNReal)
+    (H1 : advBoundQWithError Assumptions q_b O o₁ rm asc1 e1)
+    (H2 : advBoundQWithError Assumptions q_b O rm o₂ asc2 e2) :
+    advBoundQWithError Assumptions q_b O o₁ o₂ (transitive_step_val asc1 asc2) (e1 + e2) := by
+  intro dist hdepth
+  have hsum1 := assumptionJoiner_sum dist asc1.1 asc2.1
+  have hsum2 := assumptionJoiner_sum dist asc1.2 asc2.2
+  have h1 := H1 dist hdepth
+  have h2 := H2 dist hdepth
+  simp only [advBoundWithError, transitive_step_val] at h1 h2 ⊢
+  have key :
+      advantage dist o₁ o₂ -
+        ((∑ j : { x // x ∈ (assumptionJoiner asc1.1 asc2.1 (fun a b => listCombiner a b)).subset },
+            ascToReal dist (Assumptions.assumptions j)
+              (combine_red ((assumptionJoiner asc1.1 asc2.1
+                (fun a b => listCombiner a b)).values j))) -
+         (∑ j : { x // x ∈ (assumptionJoiner asc1.2 asc2.2 (fun a b => listCombiner a b)).subset },
+            ascToReal dist (Assumptions.assumptions j)
+              (combine_red ((assumptionJoiner asc1.2 asc2.2
+                (fun a b => listCombiner a b)).values j)))) =
+      (advantage dist o₁ rm -
+        ((∑ j : { x // x ∈ asc1.1.subset },
+            ascToReal dist (Assumptions.assumptions j) (combine_red (asc1.1.values j))) -
+         (∑ j : { x // x ∈ asc1.2.subset },
+            ascToReal dist (Assumptions.assumptions j) (combine_red (asc1.2.values j))))) +
+      (advantage dist rm o₂ -
+        ((∑ j : { x // x ∈ asc2.1.subset },
+            ascToReal dist (Assumptions.assumptions j) (combine_red (asc2.1.values j))) -
+         (∑ j : { x // x ∈ asc2.2.subset },
+            ascToReal dist (Assumptions.assumptions j) (combine_red (asc2.2.values j))))) := by
+    rw [hsum1, hsum2, advantageTriangle (distinguisher := dist) o₁ rm o₂]
+    ring
+  rw [key]
+  refine le_trans (abs_add_le _ _) ?_
+  push_cast
+  exact add_le_add h1 h2
+
+/-- Residual soundness for a long sequence of hybrids, by induction on the prefix length. -/
+lemma long_step_error_induction
+    {O : OracleSpec I}
+    {Idx : Type} {Assumptions : IndAssumptions Idx}
+    {q_b : ENat} {a : ℕ}
+    {ro : Finset.range (a + 1) -> OracleImpl O}
+    (Hxx : (i : ℕ) → i < a → AssumptionsUseT Assumptions O × AssumptionsUseT Assumptions O)
+    (err : (i : ℕ) → i < a → NNReal)
+    (HxxP : ∀ (i : ℕ) (Hi : i < a),
+      advBoundQWithError Assumptions q_b O
+        (ro_seq_fixed a ro i (Nat.le_of_succ_le Hi))
+        (ro_seq_fixed a ro (i + 1) Hi)
+        (Hxx i Hi) (err i Hi)) :
+    ∀ (i : ℕ) (Hi : i < a + 1),
+      advBoundQWithError Assumptions q_b O
+        (ro ⟨0, zero_in_range _⟩)
+        (ro ⟨i, Finset.mem_range.mpr Hi⟩)
+        (long_step_combinator i
+          (fun j Hq => Hxx j (Nat.lt_of_lt_of_le Hq (Nat.le_of_lt_succ Hi))))
+        (∑ j : Fin i, err j.1
+          (Nat.lt_of_lt_of_le j.2 (Nat.le_of_lt_succ Hi))) := by
+  intro i Hi
+  induction i with
+  | zero =>
+    simp only [long_step_combinator, Finset.univ_eq_empty, Finset.sum_empty]
+    exact advBoundQWithError_of_advBoundQ
+      (obse_eq_step2 _ _ (fun queriesList ↦ congrFun rfl))
+  | succ n Hind =>
+    have long := Hind (Nat.lt_of_succ_lt Hi)
+    simp only [long_step_combinator, Fin.sum_univ_castSucc]
+    exact transitive_step_proof_error _ _ _ _ _ long (HxxP n _)
+
+/-- A single use of an assumption, through the trivial (identity) reduction, contributes
+exactly the advantage against that assumption. -/
+lemma ascToReal_identity {assumption : SingleAssumption}
+    (dist : adversaryT assumption.O)
+    (H : [OracleReduction.identity assumption.O].length > 0) :
+    ascToReal dist assumption (combine_red ⟨[OracleReduction.identity assumption.O], H⟩) =
+      advantage dist assumption.i.1 assumption.i.2 := by
+  rw [ascToRealFromObsEq (combine_red ⟨[OracleReduction.identity assumption.O], H⟩)
+    (1, OracleReduction.identity assumption.O)
+    (fun impl => combine_red_singleton _ H (non_trivial_spec impl) impl) rfl]
+  simp [ascToReal, applyreduction2_identity]
+
+/-- Composing every reduction of an assumption use with an outer reduction `r` is the same
+as composing the outer reduction with the adversary. -/
+lemma ascToReal_rcompose_map {I₁ I₂ : Type} {O₁ : OracleSpec I₁} {O₂ : OracleSpec I₂}
+    {assumption : SingleAssumption}
+    (dist : adversaryT O₂) (r : OracleReduction O₁ O₂)
+    (l : {x : List (OracleReduction assumption.O O₁) // x.length > 0})
+    (Hl : (l.val.map (fun x => rcompose x r)).length > 0) :
+    ascToReal dist assumption (combine_red ⟨l.val.map (fun x => rcompose x r), Hl⟩) =
+      ascToReal (OracleReduction.applyReductionToAdversary r dist) assumption
+        (combine_red l) := by
+  simp only [ascToReal, combine_red, List.length_map]
+  congr 1
+  rw [← rcompose_apply, ← advantage_reduction, ← advantage_reduction]
+  simp only [advantage]
+  rw [compose_combine, compose_combine]
+
 /-- Residual symbolic soundness using the structurally convenient assumption counter. -/
 theorem computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptions Idx}
       {q_b : ENat}
@@ -285,7 +421,60 @@ theorem computationalSoundness_internal {Idx : Type} {Assumptions : IndAssumptio
       advBoundQWithError Assumptions q_b O o₁ o₂
         (assumptionCounting_low ind)
         (IndistinguishableI.statisticalError ind) := by
-  sorry
+  induction ind with
+  | assumption i =>
+    intro dist hdepth
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError, advBoundWithError,
+      AssumptionsUseT.empty]
+    have huniv : (Finset.univ : Finset { x // x ∈ ({i} : Finset Idx) }) =
+        {⟨i, Finset.mem_singleton_self i⟩} := by
+      refine Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_univ _, ?_⟩
+      intro x _
+      exact Subtype.ext (Finset.mem_singleton.mp x.2)
+    rw [huniv, Finset.sum_singleton]
+    simp only [Finset.univ_eq_empty, Finset.sum_empty, sub_zero, NNReal.coe_zero,
+      abs_nonpos_iff, sub_eq_zero]
+    exact (ascToReal_identity dist (by simp)).symm
+  | obsEqB q H =>
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError]
+    exact advBoundQWithError_of_advBoundQ (obse_eq_step2 _ _ H)
+  | approxEq ε H =>
+    intro dist hdepth
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError, noAssumptionUse,
+      AssumptionsUseT.empty, advBoundWithError] at hdepth ⊢
+    simpa using H dist hdepth
+  | reduction r q h ih =>
+    intro dist hdepth
+    have hprev := ih (OracleReduction.applyReductionToAdversary r dist) le_top
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError,
+      advBoundWithError] at hprev ⊢
+    have e1 := Finset.sum_congr
+      (rfl (a := (Finset.univ : Finset { x // x ∈ (assumptionCounting_low h).1.subset })))
+      (fun x _ => ascToReal_rcompose_map dist r ((assumptionCounting_low h).1.values x)
+        (by simpa using ((assumptionCounting_low h).1.values x).2))
+    have e2 := Finset.sum_congr
+      (rfl (a := (Finset.univ : Finset { x // x ∈ (assumptionCounting_low h).2.subset })))
+      (fun x _ => ascToReal_rcompose_map dist r ((assumptionCounting_low h).2.values x)
+        (by simpa using ((assumptionCounting_low h).2.values x).2))
+    rw [advantage_reduction, e1, e2]
+    exact hprev
+  | symm q h ih =>
+    intro dist hdepth
+    have hprev := ih dist hdepth
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError,
+      advBoundWithError] at hprev ⊢
+    have key : ∀ x y z : Real, x - (y - z) = -((-x) - (z - y)) := by intro x y z; ring
+    rw [key, ← advantageReverse, abs_neg]
+    exact hprev
+  | trans rm q h₁ h₂ ih₁ ih₂ =>
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError]
+    exact transitive_step_proof_error rm _ _ _ _ ih₁ ih₂
+  | longSequence l q ro Hstep ihStep =>
+    simp only [assumptionCounting_low, IndistinguishableI.statisticalError]
+    exact long_step_error_induction
+      (fun j Hq => assumptionCounting_low (Hstep j Hq))
+      (fun j Hq => IndistinguishableI.statisticalError (Hstep j Hq))
+      ihStep l (Nat.lt_succ_self l)
 
 /- Symbolic soundness theorem - syntactic proofs presented as IndistinguishableI have semantic meaning! -/
 theorem computationalSoundness {Idx : Type} {Assumptions : IndAssumptions Idx}
