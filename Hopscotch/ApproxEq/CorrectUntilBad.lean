@@ -38,6 +38,26 @@ noncomputable def initialBadEventBound
     {S : Type} (initial : PMF S) (bound : S → ENat → NNReal) (q_b : ENat) : NNReal :=
   ∑' s, getPMF initial s * bound s q_b
 
+/-- A valuation constant on the initial support has that same initial expectation. -/
+lemma initialBadEventBound_constant_on_support
+    {S : Type} (p : PMF S) (bound : S → ENat → NNReal) (q : ENat) (c : NNReal)
+    (h : ∀ s ∈ p.support, bound s q = c) : initialBadEventBound p bound q = c := by
+  classical
+  have hp : (∑' s, getPMF p s) = 1 := by
+    simp only [getPMF]
+    rw [← ENNReal.tsum_toNNReal_eq (fun s => p.apply_ne_top s), PMF.tsum_coe]
+    rfl
+  unfold initialBadEventBound
+  calc
+    (∑' s, getPMF p s * bound s q) = ∑' s, getPMF p s * c := by
+      apply tsum_congr
+      intro s
+      by_cases hs : s ∈ p.support
+      · rw [h s hs]
+      · have hz : p s = 0 := by simpa [PMF.mem_support_iff] using hs
+        simp [getPMF, hz]
+    _ = c := by rw [tsum_mul_right, hp, one_mul]
+
 namespace CorrectUntilBad
 
 /-! ### Auxiliary material for `correctUntilBad_approxEq`

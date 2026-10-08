@@ -353,4 +353,40 @@ lemma do_bind_map_comm {α β γ}
   simpa [PMF.monad_map_eq_map] using
     (PMF.do_bind_comm A B (fun x y => pure (rest x y)))
 
+/-- Resample only the rejected draws of a uniform distribution. -/
+lemma uniformOfFintype_resample {A : Type} [Fintype A] [Nonempty A]
+    (P : A → Prop) [DecidablePred P] [Nonempty {a // P a}] :
+    (PMF.uniformOfFintype A).bind (fun a =>
+      if h : P a then pure (⟨a, h⟩ : {a // P a})
+      else PMF.uniformOfFintype {a // P a}) = PMF.uniformOfFintype {a // P a} := by
+  classical
+  letI : DecidableEq A := Classical.decEq A
+  let d := (PMF.uniformOfFintype A).bind (fun a =>
+    if h : P a then pure (⟨a, h⟩ : {a // P a}) else PMF.uniformOfFintype {a // P a})
+  have hd (x : {a // P a}) : d x = (Fintype.card A : ENNReal)⁻¹ +
+      ∑' a : A, if P a then 0 else
+        (Fintype.card A : ENNReal)⁻¹ * (Fintype.card {a // P a} : ENNReal)⁻¹ := by
+    rw [show d = _ from rfl, PMF.bind_apply]
+    calc
+      _ = ∑' a : A, ((if a = x.val then (Fintype.card A : ENNReal)⁻¹ else 0) +
+          if P a then 0 else
+            (Fintype.card A : ENNReal)⁻¹ * (Fintype.card {a // P a} : ENNReal)⁻¹) := by
+        apply tsum_congr
+        intro a
+        by_cases ha : P a
+        · simp [ha, PMF.pure_apply, Subtype.ext_iff, eq_comm]
+        · have hax : a ≠ x.val := by rintro rfl; exact ha x.property
+          simp [ha, hax]
+      _ = _ := by rw [ENNReal.tsum_add]; simp
+  have hc (x y : {a // P a}) : d x = d y := (hd x).trans (hd y).symm
+  apply PMF.ext
+  intro x
+  change d x = _
+  rw [PMF.uniformOfFintype_apply]
+  apply ENNReal.eq_inv_of_mul_eq_one_left
+  have h := d.tsum_coe
+  have ht : (∑' a, d a) = ∑' _ : {a // P a}, d x := tsum_congr (fun a => hc a x)
+  rw [ht] at h
+  simpa [tsum_fintype, nsmul_eq_mul, mul_comm] using h
+
 end PMF

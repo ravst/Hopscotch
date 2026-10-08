@@ -12,6 +12,7 @@ import Hopscotch.Examples.Proofs.OneTimeUniformCiphertextsPubImpliesOneTimeSecre
 import Hopscotch.Examples.Proofs.OneTimeSecrecyImpliesIndCPAPub
 import Hopscotch.Examples.Proofs.OUTCInnerImpliesOUTCDouble
 import Hopscotch.Examples.Proofs.LengthTriplingPRGSecure
+import Hopscotch.Examples.Proofs.CramerShoupIndCca
 import Hopscotch.Examples.Proofs.EncryptThenMacIndCca
 import Hopscotch.Examples.Proofs.DDHImpliesElGamalOTUCPub
 

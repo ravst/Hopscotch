@@ -1,4 +1,5 @@
 import Hopscotch.Indistinguishability.Def
+import Hopscotch.ApproxEq.CorrectUntilBad
 import Hopscotch.Tactic.SimpAttrLemmas
 import Lean
 
@@ -9,6 +10,43 @@ syntax "obs_eq" : tactic
 
 macro_rules
   | `(tactic| obs_eq) => `(tactic| apply Indistinguishable.of_ObsEq)
+
+/-- Lift an indistinguishability proof through the reduction in the goal.
+`reduction ← h` uses the proof `h` in the reverse direction. -/
+syntax (name := reductionForward) "reduction" term : tactic
+syntax (name := reductionSymm) "reduction" "←" term : tactic
+
+macro_rules (kind := reductionForward)
+  | `(tactic| reduction $h:term) =>
+      `(tactic| exact IndistinguishableI.reduction _ _ $h)
+
+macro_rules (kind := reductionSymm)
+  | `(tactic| reduction ← $h:term) =>
+      `(tactic| exact IndistinguishableI.reduction _ _ (Indistinguishable.symmetric $h))
+
+/-- Apply the correct-until-bad theorem to an `ApproxEq` or `IndistinguishableI`
+goal. Leaves two obligations: correctness until `bad`, and validity of `bound`.
+The error is the expected initial valuation; for an explicit `ApproxEq` error,
+rewrite it to `initialBadEventBound` first.
+
+`by_correct_until_bad ← bad using bound` reverses an indistinguishability hop,
+so that `bound` is a valuation for the oracle on the right of the original goal. -/
+syntax (name := byCorrectUntilBadForward) "by_correct_until_bad" term " using " term : tactic
+syntax (name := byCorrectUntilBadSymm) "by_correct_until_bad" "←" term " using " term : tactic
+
+macro_rules (kind := byCorrectUntilBadForward)
+  | `(tactic| by_correct_until_bad $bad:term using $bound:term) =>
+      `(tactic|
+        (first
+         | refine IndistinguishableI.approxEq _
+             (correctUntilBad_approxEq $bad _ _ _ _ $bound ?_ ?_ _)
+         | refine correctUntilBad_approxEq $bad _ _ _ _ $bound ?_ ?_ _))
+
+macro_rules (kind := byCorrectUntilBadSymm)
+  | `(tactic| by_correct_until_bad ← $bad:term using $bound:term) =>
+      `(tactic|
+        (apply Indistinguishable.symmetric
+         by_correct_until_bad $bad using $bound))
 
 /--
 Turn an indistinguishability goal into an observational-equivalence goal, prove it with
