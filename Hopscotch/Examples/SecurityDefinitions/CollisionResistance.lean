@@ -56,3 +56,46 @@ theorem comparison_diff_iff_collision (hash : Message → Digest) (m₁ m₂ : M
   · simp [hm]
 
 end Hopscotch.HashComparison
+
+
+namespace Hopscotch.HashComparison
+
+/-- Public setup samples one hash key for both worlds. The two operational
+queries retain the fixed-key interface above. -/
+inductive PublicQuery (Message : Type) where
+  | getHashKey
+  | computeHash (message : Message)
+  | compareHashes (message₁ message₂ : Message)
+
+def PublicSpec (HashKey Message Digest : Type) : OracleSpec (PublicQuery Message)
+  | .getHashKey => HashKey
+  | .computeHash _ => Digest
+  | .compareHashes _ _ => Bool
+
+variable {HashKey Message Digest : Type} [DecidableEq Message] [DecidableEq Digest]
+
+/-- Both worlds sample and reveal the same public key and compute the same
+hashes. Only the comparison answer changes. -/
+noncomputable def publicOracle (real : Bool) (keyGen : PMF HashKey)
+    (hash : HashKey → Message → Digest) : OracleImpl (PublicSpec HashKey Message Digest) where
+  stateType := HashKey
+  initialState := keyGen
+  queries := fun
+    | .getHashKey => fun hk => pure (hk, hk)
+    | .computeHash m => fun hk => pure (hash hk m, hk)
+    | .compareHashes m₁ m₂ => fun hk =>
+        pure ((if real then decide (hash hk m₁ = hash hk m₂) else decide (m₁ = m₂)), hk)
+
+noncomputable abbrev publicConcrete (keyGen : PMF HashKey) (hash : HashKey → Message → Digest) :=
+  publicOracle true keyGen hash
+
+noncomputable abbrev publicIdeal (keyGen : PMF HashKey) (hash : HashKey → Message → Digest) :=
+  publicOracle false keyGen hash
+
+/-- Collision resistance for a sampled public hash key. The key is chosen by
+the source oracle once, rather than chosen independently by a reduction. -/
+abbrev PublicCollisionResistanceI {Idx : Type} (Assumptions : IndAssumptions Idx)
+    (q : ENat) (keyGen : PMF HashKey) (hash : HashKey → Message → Digest) :=
+  IndistinguishableI Assumptions q (publicConcrete keyGen hash) (publicIdeal keyGen hash)
+
+end Hopscotch.HashComparison
