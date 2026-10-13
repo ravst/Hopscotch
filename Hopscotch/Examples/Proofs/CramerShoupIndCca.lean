@@ -233,7 +233,7 @@ theorem encryptWithSecretPair_eq_encryptWithCoins
     (hf : HashFamily F V HashKey) (g1 g2 : V)
     (sk : SecretKey F HashKey) (message : V) (r : F) :
     encryptWithSecretPair hf sk message (r • g1) (r • g2) =
-      encryptWithCoins hf (publicKey g1 g2 sk) message r := by
+      encryptWithCoins hf g1 g2 (publicKey g1 g2 sk) message r := by
   have he :
       sk.z1 • (r • g1) + sk.z2 • (r • g2) + message =
         r • (sk.z1 • g1 + sk.z2 • g2) + message := by
@@ -456,7 +456,7 @@ noncomputable def g0Challenge
     (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
   let st ← get
   let r ← PMF.uniformOfFintype F
-  pure (encryptWithCoins hf (publicKey g1 g2 st.secretKey)
+  pure (encryptWithCoins hf g1 g2 (publicKey g1 g2 st.secretKey)
     (selectedMessage right m0 m1) r)
 
 /-- G1 challenge: the same ciphertext expressed using secret exponents. -/

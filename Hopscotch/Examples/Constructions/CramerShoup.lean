@@ -30,11 +30,9 @@ structure SecretKey (F HashKey : Type) where
   z2 : F
 deriving Repr
 
-/-- The public key `(hk, g₁, g₂, c, d, h)` in additive notation. -/
+/-- The public key `(hk, c, d, h)` for fixed public generators. -/
 structure PublicKey (F V HashKey : Type) where
   hashKey : HashKey
-  g1 : V
-  g2 : V
   c : V
   d : V
   h : V
@@ -53,8 +51,6 @@ def publicKey
     {F V HashKey : Type} [Semiring F] [AddCommMonoid V] [Module F V]
     (g1 g2 : V) (sk : SecretKey F HashKey) : PublicKey F V HashKey :=
   { hashKey := sk.hashKey
-    g1 := g1
-    g2 := g2
     c := sk.x1 • g1 + sk.x2 • g2
     d := sk.y1 • g1 + sk.y2 • g2
     h := sk.z1 • g1 + sk.z2 • g2 }
@@ -82,14 +78,14 @@ noncomputable def keyGen
       z2 := z2 }
   pure (publicKey g1 g2 sk, sk)
 
-/-- Deterministic encryption with explicitly supplied coins. -/
+/-- Deterministic encryption for fixed generators and explicitly supplied coins. -/
 def encryptWithCoins
     {F V HashKey : Type} [CommSemiring F]
     [AddCommMonoid V] [Module F V]
-    (hf : HashFamily F V HashKey) (pk : PublicKey F V HashKey)
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (pk : PublicKey F V HashKey)
     (message : V) (r : F) : Ciphertext V :=
-  let u1 := r • pk.g1
-  let u2 := r • pk.g2
+  let u1 := r • g1
+  let u2 := r • g2
   let e := r • pk.h + message
   let alpha := hf.hash pk.hashKey u1 u2 e
   let v := r • pk.c + (r * alpha) • pk.d
@@ -99,10 +95,10 @@ def encryptWithCoins
 noncomputable def encrypt
     {F V HashKey : Type} [Field F] [Fintype F]
     [AddCommGroup V] [Module F V]
-    (hf : HashFamily F V HashKey) (pk : PublicKey F V HashKey)
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (pk : PublicKey F V HashKey)
     (message : V) : PMF (Ciphertext V) := do
   let r ← PMF.uniformOfFintype F
-  pure (encryptWithCoins hf pk message r)
+  pure (encryptWithCoins hf g1 g2 pk message r)
 
 /-- The Cramer--Shoup verification equation. -/
 def valid
@@ -132,7 +128,7 @@ theorem valid_encryptWithCoins
     [AddCommGroup V] [Module F V]
     (hf : HashFamily F V HashKey) (g1 g2 : V)
     (sk : SecretKey F HashKey) (message : V) (r : F) :
-    valid hf sk (encryptWithCoins hf (publicKey g1 g2 sk) message r) := by
+    valid hf sk (encryptWithCoins hf g1 g2 (publicKey g1 g2 sk) message r) := by
   simp only [valid, encryptWithCoins, publicKey]
   module
 
@@ -143,7 +139,7 @@ theorem decrypt_encryptWithCoins
     [AddCommGroup V] [Module F V]
     (hf : HashFamily F V HashKey) (g1 g2 : V)
     (sk : SecretKey F HashKey) (message : V) (r : F) :
-    decrypt hf sk (encryptWithCoins hf (publicKey g1 g2 sk) message r) =
+    decrypt hf sk (encryptWithCoins hf g1 g2 (publicKey g1 g2 sk) message r) =
       some message := by
   rw [decrypt, if_pos (valid_encryptWithCoins hf g1 g2 sk message r)]
   simp only [encryptWithCoins, publicKey, Option.some.injEq]
