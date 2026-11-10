@@ -104,6 +104,29 @@ attribute [goodDoubleActionSimps]
   Prod.mk.eta
   OracleReduction.lower_state_passing
 
+/-- Try the propositional entries of an abstraction theory as whole proofs before
+normalization unfolds the expressions that those proofs describe. Named simp sets
+and definitions are left to the simplifier. -/
+syntax "solveAbstractionRules" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+elab_rules : tactic
+  | `(tactic| solveAbstractionRules [$simps,*]) => withMainContext do
+      let mut rules : List (TSyntax `term) := []
+      for arg in simps.getElems do
+        if arg.raw.getKind == ``Lean.Parser.Tactic.simpLemma &&
+            arg.raw[0].isNone && arg.raw[1].isNone then
+          let term : TSyntax `term := ⟨arg.raw[2]⟩
+          let saved ← saveState
+          let isProof ← try
+            let e ← Term.elabTerm term none
+            Lean.Meta.isProp (← Lean.Meta.inferType e)
+          catch _ => pure false
+          restoreState saved
+          if isProof then rules := rules ++ [term]
+      if rules.isEmpty then throwError "no proof rules in the supplied abstraction theory"
+      replaceMainGoal (← Lean.Elab.Tactic.SolveByElim.processSyntax
+        { maxDepth := 2 } true false rules [] #[] [← getMainGoal])
+
 /-- Solve a correct-abstraction query diagram by extensionality and standard unfolding. -/
 syntax "solveCorrectAbstractionDiag" " [" Lean.Parser.Tactic.simpLemma,* "]" : tactic
 
@@ -111,8 +134,10 @@ macro_rules
           | `(tactic| solveCorrectAbstractionDiag [$simps,*]) =>
             `(tactic|
               (ext1 st;
+               try (solve | solveAbstractionRules [$simps,*]);
+               try (solve | simpa only [$simps,*]);
                try let ⟨st1, st₂⟩ := st;
-               try simp [game_hopping_unfold];
+               try simp [game_hopping_unfold, $simps,*];
                try simp [sReduction];
                try simp [correctAbstractionDiagSimps];
                try simp [sStateT];
@@ -125,7 +150,11 @@ macro_rules
                try simp [sPMF, sRState, game_hopping_unfold, $simps,*];
                try rfl;
                try split_ifs
-               all_goals try simp_all [sPMF, sRState, game_hopping_unfold, $simps,*]
+               all_goals
+                 repeat' (first
+                   | simp_all [sPMF, sRState, sStateT, sReduction,
+                       game_hopping_unfold, $simps,*]
+                   | split_ifs)
                all_goals try rfl))
 
 /--
@@ -158,7 +187,9 @@ syntax "solveCorrectAbstractionInit" " [" Lean.Parser.Tactic.simpLemma,* "]" : t
 macro_rules
           | `(tactic| solveCorrectAbstractionInit [$simps,*]) =>
             `(tactic|
-              (try simp [OracleReduction.apply, game_hopping_unfold];
+              (try (solve | solveAbstractionRules [$simps,*]);
+               try (solve | simpa only [$simps,*]);
+               try simp [OracleReduction.apply, game_hopping_unfold, $simps,*];
                try simp [sReduction];
                try simp [sPMF, sRState, game_hopping_unfold, $simps,*];
                try rfl))
@@ -169,7 +200,9 @@ syntax "solveCorrectAbstraction" " [" Lean.Parser.Tactic.simpLemma,* "]" : tacti
 macro_rules
   | `(tactic| solveCorrectAbstraction [$simps,*]) =>
     `(tactic|
-      (constructor
+      (first
+       | solve | solveAbstractionRules [$simps,*]
+       | constructor
        <;> try solveCorrectAbstractionInit [$simps,*]
        try swap
        try

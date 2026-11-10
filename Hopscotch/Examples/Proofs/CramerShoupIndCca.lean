@@ -1,4 +1,7 @@
 import Hopscotch.Examples.Constructions.CramerShoup
+import Hopscotch.Comp.RemainingCandidates
+import Hopscotch.Examples.Misc.CyclicGenerator
+import Hopscotch.Examples.SecurityDefinitions.IndCcaPub
 import Hopscotch.Examples.SecurityDefinitions.CollisionResistance
 import Hopscotch.ApproxEq.CorrectUntilBad
 import Hopscotch.ObservationalEq.Defs
@@ -10,10 +13,13 @@ import Mathlib.Probability.Distributions.Uniform
 /-!
 # Cramer--Shoup IND-CCA
 
-The final declaration is one explicit game-hopping proof. The local lemmas
-justify its DDH reduction, exponent conditioning, hash-comparison reduction,
-randomized lazy authentication, and message-mask coupling.
+The main games are introduced in order, from G0 to G4, with each game
+immediately following its prerequisites. Auxiliary reductions and lazy hybrids
+come next, followed by the proofs and the final `cramerShoupIndCca` chain.
+The lemmas justify the DDH reduction, exponent conditioning,
+hash-comparison reduction, randomized lazy authentication, and message-mask coupling.
 
+The generic candidate-set calculus is in `Hopscotch.Comp.RemainingCandidates`.
 The remaining candidate set contains compatible authentication pairs. Its
 Bellman value is `min 1 (q * |F| / |S|)` before the challenge and
 `min 1 (q / |S|)` afterward. Failed or invalid states have value one.
@@ -21,158 +27,9 @@ The lazy rejection hop uses the framework's correct-until-bad theorem with
 this Bellman value. Every hop in the final chain is discharged below.
 -/
 
-namespace Hopscotch.CramerShoup.RemainingAuth
-
-abbrev Candidates (A : Type) := {s : Finset A // s.Nonempty}
-
-lemma card_pos {A : Type} (s : Candidates A) : 0 < s.val.card := s.property.card_pos
-
-noncomputable def budget (n m : Nat) : NNReal := min 1 ((n : NNReal) / m)
-
-lemma budget_le_one (n m : Nat) : budget n m ≤ 1 := min_le_left _ _
-
-end Hopscotch.CramerShoup.RemainingAuth
-
-namespace Hopscotch.CramerShoup.RemainingAuth
-
-variable {A B : Type} [DecidableEq A] [DecidableEq B]
-
-noncomputable def fiber (s : Candidates A) (f : A → B) (b : B) : Candidates A :=
-  if h : (s.val.filter (fun a => f a = b)).Nonempty then
-    ⟨s.val.filter (fun a => f a = b), h⟩ else s
-
-lemma uniform_image_mass (s : Candidates A) (f : A → B) (b : B) :
-    ((PMF.uniformOfFinset s.val s.property).map f) b =
-      ((s.val.filter (fun a => f a = b)).card : ENNReal) / s.val.card := by
-  classical
-  have h : ((PMF.uniformOfFinset s.val s.property).map f) b =
-      (PMF.uniformOfFinset s.val s.property).toOuterMeasure {a | f a = b} := by
-    simp only [PMF.map_apply, PMF.toOuterMeasure_apply]
-    apply tsum_congr
-    intro a
-    by_cases hb : b = f a <;> simp [Set.mem_setOf_eq, hb, eq_comm]
-  rw [h]
-  convert PMF.toOuterMeasure_uniformOfFinset_apply s.property {a | f a = b} using 1
-  congr 2
-  apply congrArg Finset.card
-  ext a
-  simp
-
-lemma map_const_apply (p : PMF A) (b b' : B) (a : A) :
-    (p.map (fun x => (b, x))) (b', a) = if b' = b then p a else 0 := by
-  classical
-  by_cases h : b' = b <;> simp [PMF.map_apply, Prod.mk.injEq, ite_and, h]
-
-lemma map_second_apply (p : PMF A) (f : A → B) (b : B) (a : A) :
-    (p.map (fun x => (f x, x))) (b, a) = if b = f a then p a else 0 := by
-  classical
-  simp [PMF.map_apply, Prod.mk.injEq, and_comm, ite_and]
-
-/-- Observing an authentication value and reconstructing from its surviving
-fiber preserves the joint law of the observation and the hidden share. -/
-lemma fiber_reconstruct (s : Candidates A) (f : A → B) :
-    (((PMF.uniformOfFinset s.val s.property).map f).bind fun b =>
-      (PMF.uniformOfFinset (fiber s f b).val (fiber s f b).property).map
-        (fun a => (b, a))) =
-      (PMF.uniformOfFinset s.val s.property).map (fun a => (f a, a)) := by
-  classical
-  ext ⟨b, a⟩
-  simp only [PMF.bind_apply, map_const_apply, map_second_apply, mul_ite, mul_zero,
-    ]
-  rw [tsum_eq_single b]
-  swap
-  · intro b' hb'
-    simp [Ne.symm hb']
-  simp only [ite_true]
-  rw [uniform_image_mass]
-  by_cases h : (s.val.filter (fun a => f a = b)).Nonempty
-  · have hk0 : ((s.val.filter (fun a => f a = b)).card : ENNReal) ≠ 0 :=
-      by exact_mod_cast (Nat.ne_of_gt h.card_pos)
-    simp only [fiber, dif_pos h, PMF.uniformOfFinset_apply, Finset.mem_filter]
-    by_cases ha : a ∈ s.val <;> by_cases hb : f a = b
-    · simp only [ha, hb, and_self, ↓reduceIte]
-      rw [div_eq_mul_inv, mul_right_comm,
-        ENNReal.mul_inv_cancel hk0 (ENNReal.natCast_ne_top _), one_mul]
-    · simp [ha, hb, Ne.symm hb]
-    · simp [ha, hb]
-    · simp [ha, hb]
-  · have hk : (s.val.filter (fun a => f a = b)).card = 0 :=
-      by simpa [Finset.card_eq_zero] using h
-    rw [hk]
-    simp only [Nat.cast_zero]
-    by_cases hb : b = f a
-    · have ha : a ∉ s.val := fun ha =>
-        h ⟨a, Finset.mem_filter.mpr ⟨ha, hb.symm⟩⟩
-      simp [hb, PMF.uniformOfFinset_apply, ha]
-    · simp [hb]
-
-
-lemma weighted_budget_le (n m k : Nat) (hm : 0 < m) :
-    ((k : NNReal) / m) * budget n k ≤ (n : NNReal) / m := by
-  by_cases hk : k = 0
-  · simp [hk]
-  · have hm0 : (m : NNReal) ≠ 0 := by exact_mod_cast Nat.ne_of_gt hm
-    have hk0 : (k : NNReal) ≠ 0 := by exact_mod_cast hk
-    calc
-      ((k : NNReal) / m) * budget n k ≤ ((k : NNReal) / m) * ((n : NNReal) / k) :=
-        mul_le_mul_right (min_le_right _ _) _
-      _ = (n : NNReal) / m := by field_simp
-
-/-- Revealing a value with at most |B| possible outcomes converts the expected
-post-observation guessing budget to a pre-observation budget. Empty fibers have
-zero probability, even though `fiber` uses a total default on them. -/
-lemma observed_budget_le [Fintype B] (s : Candidates A) (f : A → B) (n : Nat) :
-    ((PMF.uniformOfFinset s.val s.property).map f).expectation
-      (fun b => (budget n (fiber s f b).val.card : ENNReal)) ≤
-        (min 1 (((n : NNReal) * Fintype.card B) / s.val.card) : NNReal) := by
-  classical
-  let p := (PMF.uniformOfFinset s.val s.property).map f
-  have hm0 : (s.val.card : NNReal) ≠ 0 := by exact_mod_cast Nat.ne_of_gt (card_pos s)
-  have hone : p.expectation (fun b => (budget n (fiber s f b).val.card : ENNReal)) ≤ 1 := by
-    calc
-      _ ≤ p.expectation (fun _ => 1) := by
-        apply ENNReal.tsum_le_tsum
-        intro b
-        exact mul_le_mul_right (ENNReal.coe_le_coe.mpr (budget_le_one _ _)) _
-      _ = _ := PMF.expectation_const p 1
-  have hlinear : p.expectation (fun b => (budget n (fiber s f b).val.card : ENNReal)) ≤
-      (((n : NNReal) * Fintype.card B) / s.val.card : NNReal) := by
-    calc
-      p.expectation (fun b => (budget n (fiber s f b).val.card : ENNReal)) ≤
-          ∑' _ : B, (((n : NNReal) / s.val.card : NNReal) : ENNReal) := by
-        apply ENNReal.tsum_le_tsum
-        intro b
-        rw [show p b = _ from uniform_image_mass s f b]
-        by_cases h : (s.val.filter (fun a => f a = b)).Nonempty
-        · simp only [fiber, dif_pos h]
-          have hn := ENNReal.coe_le_coe.mpr
-            (weighted_budget_le n s.val.card (s.val.filter (fun a => f a = b)).card
-              (card_pos s))
-          simpa only [ENNReal.coe_mul, ENNReal.coe_div hm0, ENNReal.coe_natCast] using hn
-        · have hz : (s.val.filter (fun a => f a = b)).card = 0 := by
-            simpa [Finset.card_eq_zero] using h
-          simp [hz]
-      _ = (((n : NNReal) * Fintype.card B) / s.val.card : NNReal) := by
-        simp [tsum_fintype, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
-  simpa only [ENNReal.coe_min, ENNReal.coe_one] using le_min hone hlinear
-
-end Hopscotch.CramerShoup.RemainingAuth
-
 namespace Hopscotch.CramerShoup
 
 open scoped OracleReduction
-
-/-- Queries of the single-challenge public-key IND-CCA experiment. -/
-inductive IndCcaQuery (V : Type) where
-  | getPublicKey
-  | challenge (m0 m1 : V)
-  | decrypt (ct : Ciphertext V)
-
-/-- Result types for the Cramer--Shoup IND-CCA experiment. -/
-def IndCcaSpec (F V HashKey : Type) : OracleSpec (IndCcaQuery V)
-  | .getPublicKey => PublicKey F V HashKey
-  | .challenge _ _ => Option (Ciphertext V)
-  | .decrypt _ => Option V
 
 /-- Common state for the full-key games. The lazy games retain its canonical
 frame and reconstruct its hidden authentication coordinates probabilistically. -/
@@ -181,26 +38,83 @@ structure GameState (F V HashKey : Type) where
   target : Option (Ciphertext V)
   pairBad : Bool
   rejectionBad : Bool
-  hashBad : Bool
-
-/-- The one-dimensional group hypothesis used by the paper's G3--G4
-coupling: every message has a unique scalar coordinate relative to `g`. -/
-structure CyclicGenerator (F V : Type) [SMul F V] (g : V) where
-  coordinate : V → F
-  reconstruct : ∀ v, coordinate v • g = v
-  coordinate_smul : ∀ a, coordinate (a • g) = a
-
-/-- A pair of distinct exponents, used by the conditioned form of G2. -/
-abbrev DistinctPair (F : Type) := { p : F × F // p.1 ≠ p.2 }
-
-instance distinctPairNonempty (F : Type) [Nontrivial F] :
-    Nonempty (DistinctPair F) := by
-  obtain ⟨a, b, hab⟩ := exists_pair_ne F
-  exact ⟨⟨(a, b), hab⟩⟩
 
 /-- Pick the message selected by the left/right challenge bit. -/
 def selectedMessage {V : Type} (right : Bool) (m0 m1 : V) : V :=
   if right then m1 else m0
+
+section Games
+
+variable {F V HashKey : Type}
+variable [Field F] [Fintype F] [DecidableEq F]
+variable [AddCommGroup V] [Module F V] [DecidableEq V]
+
+/-! ## G0: the original IND-CCA game -/
+
+abbrev GameM (F V HashKey Result : Type) :=
+  RState (GameState F V HashKey) Result
+
+/-- Common initialization shared literally by every game. -/
+noncomputable def initialGameState
+    (hf : HashFamily F V HashKey) (g1 g2 : V) :
+    PMF (GameState F V HashKey) := do
+  let (_pk, sk) ← keyGen hf g1 g2
+  pure
+    { secretKey := sk
+      target := none
+      pairBad := false
+      rejectionBad := false }
+
+/-- Assemble an IND-CCA game from its challenge and decryption rules. The
+single-challenge check and prohibition on decrypting the target are shared,
+so individual games cannot accidentally implement them differently. -/
+noncomputable def gameOracle
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool)
+    (challengeRule : Bool → V → V → GameM F V HashKey (Ciphertext V))
+    (decryptRule : Ciphertext V → GameM F V HashKey (Option V)) :
+    OracleImpl (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) where
+  stateType := GameState F V HashKey
+  initialState := initialGameState hf g1 g2
+  queries := fun
+    | .getPublicKey => do
+        let st ← get
+        pure (publicKey g1 g2 st.secretKey)
+    | .challenge m0 m1 => do
+        let st ← get
+        if st.target.isSome then
+          pure none
+        else
+          let ct ← challengeRule right m0 m1
+          let st' ← get
+          set { st' with target := some ct }
+          pure (some ct)
+    | .decrypt ct => do
+        let st ← get
+        if st.target = some ct then
+          pure none
+        else
+          decryptRule ct
+
+noncomputable def normalDecryptRule
+    (hf : HashFamily F V HashKey) (ct : Ciphertext V) :
+    GameM F V HashKey (Option V) := do
+  let st ← get
+  pure (decrypt hf st.secretKey ct)
+
+/-- G0 challenge: the actual public-key encryption algorithm. -/
+noncomputable def g0Challenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let r ← PMF.uniformOfFintype F
+  pure (encryptWithCoins hf g1 g2 (publicKey g1 g2 st.secretKey)
+    (selectedMessage right m0 m1) r)
+
+noncomputable def G0
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g0Challenge hf g1 g2) (normalDecryptRule hf)
+
+/-! ## G1: express the challenge using the secret exponents -/
 
 /-- Construct the G1 challenge directly from the secret exponents. -/
 def encryptWithSecretPair
@@ -214,34 +128,99 @@ def encryptWithSecretPair
     (sk.x2 + alpha * sk.y2) • u2
   { u1 := u1, u2 := u2, e := e, v := v }
 
-/-- Authenticate an explicitly chosen challenge payload. G4 uses this after
-the message mask has been replaced by a fresh uniform group element. -/
-def authenticate
-    {F V HashKey : Type} [CommSemiring F]
-    [AddCommMonoid V] [Module F V]
-    (hf : HashFamily F V HashKey) (sk : SecretKey F HashKey)
-    (u1 u2 e : V) : Ciphertext V :=
-  let alpha := hf.hash sk.hashKey u1 u2 e
-  let v := (sk.x1 + alpha * sk.y1) • u1 +
-    (sk.x2 + alpha * sk.y2) • u2
-  { u1 := u1, u2 := u2, e := e, v := v }
-
-/-- The public-key and secret-key descriptions of an honest challenge agree. -/
-theorem encryptWithSecretPair_eq_encryptWithCoins
-    {F V HashKey : Type} [CommSemiring F]
-    [AddCommMonoid V] [Module F V]
+/-- G1 challenge: the same ciphertext expressed using secret exponents. -/
+noncomputable def g1Challenge
     (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (sk : SecretKey F HashKey) (message : V) (r : F) :
-    encryptWithSecretPair hf sk message (r • g1) (r • g2) =
-      encryptWithCoins hf g1 g2 (publicKey g1 g2 sk) message r := by
-  have he :
-      sk.z1 • (r • g1) + sk.z2 • (r • g2) + message =
-        r • (sk.z1 • g1 + sk.z2 • g2) + message := by
-    module
-  simp only [encryptWithSecretPair, encryptWithCoins, publicKey]
-  rw [he]
-  congr 1
-  module
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let r ← PMF.uniformOfFintype F
+  pure (encryptWithSecretPair hf st.secretKey
+    (selectedMessage right m0 m1) (r • g1) (r • g2))
+
+noncomputable def G1
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g1Challenge hf g1 g2) (normalDecryptRule hf)
+
+/-! ## G2: independent exponents, then conditioning -/
+
+/-- G2Raw is the direct DDH endpoint: the two challenge exponents are
+independent. In particular, it does not ask the DDH reduction to recover or
+record their exponents. -/
+noncomputable def g2RawChallenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let r1 ← PMF.uniformOfFintype F
+  let r2 ← PMF.uniformOfFintype F
+  pure (encryptWithSecretPair hf st.secretKey
+    (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
+
+noncomputable def G2Raw
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2RawChallenge hf g1 g2) (normalDecryptRule hf)
+
+/-- Exact instrumentation of G2Raw with the exponent-collision ghost flag. -/
+noncomputable def g2PairTrackedChallenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let r1 ← PMF.uniformOfFintype F
+  let r2 ← PMF.uniformOfFintype F
+  let badNow := decide (r1 = r2)
+  set { st with pairBad := st.pairBad || badNow }
+  pure (encryptWithSecretPair hf st.secretKey
+    (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
+
+noncomputable def G2PairTracked
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2PairTrackedChallenge hf g1 g2) (normalDecryptRule hf)
+
+/-- A pair of distinct exponents, used by the conditioned form of G2. -/
+abbrev DistinctPair (F : Type) := { p : F × F // p.1 ≠ p.2 }
+
+instance distinctPairNonempty (F : Type) [Nontrivial F] :
+    Nonempty (DistinctPair F) := by
+  obtain ⟨a, b, hab⟩ := exists_pair_ne F
+  exact ⟨⟨(a, b), hab⟩⟩
+
+/-- Coupling bridge for conditioning. On the bad branch it resamples a
+distinct pair and remembers that this happened in ghost state. Away from
+`pairBad`, it is pointwise identical to G2Raw. -/
+noncomputable def g2CoupledChallenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let r1 ← PMF.uniformOfFintype F
+  let r2 ← PMF.uniformOfFintype F
+  if _h : r1 = r2 then
+    let pair ← PMF.uniformOfFintype (DistinctPair F)
+    set { st with pairBad := true }
+    pure (encryptWithSecretPair hf st.secretKey
+      (selectedMessage right m0 m1) (pair.val.1 • g1) (pair.val.2 • g2))
+  else
+    set { st with pairBad := st.pairBad }
+    pure (encryptWithSecretPair hf st.secretKey
+      (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
+
+noncomputable def G2Coupled
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2CoupledChallenge hf g1 g2) (normalDecryptRule hf)
+
+/-- Paper G2: sample a uniformly random pair conditioned to be distinct. -/
+noncomputable def g2Challenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let pair ← PMF.uniformOfFintype (DistinctPair F)
+  set { st with pairBad := false }
+  pure (encryptWithSecretPair hf st.secretKey
+    (selectedMessage right m0 m1) (pair.val.1 • g1) (pair.val.2 • g2))
+
+noncomputable def G2
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (normalDecryptRule hf)
+
+/-! ## G2Tracked and G3: record rejection and enforce consistency -/
 
 /-- Collapsed exponents used by the paper after fixing `g₂ = w • g₁`. -/
 def SecretKey.collapsedX
@@ -269,6 +248,29 @@ def collapsedValid
   ct.v = (sk.collapsedX w + alpha * sk.collapsedY w) • ct.u1
 
 open scoped Classical in
+/-- Event R3: ordinary verification accepts a ciphertext that the special
+G3 consistency test rejects. -/
+noncomputable def rejectionEvent
+    {F V HashKey : Type} [CommSemiring F]
+    [AddCommMonoid V] [Module F V] [DecidableEq V]
+    (hf : HashFamily F V HashKey) (w : F)
+    (sk : SecretKey F HashKey) (ct : Ciphertext V) : Bool :=
+  decide (ct.u2 ≠ w • ct.u1 ∧ valid hf sk ct)
+
+/-- G2 decryption, instrumented with the paper's event R3. -/
+noncomputable def g2DecryptRule
+    (hf : HashFamily F V HashKey) (w : F) (ct : Ciphertext V) :
+    GameM F V HashKey (Option V) := do
+  let st ← get
+  let badNow := rejectionEvent hf w st.secretKey ct
+  set { st with rejectionBad := st.rejectionBad || badNow }
+  pure (decrypt hf st.secretKey ct)
+
+noncomputable def G2Tracked
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (g2DecryptRule hf w)
+
+open scoped Classical in
 /-- G3 decryption: first require the DH consistency equation and then use the
 collapsed secret-key equations. -/
 noncomputable def specialDecrypt
@@ -284,15 +286,52 @@ noncomputable def specialDecrypt
   else
     none
 
-open scoped Classical in
-/-- Event R3: ordinary verification accepts a ciphertext that the special
-G3 consistency test rejects. -/
-noncomputable def rejectionEvent
+/-- G3 decryption uses the special rejection rule and records exactly the
+same candidate bad event as G2. -/
+noncomputable def g3DecryptRule
+    (hf : HashFamily F V HashKey) (w : F) (ct : Ciphertext V) :
+    GameM F V HashKey (Option V) := do
+  let st ← get
+  let badNow := rejectionEvent hf w st.secretKey ct
+  set { st with rejectionBad := st.rejectionBad || badNow }
+  pure (specialDecrypt hf w st.secretKey ct)
+
+noncomputable def G3
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (g3DecryptRule hf w)
+
+/-! ## G4: replace the message mask by a uniform payload -/
+
+/-- Authenticate an explicitly chosen challenge payload. G4 uses this after
+the message mask has been replaced by a fresh uniform group element. -/
+def authenticate
     {F V HashKey : Type} [CommSemiring F]
-    [AddCommMonoid V] [Module F V] [DecidableEq V]
-    (hf : HashFamily F V HashKey) (w : F)
-    (sk : SecretKey F HashKey) (ct : Ciphertext V) : Bool :=
-  decide (ct.u2 ≠ w • ct.u1 ∧ valid hf sk ct)
+    [AddCommMonoid V] [Module F V]
+    (hf : HashFamily F V HashKey) (sk : SecretKey F HashKey)
+    (u1 u2 e : V) : Ciphertext V :=
+  let alpha := hf.hash sk.hashKey u1 u2 e
+  let v := (sk.x1 + alpha * sk.y1) • u1 +
+    (sk.x2 + alpha * sk.y2) • u2
+  { u1 := u1, u2 := u2, e := e, v := v }
+
+/-- G4 challenge: replace the message-dependent payload by an independent
+uniform scalar multiple of `g₁`. -/
+noncomputable def g4Challenge
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (_right : Bool) (_m0 _m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let pair ← PMF.uniformOfFintype (DistinctPair F)
+  let r ← PMF.uniformOfFintype F
+  set { st with pairBad := false }
+  pure (authenticate hf st.secretKey
+    (pair.val.1 • g1) (pair.val.2 • g2) (r • g1))
+
+noncomputable def G4
+    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) :=
+  gameOracle hf g1 g2 false (g4Challenge hf g1 g2) (g3DecryptRule hf w)
+
+/-! ## Auxiliary reductions and hybrids -/
+
 
 /-- Event C5: a different hash input collides with the target hash. -/
 def targetHashCollision
@@ -364,63 +403,12 @@ noncomputable def DDHRandom
         let r2 ← PMF.uniformOfFintype F
         pure (r1 • g1, r2 • g2)
 
-section Games
-
-variable {F V HashKey : Type}
-variable [Field F] [Fintype F] [DecidableEq F]
-variable [AddCommGroup V] [Module F V] [DecidableEq V]
-
-abbrev GameM (F V HashKey Result : Type) :=
-  RState (GameState F V HashKey) Result
-
-/-- Common initialization shared literally by every game. -/
-noncomputable def initialGameState
-    (hf : HashFamily F V HashKey) (g1 g2 : V) :
-    PMF (GameState F V HashKey) := do
-  let (_pk, sk) ← keyGen hf g1 g2
-  pure
-    { secretKey := sk
-      target := none
-      pairBad := false
-      rejectionBad := false
-      hashBad := false }
-
-/-- Assemble an IND-CCA game from its challenge and decryption rules. The
-single-challenge check and prohibition on decrypting the target are shared,
-so individual games cannot accidentally implement them differently. -/
-noncomputable def gameOracle
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool)
-    (challengeRule : Bool → V → V → GameM F V HashKey (Ciphertext V))
-    (decryptRule : Ciphertext V → GameM F V HashKey (Option V)) :
-    OracleImpl (IndCcaSpec F V HashKey) where
-  stateType := GameState F V HashKey
-  initialState := initialGameState hf g1 g2
-  queries := fun
-    | .getPublicKey => do
-        let st ← get
-        pure (publicKey g1 g2 st.secretKey)
-    | .challenge m0 m1 => do
-        let st ← get
-        if st.target.isSome then
-          pure none
-        else
-          let ct ← challengeRule right m0 m1
-          let st' ← get
-          set { st' with target := some ct }
-          pure (some ct)
-    | .decrypt ct => do
-        let st ← get
-        if st.target = some ct then
-          pure none
-        else
-          decryptRule ct
-
 /-- DDH reduction for the G1--G2Raw hop.  The DDH pair is requested lazily
 when the unique challenge query arrives, so adaptively chosen challenge
 messages can be inserted without knowing either sampled scalar. -/
 noncomputable def CramerShoupDDHReduction
     (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :
-    OracleReduction (ModuleDDHSpec V) (IndCcaSpec F V HashKey) where
+    OracleReduction (ModuleDDHSpec V) (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) where
   stateType := GameState F V HashKey
   initialState := OracleReduction.initSample (initialGameState hf g1 g2)
   queries := fun
@@ -443,153 +431,6 @@ noncomputable def CramerShoupDDHReduction
           pure none
         else
           pure (decrypt hf st.secretKey ct)
-
-noncomputable def normalDecryptRule
-    (hf : HashFamily F V HashKey) (ct : Ciphertext V) :
-    GameM F V HashKey (Option V) := do
-  let st ← get
-  pure (decrypt hf st.secretKey ct)
-
-/-- G0 challenge: the actual public-key encryption algorithm. -/
-noncomputable def g0Challenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let r ← PMF.uniformOfFintype F
-  pure (encryptWithCoins hf g1 g2 (publicKey g1 g2 st.secretKey)
-    (selectedMessage right m0 m1) r)
-
-/-- G1 challenge: the same ciphertext expressed using secret exponents. -/
-noncomputable def g1Challenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let r ← PMF.uniformOfFintype F
-  pure (encryptWithSecretPair hf st.secretKey
-    (selectedMessage right m0 m1) (r • g1) (r • g2))
-
-/-- G2Raw is the direct DDH endpoint: the two challenge exponents are
-independent. In particular, it does not ask the DDH reduction to recover or
-record their exponents. -/
-noncomputable def g2RawChallenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let r1 ← PMF.uniformOfFintype F
-  let r2 ← PMF.uniformOfFintype F
-  pure (encryptWithSecretPair hf st.secretKey
-    (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
-
-/-- Exact instrumentation of G2Raw with the exponent-collision ghost flag. -/
-noncomputable def g2PairTrackedChallenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let r1 ← PMF.uniformOfFintype F
-  let r2 ← PMF.uniformOfFintype F
-  let badNow := decide (r1 = r2)
-  set { st with pairBad := st.pairBad || badNow }
-  pure (encryptWithSecretPair hf st.secretKey
-    (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
-
-/-- Coupling bridge for conditioning. On the bad branch it resamples a
-distinct pair and remembers that this happened in ghost state. Away from
-`pairBad`, it is pointwise identical to G2Raw. -/
-noncomputable def g2CoupledChallenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let r1 ← PMF.uniformOfFintype F
-  let r2 ← PMF.uniformOfFintype F
-  if _h : r1 = r2 then
-    let pair ← PMF.uniformOfFintype (DistinctPair F)
-    set { st with pairBad := true }
-    pure (encryptWithSecretPair hf st.secretKey
-      (selectedMessage right m0 m1) (pair.val.1 • g1) (pair.val.2 • g2))
-  else
-    set { st with pairBad := st.pairBad }
-    pure (encryptWithSecretPair hf st.secretKey
-      (selectedMessage right m0 m1) (r1 • g1) (r2 • g2))
-
-/-- Paper G2: sample a uniformly random pair conditioned to be distinct. -/
-noncomputable def g2Challenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let pair ← PMF.uniformOfFintype (DistinctPair F)
-  set { st with pairBad := false }
-  pure (encryptWithSecretPair hf st.secretKey
-    (selectedMessage right m0 m1) (pair.val.1 • g1) (pair.val.2 • g2))
-
-/-- G2 decryption, instrumented with the paper's event R3. -/
-noncomputable def g2DecryptRule
-    (hf : HashFamily F V HashKey) (w : F) (ct : Ciphertext V) :
-    GameM F V HashKey (Option V) := do
-  let st ← get
-  let badNow := rejectionEvent hf w st.secretKey ct
-  set { st with rejectionBad := st.rejectionBad || badNow }
-  pure (decrypt hf st.secretKey ct)
-
-/-- G3 decryption uses the special rejection rule and records exactly the
-same candidate bad event as G2. -/
-noncomputable def g3DecryptRule
-    (hf : HashFamily F V HashKey) (w : F) (ct : Ciphertext V) :
-    GameM F V HashKey (Option V) := do
-  let st ← get
-  let badNow := rejectionEvent hf w st.secretKey ct
-  set { st with rejectionBad := st.rejectionBad || badNow }
-  pure (specialDecrypt hf w st.secretKey ct)
-
-/-- G4 challenge: replace the message-dependent payload by an independent
-uniform scalar multiple of `g₁`. -/
-noncomputable def g4Challenge
-    (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (_right : Bool) (_m0 _m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let pair ← PMF.uniformOfFintype (DistinctPair F)
-  let r ← PMF.uniformOfFintype F
-  set { st with pairBad := false }
-  pure (authenticate hf st.secretKey
-    (pair.val.1 • g1) (pair.val.2 • g2) (r • g1))
-
-/- The games themselves are intentionally tiny applications of the common
-driver. This makes each neighboring pair differ in one named rule only. -/
-
-noncomputable def G0
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g0Challenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G1
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g1Challenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G2Raw
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2RawChallenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G2PairTracked
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2PairTrackedChallenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G2Coupled
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2CoupledChallenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G2
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (normalDecryptRule hf)
-
-noncomputable def G2Tracked
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (g2DecryptRule hf w)
-
-noncomputable def G3
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2Challenge hf g1 g2) (g3DecryptRule hf w)
-
-noncomputable def G4
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (_right : Bool) :=
-  gameOracle hf g1 g2 false (g4Challenge hf g1 g2) (g3DecryptRule hf w)
 
 /-! ### Collision resistance before authentication guessing -/
 
@@ -619,10 +460,10 @@ def hashGuardProjection (st : GameState F V HashKey × HashKey) : GameState F V 
   attachHashKey st.2 st.1
 
 noncomputable def hashGuardBaseHandler (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V) (st : GameState F V HashKey) :
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V)) (st : GameState F V HashKey) :
     OracleReduction.SRReductionComp
       (HashComparison.PublicSpec HashKey (V × V × V) F) (GameState F V HashKey)
-      (IndCcaSpec F V HashKey q) := do
+      (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q) := do
   let out ← OracleReduction.sample ((G2Tracked hf g1 g2 w right).queries q st)
   OracleReduction.set out.2
   pure out.1
@@ -632,7 +473,7 @@ guard is impossible; under hash comparison it is precisely the collision guard. 
 noncomputable def CramerShoupHashGuardReduction (hf : HashFamily F V HashKey)
     (g1 g2 : V) (w : F) (right : Bool) :
     OracleReduction (HashComparison.PublicSpec HashKey (V × V × V) F)
-      (IndCcaSpec F V HashKey) where
+      (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) where
   stateType := GameState F V HashKey
   initialState := do
     let hk : HashKey ← OracleReduction.initQuery (HashComparison.PublicQuery.getHashKey)
@@ -662,13 +503,193 @@ noncomputable def hashGuardEndpoint (real : Bool) (hf : HashFamily F V HashKey)
   gameOracle hf g1 g2 right (g2Challenge hf g1 g2)
     (if real then guardedDecryptRule true hf w else g2DecryptRule hf w)
 
-private lemma hashGuard_set_apply {S : Type} (t s : S) :
-    (set t : RState S Unit) s = PMF.pure ((), t) := rfl
+noncomputable def G3Untracked (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (w : F) (right : Bool) :=
+  gameOracle hf g1 g2 right (g2Challenge hf g1 g2)
+    (fun ct => do let st ← get; pure (specialDecrypt hf w st.secretKey ct))
 
-private lemma hashGuard_map_set_apply {S B : Type} (f : Unit → B) (t s : S) :
-    (f <$> (set t : RState S Unit)) s = PMF.pure (f (), t) := by
-  change (PMF.pure ((), t)).map (fun z => (f z.1, z.2)) = _
-  exact PMF.pure_map _ _
+/-- Bellman valuation for the exponent-pair conditioning event.  Before the
+single challenge it reserves exactly `1 / |F|`; after a good challenge the
+event can no longer occur, while a state in which it occurred has value one.
+The query budget is intentionally unused because the challenge is ask-once. -/
+noncomputable def pairBadValuation
+    (st : GameState F V HashKey) (_q : ENat) : NNReal :=
+  if st.pairBad then 1
+  else if st.target.isSome then 0
+  else (Fintype.card F : NNReal)⁻¹
+
+/-! ### Auxiliary hybrids for the message-mask coupling -/
+
+/-- Resample the hidden mask coordinate while preserving its public coordinate. -/
+def refreshMaskKey (w : F) (sk : SecretKey F HashKey) (z : F) : SecretKey F HashKey :=
+  { sk with z1 := sk.collapsedZ w - w * z, z2 := z }
+
+noncomputable def refreshMask (w : F) (st : GameState F V HashKey) :
+    PMF (GameState F V HashKey) := do
+  let z ← PMF.uniformOfFintype F
+  pure { st with secretKey := refreshMaskKey w st.secretKey z }
+
+/-- Reveal a fresh hidden coordinate only while no challenge has been issued. -/
+noncomputable def refreshBeforeChallenge (w : F) (st : GameState F V HashKey) :
+    PMF (GameState F V HashKey) :=
+  if st.target.isSome then pure st else refreshMask w st
+
+noncomputable def g3FreshChallenge (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F)
+    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
+  let st ← get
+  let st' ← refreshMask w st
+  set st'
+  g2Challenge hf g1 g2 right m0 m1
+
+/-- G3 with its hidden mask coordinate sampled lazily at the challenge. -/
+noncomputable def G3Fresh (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
+  gameOracle hf g1 g2 right (g3FreshChallenge hf g1 g2 w) (g3DecryptRule hf w)
+
+/-- Forget the hidden coordinate after its contribution to the payload has been sampled. -/
+def collapseMaskState (w : F) (st : GameState F V HashKey) : GameState F V HashKey :=
+  { st with secretKey := refreshMaskKey w st.secretKey 0 }
+
+/-- Common abstraction of the lazy-mask game and G4. -/
+noncomputable def G4Canonical (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) :=
+  { G4 hf g1 g2 w with
+    initialState := (initialGameState hf g1 g2).map (collapseMaskState w) }
+
+/-! ### Lazy authentication hybrids -/
+
+/-- The public authentication coordinates remain; the two hidden shares are erased. -/
+def lazyAuthFrame (w : F) (st : GameState F V HashKey) : GameState F V HashKey :=
+  { st with secretKey := { st.secretKey with
+      x1 := st.secretKey.collapsedX w, x2 := 0,
+      y1 := st.secretKey.collapsedY w, y2 := 0 } }
+
+def lazyAuthState (w : F) (frame : GameState F V HashKey) (p : F × F) :
+    GameState F V HashKey :=
+  { frame with secretKey := { frame.secretKey with
+      x1 := frame.secretKey.collapsedX w - w * p.1, x2 := p.1,
+      y1 := frame.secretKey.collapsedY w - w * p.2, y2 := p.2 } }
+
+abbrev LazyAuthState (F V HashKey : Type) :=
+  GameState F V HashKey × RemainingCandidates.Candidates (F × F)
+
+noncomputable def lazyAuthReconstruct (w : F) (st : LazyAuthState F V HashKey) :
+    PMF (GameState F V HashKey) :=
+  (PMF.uniformOfFinset st.2.val st.2.property).map (lazyAuthState w st.1)
+
+/-- One guarded query with its challenge coins supplied explicitly. -/
+noncomputable def guardedQueryStep (real : Bool) (hf : HashFamily F V HashKey)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
+    (coins : DistinctPair F) (st : GameState F V HashKey) :
+    IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q × GameState F V HashKey :=
+  match q with
+  | .getPublicKey => (publicKey g1 g2 st.secretKey, st)
+  | .challenge m0 m1 =>
+      if st.target.isSome then (none, st)
+      else
+        let ct := encryptWithSecretPair hf st.secretKey
+          (selectedMessage right m0 m1) (coins.val.1 • g1) (coins.val.2 • g2)
+        (some ct, { st with target := some ct, pairBad := false })
+  | .decrypt ct =>
+      let normal :=
+        (if real then decrypt hf st.secretKey ct else specialDecrypt hf w st.secretKey ct,
+          { st with rejectionBad := st.rejectionBad || rejectionEvent hf w st.secretKey ct })
+      if st.target = some ct then (none, st)
+      else if ct.u2 = w • ct.u1 then normal
+      else if h : st.target.isSome then
+        if targetHashCollision hf st.secretKey (st.target.get h) ct then (none, st) else normal
+      else normal
+
+noncomputable def lazyAuthObservation (real : Bool) (hf : HashFamily F V HashKey)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
+    (coins : DistinctPair F) (frame : GameState F V HashKey) (p : F × F) :
+    IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q × GameState F V HashKey :=
+  mapSecond (lazyAuthFrame w)
+    (guardedQueryStep real hf g1 g2 w right q coins (lazyAuthState w frame p))
+
+/-- Sample the response distribution and retain its compatible-key fiber.
+No hidden authentication pair is retained in the lazy state. -/
+noncomputable def lazyAuthQueries (real : Bool) (hf : HashFamily F V HashKey)
+    (g1 g2 : V) (w : F) (right : Bool) :
+    QueryImpl (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) (RState (LazyAuthState F V HashKey)) := fun q st => by
+  classical
+  exact (PMF.uniformOfFintype (DistinctPair F)).bind fun coins =>
+    let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
+    ((PMF.uniformOfFinset st.2.val st.2.property).map observe).map fun observed =>
+      (observed.1, (observed.2, RemainingCandidates.fiber st.2 observe observed))
+
+noncomputable def lazyAuthInitial (hf : HashFamily F V HashKey) :
+    PMF (LazyAuthState F V HashKey) := do
+  let hk ← hf.keyGen
+  let x ← PMF.uniformOfFintype F
+  let y ← PMF.uniformOfFintype F
+  let z1 ← PMF.uniformOfFintype F
+  let z2 ← PMF.uniformOfFintype F
+  pure ({ secretKey := ⟨hk, x, 0, y, 0, z1, z2⟩, target := none, pairBad := false, rejectionBad := false },
+      ⟨Finset.univ, Finset.univ_nonempty⟩)
+
+noncomputable def lazyGuardedGame (real : Bool) (hf : HashFamily F V HashKey)
+    (g1 g2 : V) (w : F) (right : Bool) : OracleImpl (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) where
+  stateType := LazyAuthState F V HashKey
+  initialState := lazyAuthInitial hf
+  queries := lazyAuthQueries real hf g1 g2 w right
+
+noncomputable def G2Lazy (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
+  lazyGuardedGame true hf g1 g2 w right
+
+noncomputable def G3Lazy (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
+  lazyGuardedGame false hf g1 g2 w right
+
+/-- Before the challenge, both authentication shares remain hidden. -/
+def refreshAuthPair (w : F) (sk : SecretKey F HashKey) (p : F × F) : SecretKey F HashKey :=
+  { sk with
+    x1 := sk.collapsedX w - w * p.1
+    x2 := p.1
+    y1 := sk.collapsedY w - w * p.2
+    y2 := p.2 }
+
+def authCombination (alpha : F) (p : F × F) : F := p.1 + alpha * p.2
+
+/-- Reachable post-challenge candidate pairs all authenticate the challenge.
+Before the challenge there is no extra condition. -/
+def lazyAuthInvariant (hf : HashFamily F V HashKey) (w : F)
+    (st : LazyAuthState F V HashKey) : Prop :=
+  ∀ target, st.1.target = some target →
+    target.u2 ≠ w • target.u1 ∧
+      ∀ p ∈ st.2.val, valid hf (lazyAuthState w st.1 p).secretKey target
+
+/-- Candidate-set Bellman valuation. Invalid states conservatively have value
+one; the one-share bound is only used for compatible post-challenge states. -/
+noncomputable def lazyAuthValuation (hf : HashFamily F V HashKey) (w : F)
+    (st : LazyAuthState F V HashKey) (q : ENat) : NNReal := by
+  classical
+  exact if st.1.rejectionBad ∨ ¬ lazyAuthInvariant hf w st then 1 else
+    match q with
+    | none => 1
+    | some n => RemainingCandidates.budget
+        (n * if st.1.target.isSome then 1 else Fintype.card F) st.2.val.card
+
+attribute [local game_hopping_unfold]
+  G0 G1 G2Raw G2PairTracked G2 G2Tracked gameOracle initialGameState
+  g0Challenge g1Challenge g2RawChallenge g2PairTrackedChallenge g2Challenge
+  normalDecryptRule g2DecryptRule forgetPairBadAbstraction forgetRejectionBadAbstraction
+
+/-! ## Proofs of the hybrid transitions -/
+
+/-- The public-key and secret-key descriptions of an honest challenge agree. -/
+theorem encryptWithSecretPair_eq_encryptWithCoins
+    {F V HashKey : Type} [CommSemiring F]
+    [AddCommMonoid V] [Module F V]
+    (hf : HashFamily F V HashKey) (g1 g2 : V)
+    (sk : SecretKey F HashKey) (message : V) (r : F) :
+    encryptWithSecretPair hf sk message (r • g1) (r • g2) =
+      encryptWithCoins hf g1 g2 (publicKey g1 g2 sk) message r := by
+  have he :
+      sk.z1 • (r • g1) + sk.z2 • (r • g2) + message =
+        r • (sk.z1 • g1 + sk.z2 • g2) + message := by
+    module
+  simp only [encryptWithSecretPair, encryptWithCoins, publicKey]
+  rw [he]
+  congr 1
+  module
 
 set_option maxHeartbeats 1000000 in
 theorem hashGuardReduction_correct (real : Bool) (hf : HashFamily F V HashKey)
@@ -678,55 +699,23 @@ theorem hashGuardReduction_correct (real : Bool) (hf : HashFamily F V HashKey)
         HashComparison.publicOracle real hf.keyGen (ciphertextHash hf))
       (hashGuardEndpoint real hf g1 g2 w right) hashGuardProjection := by
   classical
-  constructor
-  · cases real <;>
-      simp [OracleReduction.apply, CramerShoupHashGuardReduction, HashComparison.publicOracle,
-        hashGuardEndpoint, G2Guarded, G2Tracked, gameOracle, initialGameState,
-        keyGen, hashGuardProjection, attachHashKey, correctAbstractionDiagSimps,
-        sRState, sPMF, sReduction, sStateT, StateT.run, StateT.bind, StateT.map, StateT.set, RState.modify, OracleReduction.initQuery, OracleReduction.initSample,
-        OracleReduction.get, OracleReduction.set, OracleReduction.sample,
-        hashGuard_set_apply, hashGuard_map_set_apply]
-  · intro q
-    funext st
-    rcases st with ⟨st, hk⟩
-    cases real <;> cases q <;>
-      simp [OracleReduction.apply, CramerShoupHashGuardReduction, HashComparison.publicOracle,
-        hashGuardBaseHandler, hashGuardEndpoint, G2Guarded, G2Tracked, gameOracle,
-        guardedDecryptRule, g2DecryptRule, g2Challenge, hashGuardProjection, attachHashKey,
-        targetHashCollision, hashMessage, ciphertextHash,
-        correctAbstractionDiagSimps, sRState, sPMF, sReduction, sStateT, StateT.run, StateT.bind, StateT.map, StateT.set, RState.modify, OracleReduction.initQuery, OracleReduction.initSample,
-        OracleReduction.get, OracleReduction.set, OracleReduction.sample,
-        hashGuard_set_apply, hashGuard_map_set_apply]
-    all_goals (try split_ifs) <;> (try simp_all [sRState, sPMF, sStateT, sReduction, StateT.bind,
-      StateT.map, StateT.set, RState.modify, hashGuard_set_apply, hashGuard_map_set_apply,
-      PFunctor.FreeM.lift])
-    all_goals (try split_ifs) <;> simp_all [sRState, sPMF, sStateT,
-      hashGuard_set_apply, hashGuard_map_set_apply]
-
-    all_goals
-      rename_i h
-      exact False.elim (h.1 h.2.1 h.2.2.1 h.2.2.2)
-
-
-
-noncomputable def G3Untracked (hf : HashFamily F V HashKey) (g1 g2 : V)
-    (w : F) (right : Bool) :=
-  gameOracle hf g1 g2 right (g2Challenge hf g1 g2)
-    (fun ct => do let st ← get; pure (specialDecrypt hf w st.secretKey ct))
+  cases real <;> solveCorrectAbstraction [CramerShoupHashGuardReduction,
+    HashComparison.publicOracle, hashGuardEndpoint, hashGuardBaseHandler,
+    G2Guarded, G2Tracked, gameOracle, initialGameState, keyGen, guardedDecryptRule,
+    g2DecryptRule, g2Challenge, hashGuardProjection, attachHashKey, targetHashCollision,
+    hashMessage, ciphertextHash, sReduction, sStateT, StateT.run, StateT.bind,
+    StateT.map, StateT.set, RState.modify, OracleReduction.initQuery,
+    OracleReduction.initSample, OracleReduction.get, OracleReduction.set,
+    OracleReduction.sample, RState.set_apply, RState.map_set_apply, PFunctor.FreeM.lift]
+  all_goals aesop
 
 theorem G3Guarded_G3 (hf : HashFamily F V HashKey) (g1 g2 : V)
     (w : F) (right : Bool) : ObsEq (G3Guarded hf g1 g2 w right) (G3 hf g1 g2 w right) := by
   have hl : ObsEq (G3Guarded hf g1 g2 w right) (G3Untracked hf g1 g2 w right) := by
-    obs_eq_by_abstraction (forgetRejectionBadAbstraction (F := F) (V := V) (HashKey := HashKey))
-    all_goals simp [G3Guarded, G3Untracked, gameOracle, guardedDecryptRule,
-      g3DecryptRule, g2Challenge, forgetRejectionBadAbstraction,
-      correctAbstractionDiagSimps, sRState, sPMF]
-    all_goals (try split_ifs) <;> simp_all [initialGameState, sRState, sPMF, specialDecrypt]
+    by_abstraction forgetRejectionBadAbstraction using [G3Guarded, G3Untracked,
+      guardedDecryptRule, g3DecryptRule, specialDecrypt]
   have hr : ObsEq (G3 hf g1 g2 w right) (G3Untracked hf g1 g2 w right) := by
-    obs_eq_by_abstraction (forgetRejectionBadAbstraction (F := F) (V := V) (HashKey := HashKey))
-    all_goals simp [G3, G3Untracked, gameOracle, g3DecryptRule, g2Challenge,
-      forgetRejectionBadAbstraction, correctAbstractionDiagSimps, sRState, sPMF]
-    all_goals (try split_ifs) <;> simp_all [initialGameState, sRState, sPMF]
+    by_abstraction forgetRejectionBadAbstraction using [G3, G3Untracked, g3DecryptRule]
   exact obsEq_trans hl hr.symm
 
 /-- The first rejection hop is solely a hash-comparison reduction. -/
@@ -742,21 +731,9 @@ noncomputable def hop_G2Tracked_G2Guarded {Idx : Type} (Assumptions : IndAssumpt
     CramerShoupHashGuardReduction hf g1 g2 w right ◇
       HashComparison.publicConcrete hf.keyGen (ciphertextHash hf),
     G2Guarded hf g1 g2 w right]
-  · obs_eq
-    exact (correctAbstractionImpliesObsEq _ _ hashGuardProjection
-      (hashGuardReduction_correct false hf g1 g2 w right)).symm
+  · by_abstraction ← hashGuardProjection using [hashGuardReduction_correct]
   · reduction ← hHash
-  · obs_eq
-    exact correctAbstractionImpliesObsEq _ _ hashGuardProjection
-      (hashGuardReduction_correct true hf g1 g2 w right)
-
-theorem hop_G2Tracked_G2Guarded_statisticalError {Idx : Type} (Assumptions : IndAssumptions Idx)
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool)
-    (hHash : HashComparison.PublicCollisionResistanceI Assumptions none
-      hf.keyGen (ciphertextHash hf)) (q : ENat) :
-    (hop_G2Tracked_G2Guarded Assumptions hf g1 g2 w right hHash q).statisticalError =
-      hHash.statisticalError := by
-  simp [hop_G2Tracked_G2Guarded, IndistinguishableI.statisticalError, Indistinguishable.of_ObsEq, Indistinguishable.symmetric]
+  · by_abstraction hashGuardProjection using [hashGuardReduction_correct]
 
 /-!
 ## Local hop lemmas
@@ -769,118 +746,59 @@ a probability calculation used in the final chain.
 `1 / |F|`, independent of the adversary's decryption-query count. -/
 theorem G2PairTracked_G2Coupled_correctUntilBad
     (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :
-    IsCorrectUntilBad (IndCcaSpec F V HashKey) pairBadFlag
+    IsCorrectUntilBad (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) pairBadFlag
       (G2PairTracked hf g1 g2 right).initialState
       (G2Coupled hf g1 g2 right).initialState
       (G2PairTracked hf g1 g2 right).queries
       (G2Coupled hf g1 g2 right).queries := by
   classical
-  constructor
-  · intro i st hb p hp
-    cases i <;>
-      simp [G2PairTracked, gameOracle, g2PairTrackedChallenge, normalDecryptRule,
-        sRState, sPMF] at hp
-    all_goals (try split_ifs at hp) <;> simp_all [pairBadFlag]
-    all_goals aesop
-  · intro i st hb p hp
-    cases i <;>
-      simp [G2Coupled, gameOracle, g2CoupledChallenge, normalDecryptRule,
-        sRState, sPMF] at hp
-    all_goals (try split_ifs at hp) <;> simp_all [pairBadFlag]
-    all_goals aesop
-  · intros; rfl
-  · intro i st hb out st' hb'
-    cases i with
-    | getPublicKey => rfl
-    | decrypt ct => rfl
-    | challenge m0 m1 =>
-      simp [G2PairTracked, G2Coupled, gameOracle, g2PairTrackedChallenge,
-        g2CoupledChallenge, sRState, sPMF]
-      split_ifs with ht
-      · rfl
-      · rw [PMF.bind_apply, PMF.bind_apply]
-        apply tsum_congr
-        intro a
-        congr 1
-        rw [PMF.bind_apply, PMF.bind_apply]
-        apply tsum_congr
-        intro b
-        have hne (ct : Ciphertext V) :
-            st' ≠ { st with target := some ct, pairBad := true } := by
-          intro h
-          have := congrArg GameState.pairBad h
-          simp_all [pairBadFlag]
-        by_cases he : a = b
-        · simp [he, PMF.bind_bind, PMF.pure_apply, hne, PMF.bind_apply]
-        · simp [he]
-
-/-- Bellman valuation for the exponent-pair conditioning event.  Before the
-single challenge it reserves exactly `1 / |F|`; after a good challenge the
-event can no longer occur, while a state in which it occurred has value one.
-The query budget is intentionally unused because the challenge is ask-once. -/
-noncomputable def pairBadValuation
-    (st : GameState F V HashKey) (_q : ENat) : NNReal :=
-  if st.pairBad then 1
-  else if st.target.isSome then 0
-  else (Fintype.card F : NNReal)⁻¹
+  correct_until_bad [G2PairTracked, G2Coupled, gameOracle, g2PairTrackedChallenge,
+    g2CoupledChallenge, normalDecryptRule, pairBadFlag]
+  intro i st hb out st' hb'
+  cases i with
+  | getPublicKey => rfl
+  | decrypt ct => rfl
+  | challenge m0 m1 =>
+    simp [G2PairTracked, G2Coupled, gameOracle, g2PairTrackedChallenge,
+      g2CoupledChallenge, sRState, sPMF]
+    split_ifs with ht
+    · rfl
+    · rw [PMF.bind_apply, PMF.bind_apply]
+      apply tsum_congr
+      intro a
+      congr 1
+      rw [PMF.bind_apply, PMF.bind_apply]
+      apply tsum_congr
+      intro b
+      have hne (ct : Ciphertext V) :
+          st' ≠ { st with target := some ct, pairBad := true } := by
+        intro h
+        have := congrArg GameState.pairBad h
+        simp_all [pairBadFlag]
+      by_cases he : a = b
+      · simp [he, PMF.bind_bind, PMF.pure_apply, hne, PMF.bind_apply]
+      · simp [he]
 
 /-- The pair valuation is preserved by every query of the tracked game.  The
 only probabilistic calculation is that two independent uniform field elements
 are equal with probability `1 / |F|`. -/
 theorem pairBadValuation_valid
     (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :
-    IsValidBadEventBound (IndCcaSpec F V HashKey) pairBadFlag
+    IsValidBadEventBound (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V)) pairBadFlag
       (G2PairTracked hf g1 g2 right).queries
       (pairBadValuation (F := F) (V := V) (HashKey := HashKey)) := by
   classical
   have hc : (1 : NNReal) ≤ Fintype.card F := by
     exact_mod_cast Fintype.card_pos (α := F)
-  constructor
-  · intro st q
-    unfold pairBadValuation
-    split_ifs <;> simp_all
-  · intro st q hb
-    simp_all [pairBadValuation, pairBadFlag]
-  · intro i st q
-    cases i <;>
-      simp [G2PairTracked, gameOracle, g2PairTrackedChallenge, normalDecryptRule,
-        sRState, sPMF]
-    all_goals (try split_ifs) <;>
-      simp_all [pairBadValuation, PMF.expectation_bind]
-    by_cases hb : st.pairBad = true
-    · simp [hb]
-    · have he (a : F) : (PMF.uniformOfFintype F).expectation
-          (fun b => ((if a = b then 1 else 0 : NNReal) : ENNReal)) =
-          (Fintype.card F : ENNReal)⁻¹ := by
-        simp [PMF.expectation, apply_ite]
-      simp [hb, he]
-
-/-- Initialization is good and no challenge has yet been issued, hence the
-expected initial value of `pairBadValuation` is exactly `1 / |F|`. -/
-theorem pairBadValuation_initial
-    (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) (q : ENat) :
-    initialBadEventBound
-        (G2PairTracked hf g1 g2 right).initialState
-        (pairBadValuation (F := F) (V := V) (HashKey := HashKey)) q =
-      (Fintype.card F : NNReal)⁻¹ := by
-  classical
-  apply initialBadEventBound_constant_on_support
-  intro st hs
-  simp [G2PairTracked, gameOracle, initialGameState] at hs
-  obtain ⟨pk, sk, _, rfl⟩ := hs
-  rfl
+  valid_bad_bound [pairBadValuation, pairBadFlag, G2PairTracked, gameOracle,
+    g2PairTrackedChallenge, normalDecryptRule]
 
 /-- G2Coupled--G2: erase `pairBad`; the visible pair is uniformly distributed
 over distinct pairs. This is an exact randomized-abstraction/coupling hop. -/
 theorem hop_G2Coupled_G2
     (hf : HashFamily F V HashKey) (g1 g2 : V) (right : Bool) :
     ObsEq (G2Coupled hf g1 g2 right) (G2 hf g1 g2 right) := by
-  obs_eq_by_abstraction
-    (forgetPairBadAbstraction (F := F) (V := V) (HashKey := HashKey))
-  all_goals simp [G2Coupled, G2, gameOracle, g2CoupledChallenge, g2Challenge,
-    normalDecryptRule, forgetPairBadAbstraction, correctAbstractionDiagSimps,
-    initialGameState, sRState, sPMF]
-  all_goals (try split) <;> simp_all [sRState, sPMF]
+  by_abstraction forgetPairBadAbstraction using [G2Coupled, g2CoupledChallenge]
   rename_i m0 m1 st ht
   let k : DistinctPair F → PMF (Option (Ciphertext V) × GameState F V HashKey) := fun p =>
     let ct := encryptWithSecretPair hf st.secretKey
@@ -931,15 +849,6 @@ affine map, so the payload is uniform. Both games then forget the hidden
 coordinate. All three abstractions retain the bad-event flags.
 -/
 
-/-- Resample the hidden mask coordinate while preserving its public coordinate. -/
-def refreshMaskKey (w : F) (sk : SecretKey F HashKey) (z : F) : SecretKey F HashKey :=
-  { sk with z1 := sk.collapsedZ w - w * z, z2 := z }
-
-omit [Fintype F] [DecidableEq F] in
-@[simp] theorem refreshMaskKey_collapsedZ (w : F) (sk : SecretKey F HashKey) (z : F) :
-    (refreshMaskKey w sk z).collapsedZ w = sk.collapsedZ w := by
-  simp [refreshMaskKey, SecretKey.collapsedZ]
-
 omit [Fintype F] [DecidableEq F] [DecidableEq V] in
 @[simp] theorem refreshMaskKey_publicKey (g1 g2 : V) (w : F) (sk : SecretKey F HashKey)
     (z : F) (hg2 : g2 = w • g1) :
@@ -956,40 +865,9 @@ omit [Fintype F] [DecidableEq F] in
     refreshMaskKey, SecretKey.collapsedZ]
 
 omit [Fintype F] [DecidableEq F] in
-@[simp] theorem refreshMaskKey_rejectionEvent (hf : HashFamily F V HashKey) (w : F)
-    (sk : SecretKey F HashKey) (z : F) (ct : Ciphertext V) :
-    rejectionEvent hf w (refreshMaskKey w sk z) ct = rejectionEvent hf w sk ct := rfl
-
-omit [Fintype F] [DecidableEq F] [DecidableEq V] in
-@[simp] theorem refreshMaskKey_authenticate (hf : HashFamily F V HashKey) (w : F)
-    (sk : SecretKey F HashKey) (z : F) (u1 u2 e : V) :
-    authenticate hf (refreshMaskKey w sk z) u1 u2 e = authenticate hf sk u1 u2 e := rfl
-
-omit [Fintype F] [DecidableEq F] in
 @[simp] theorem refreshMaskKey_refresh (w : F) (sk : SecretKey F HashKey) (z z' : F) :
     refreshMaskKey w (refreshMaskKey w sk z) z' = refreshMaskKey w sk z' := by
   simp [refreshMaskKey, SecretKey.collapsedZ]
-
-noncomputable def refreshMask (w : F) (st : GameState F V HashKey) :
-    PMF (GameState F V HashKey) := do
-  let z ← PMF.uniformOfFintype F
-  pure { st with secretKey := refreshMaskKey w st.secretKey z }
-
-/-- Reveal a fresh hidden coordinate only while no challenge has been issued. -/
-noncomputable def refreshBeforeChallenge (w : F) (st : GameState F V HashKey) :
-    PMF (GameState F V HashKey) :=
-  if st.target.isSome then pure st else refreshMask w st
-
-noncomputable def g3FreshChallenge (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F)
-    (right : Bool) (m0 m1 : V) : GameM F V HashKey (Ciphertext V) := do
-  let st ← get
-  let st' ← refreshMask w st
-  set st'
-  g2Challenge hf g1 g2 right m0 m1
-
-/-- G3 with its hidden mask coordinate sampled lazily at the challenge. -/
-noncomputable def G3Fresh (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
-  gameOracle hf g1 g2 right (g3FreshChallenge hf g1 g2 w) (g3DecryptRule hf w)
 
 omit [DecidableEq F] in
 private lemma uniform_translate {A : Type} (c : F) (f : F → PMF A) :
@@ -1023,33 +901,20 @@ private lemma refreshMask_initial (hf : HashFamily F V HashKey) (g1 g2 : V) (w :
     ({ secretKey := ⟨hk, x1, x2, y1, y2, z1, z2⟩
        target := none
        pairBad := false
-       rejectionBad := false
-       hashBad := false } : GameState F V HashKey))
+       rejectionBad := false } : GameState F V HashKey))
 
 lemma G3Fresh_G3 (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool)
     (hg2 : g2 = w • g1) : ObsEq (G3Fresh hf g1 g2 w right) (G3 hf g1 g2 w right) := by
-  obs_eq_by_rand_abstraction (refreshBeforeChallenge w)
-  all_goals simp [G3Fresh, G3, gameOracle, g3FreshChallenge, g2Challenge, g3DecryptRule,
-    refreshBeforeChallenge, refreshMask, correctAbstractionDiagSimps, sRState, sPMF]
-  all_goals (try split_ifs) <;> simp_all [sPMF, refreshMaskKey_publicKey]
+  by_rand_abstraction (refreshBeforeChallenge w) using [G3Fresh, G3,
+    g3FreshChallenge, g3DecryptRule, refreshBeforeChallenge, refreshMask,
+    refreshMaskKey_publicKey, hg2]
   simpa [initialGameState, refreshBeforeChallenge, sPMF] using
     refreshMask_initial hf g1 (w • g1) w
 
-/-- Forget the hidden coordinate after its contribution to the payload has been sampled. -/
-def collapseMaskState (w : F) (st : GameState F V HashKey) : GameState F V HashKey :=
-  { st with secretKey := refreshMaskKey w st.secretKey 0 }
-
-/-- Common abstraction of the lazy-mask game and G4. -/
-noncomputable def G4Canonical (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) :=
-  { G4 hf g1 g2 w false with
-    initialState := (initialGameState hf g1 g2).map (collapseMaskState w) }
-
-lemma G4_G4Canonical (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool)
-    (hg2 : g2 = w • g1) : ObsEq (G4 hf g1 g2 w right) (G4Canonical hf g1 g2 w) := by
-  obs_eq_by_abstraction (collapseMaskState w)
-  all_goals simp [G4Canonical, G4, gameOracle, g4Challenge, g3DecryptRule,
-    collapseMaskState, correctAbstractionDiagSimps, sRState, sPMF]
-  all_goals (try split_ifs) <;> simp_all [sPMF, refreshMaskKey_publicKey]
+lemma G4_G4Canonical (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F)
+    (hg2 : g2 = w • g1) : ObsEq (G4 hf g1 g2 w) (G4Canonical hf g1 g2 w) := by
+  by_abstraction (collapseMaskState w) using [G4Canonical, G4, g4Challenge,
+    g3DecryptRule, collapseMaskState, refreshMaskKey_publicKey, hg2]
 
 omit [DecidableEq F] in
 private lemma uniform_affine {A : Type} (a b : F) (ha : a ≠ 0) (f : F → PMF A) :
@@ -1079,11 +944,9 @@ private lemma refreshed_challenge (hf : HashFamily F V HashKey) (g1 g2 : V) (w :
 lemma G3Fresh_G4Canonical (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool)
     (hg1 : CyclicGenerator F V g1) (hw : w ≠ 0) (hg2 : g2 = w • g1) :
     ObsEq (G3Fresh hf g1 g2 w right) (G4Canonical hf g1 g2 w) := by
-  obs_eq_by_abstraction (collapseMaskState w)
-  all_goals simp [G3Fresh, G4Canonical, G4, gameOracle, g3FreshChallenge, g2Challenge,
-    g4Challenge, g3DecryptRule, refreshMask, collapseMaskState,
-    correctAbstractionDiagSimps, sRState, sPMF]
-  all_goals (try split_ifs) <;> simp_all [sPMF, refreshMaskKey_publicKey]
+  by_abstraction (collapseMaskState w) using [G3Fresh, G4Canonical, G4,
+    g3FreshChallenge, g4Challenge, g3DecryptRule, refreshMask, collapseMaskState,
+    refreshMaskKey_publicKey, hg2]
   rename_i m0 m1 st ht
   rw [PMF.bind_comm]
   congr 1
@@ -1105,10 +968,10 @@ theorem hop_G3_G4
     (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool)
     (hg1 : CyclicGenerator F V g1) (hw : w ≠ 0)
     (hg2 : g2 = w • g1) :
-    ObsEq (G3 hf g1 g2 w right) (G4 hf g1 g2 w right) := by
+    ObsEq (G3 hf g1 g2 w right) (G4 hf g1 g2 w) := by
   exact obsEq_trans (G3Fresh_G3 hf g1 g2 w right hg2).symm
     (obsEq_trans (G3Fresh_G4Canonical hf g1 g2 w right hg1 hw hg2)
-      (G4_G4Canonical hf g1 g2 w right hg2).symm)
+      (G4_G4Canonical hf g1 g2 w hg2).symm)
 
 /-! ### Lazy authentication sampling
 
@@ -1119,61 +982,19 @@ diagrams below are proved for initialization and every query, on all states.
 The remaining statistical hop concerns these explicit lazy oracles.
 -/
 
-/-- The public authentication coordinates remain; the two hidden shares are erased. -/
-def lazyAuthFrame (w : F) (st : GameState F V HashKey) : GameState F V HashKey :=
-  { st with secretKey := { st.secretKey with
-      x1 := st.secretKey.collapsedX w, x2 := 0,
-      y1 := st.secretKey.collapsedY w, y2 := 0 } }
-
-def lazyAuthState (w : F) (frame : GameState F V HashKey) (p : F × F) :
-    GameState F V HashKey :=
-  { frame with secretKey := { frame.secretKey with
-      x1 := frame.secretKey.collapsedX w - w * p.1, x2 := p.1,
-      y1 := frame.secretKey.collapsedY w - w * p.2, y2 := p.2 } }
-
-abbrev LazyAuthState (F V HashKey : Type) :=
-  GameState F V HashKey × RemainingAuth.Candidates (F × F)
-
-noncomputable def lazyAuthReconstruct (w : F) (st : LazyAuthState F V HashKey) :
-    PMF (GameState F V HashKey) :=
-  (PMF.uniformOfFinset st.2.val st.2.property).map (lazyAuthState w st.1)
-
 theorem lazyAuthState_frame (w : F) (st : GameState F V HashKey) :
     lazyAuthState w (lazyAuthFrame w st) (st.secretKey.x2, st.secretKey.y2) = st := by
   cases st
   simp [lazyAuthState, lazyAuthFrame, SecretKey.collapsedX, SecretKey.collapsedY]
 
-/-- One guarded query with its challenge coins supplied explicitly. -/
-noncomputable def guardedQueryStep (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
-    (coins : DistinctPair F) (st : GameState F V HashKey) :
-    IndCcaSpec F V HashKey q × GameState F V HashKey :=
-  match q with
-  | .getPublicKey => (publicKey g1 g2 st.secretKey, st)
-  | .challenge m0 m1 =>
-      if st.target.isSome then (none, st)
-      else
-        let ct := encryptWithSecretPair hf st.secretKey
-          (selectedMessage right m0 m1) (coins.val.1 • g1) (coins.val.2 • g2)
-        (some ct, { st with target := some ct, pairBad := false })
-  | .decrypt ct =>
-      let normal :=
-        (if real then decrypt hf st.secretKey ct else specialDecrypt hf w st.secretKey ct,
-          { st with rejectionBad := st.rejectionBad || rejectionEvent hf w st.secretKey ct })
-      if st.target = some ct then (none, st)
-      else if ct.u2 = w • ct.u1 then normal
-      else if h : st.target.isSome then
-        if targetHashCollision hf st.secretKey (st.target.get h) ct then (none, st) else normal
-      else normal
-
 theorem guardedQueryStep_key (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : GameState F V HashKey) :
     (guardedQueryStep real hf g1 g2 w right q coins st).2.secretKey = st.secretKey := by
   cases q <;> simp only [guardedQueryStep] <;> split_ifs <;> rfl
 
 theorem guardedQueries_step (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (st : GameState F V HashKey) :
     (if real then (G2Guarded hf g1 g2 w right).queries q st
       else (G3Guarded hf g1 g2 w right).queries q st) =
@@ -1185,15 +1006,8 @@ theorem guardedQueries_step (real : Bool) (hf : HashFamily F V HashKey)
       g2DecryptRule, g3DecryptRule, guardedQueryStep, sRState, sPMF]
   all_goals (try split_ifs) <;> simp_all [sRState, sPMF]
 
-noncomputable def lazyAuthObservation (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
-    (coins : DistinctPair F) (frame : GameState F V HashKey) (p : F × F) :
-    IndCcaSpec F V HashKey q × GameState F V HashKey :=
-  mapSecond (lazyAuthFrame w)
-    (guardedQueryStep real hf g1 g2 w right q coins (lazyAuthState w frame p))
-
 theorem lazyAuthObservation_reconstruct (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (frame : GameState F V HashKey) (p : F × F) :
     mapSecond (fun st => lazyAuthState w st p)
       (lazyAuthObservation real hf g1 g2 w right q coins frame p) =
@@ -1210,19 +1024,8 @@ theorem lazyAuthObservation_reconstruct (real : Bool) (hf : HashFamily F V HashK
     simpa only [hp] using lazyAuthState_frame w
       (guardedQueryStep real hf g1 g2 w right q coins (lazyAuthState w frame p)).2
 
-/-- Sample the response distribution and retain its compatible-key fiber.
-No hidden authentication pair is retained in the lazy state. -/
-noncomputable def lazyAuthQueries (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) :
-    QueryImpl (IndCcaSpec F V HashKey) (RState (LazyAuthState F V HashKey)) := fun q st => by
-  classical
-  exact (PMF.uniformOfFintype (DistinctPair F)).bind fun coins =>
-    let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
-    ((PMF.uniformOfFinset st.2.val st.2.property).map observe).map fun observed =>
-      (observed.1, (observed.2, RemainingAuth.fiber st.2 observe observed))
-
 theorem lazyAuthQueries_correct (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (st : LazyAuthState F V HashKey) :
     (lazyAuthQueries real hf g1 g2 w right q st).bind (bindSecond (lazyAuthReconstruct w)) =
       (lazyAuthReconstruct w st).bind (fun full =>
@@ -1236,10 +1039,10 @@ theorem lazyAuthQueries_correct (real : Bool) (hf : HashFamily F V HashKey)
   congr 1
   funext coins
   let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
-  let finish : (IndCcaSpec F V HashKey q × GameState F V HashKey) × (F × F) →
-      IndCcaSpec F V HashKey q × GameState F V HashKey :=
+  let finish : (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q × GameState F V HashKey) × (F × F) →
+      IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q × GameState F V HashKey :=
     fun z => (z.1.1, lazyAuthState w z.1.2 z.2)
-  have h := congrArg (PMF.map finish) (RemainingAuth.fiber_reconstruct st.2 observe)
+  have h := congrArg (PMF.map finish) (RemainingCandidates.fiber_reconstruct st.2 observe)
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at h
   change _ = _ at h
   calc
@@ -1250,16 +1053,6 @@ theorem lazyAuthQueries_correct (real : Bool) (hf : HashFamily F V HashKey)
       apply congrArg (PMF.map · (PMF.uniformOfFinset st.2.val st.2.property))
       funext p
       exact lazyAuthObservation_reconstruct real hf g1 g2 w right q coins st.1 p
-
-noncomputable def lazyAuthInitial (hf : HashFamily F V HashKey) :
-    PMF (LazyAuthState F V HashKey) := do
-  let hk ← hf.keyGen
-  let x ← PMF.uniformOfFintype F
-  let y ← PMF.uniformOfFintype F
-  let z1 ← PMF.uniformOfFintype F
-  let z2 ← PMF.uniformOfFintype F
-  pure ({ secretKey := ⟨hk, x, 0, y, 0, z1, z2⟩, target := none, pairBad := false, rejectionBad := false, hashBad := false },
-      ⟨Finset.univ, Finset.univ_nonempty⟩)
 
 private theorem lazy_uniform_univ {A : Type} [Fintype A] [Nonempty A]
     (h : (Finset.univ : Finset A).Nonempty) :
@@ -1289,48 +1082,6 @@ theorem lazyAuthInitial_correct (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F
     simp only [Equiv.coe_addRight, add_sub_cancel_right]
   rw [PMF.bind_comm]
 
-noncomputable def lazyGuardedGame (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) : OracleImpl (IndCcaSpec F V HashKey) where
-  stateType := LazyAuthState F V HashKey
-  initialState := lazyAuthInitial hf
-  queries := lazyAuthQueries real hf g1 g2 w right
-
-noncomputable def G2Lazy (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
-  lazyGuardedGame true hf g1 g2 w right
-
-noncomputable def G3Lazy (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :=
-  lazyGuardedGame false hf g1 g2 w right
-
-theorem G2Lazy_correct (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :
-    correctAbstractionBind (G2Lazy hf g1 g2 w right) (G2Guarded hf g1 g2 w right)
-      (lazyAuthReconstruct w) := by
-  constructor
-  · exact lazyAuthInitial_correct hf g1 g2 w
-  · intro q
-    funext st
-    exact lazyAuthQueries_correct true hf g1 g2 w right q st
-
-theorem G3Lazy_correct (hf : HashFamily F V HashKey) (g1 g2 : V) (w : F) (right : Bool) :
-    correctAbstractionBind (G3Lazy hf g1 g2 w right) (G3Guarded hf g1 g2 w right)
-      (lazyAuthReconstruct w) := by
-  constructor
-  · exact lazyAuthInitial_correct hf g1 g2 w
-  · intro q
-    funext st
-    exact lazyAuthQueries_correct false hf g1 g2 w right q st
-
-theorem hop_G2Guarded_G2Lazy (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) :
-    ObsEq (G2Guarded hf g1 g2 w right) (G2Lazy hf g1 g2 w right) :=
-  (correctAbstractionBindImpliesObsEq _ _ (lazyAuthReconstruct w)
-    (G2Lazy_correct hf g1 g2 w right)).symm
-
-theorem hop_G3Lazy_G3Guarded (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) :
-    ObsEq (G3Lazy hf g1 g2 w right) (G3Guarded hf g1 g2 w right) :=
-  correctAbstractionBindImpliesObsEq _ _ (lazyAuthReconstruct w)
-    (G3Lazy_correct hf g1 g2 w right)
-
 end Games
 
 end Hopscotch.CramerShoup
@@ -1340,16 +1091,6 @@ namespace Hopscotch.CramerShoup
 
 variable {F V HashKey : Type} [Field F] [Fintype F] [DecidableEq F]
   [AddCommGroup V] [Module F V] [DecidableEq V]
-
-/-- Before the challenge, both authentication shares remain hidden. -/
-def refreshAuthPair (w : F) (sk : SecretKey F HashKey) (p : F × F) : SecretKey F HashKey :=
-  { sk with
-    x1 := sk.collapsedX w - w * p.1
-    x2 := p.1
-    y1 := sk.collapsedY w - w * p.2
-    y2 := p.2 }
-
-def authCombination (alpha : F) (p : F × F) : F := p.1 + alpha * p.2
 
 omit [Fintype F] [DecidableEq F] [DecidableEq V] in
 lemma authenticate_refreshAuthPair (hf : HashFamily F V HashKey) (w : F)
@@ -1433,80 +1174,6 @@ theorem preChallenge_accepting_card_le (hf : HashFamily F V HashKey) (g1 : V)
 
 end Hopscotch.CramerShoup
 
-namespace Hopscotch.CramerShoup.RemainingAuth
-
-/-- A query may hit a whole subset of compatible keys. Its size is bounded
-by `c`, and a miss removes precisely that subset. -/
-lemma budget_subset_step (n m k c : Nat) (hm : 0 < m) (hkm : k ≤ m) (hkc : k ≤ c) :
-    (k : NNReal) / m + ((m - k : Nat) : NNReal) / m * budget (n * c) (m - k) ≤
-      budget ((n + 1) * c) m := by
-  have hm0 : (m : NNReal) ≠ 0 := by exact_mod_cast Nat.ne_of_gt hm
-  apply le_min
-  · calc
-      _ ≤ (k : NNReal) / m + ((m - k : Nat) : NNReal) / m * 1 := by
-        gcongr
-        exact budget_le_one _ _
-      _ = 1 := by
-        have hs : (k : NNReal) + ((m - k : Nat) : NNReal) = m := by
-          exact_mod_cast Nat.add_sub_of_le hkm
-        rw [mul_one, ← add_div, hs, div_self hm0]
-  · calc
-      _ ≤ (k : NNReal) / m + ((n * c : Nat) : NNReal) / m :=
-        add_le_add le_rfl (weighted_budget_le (n * c) m (m - k) hm)
-      _ ≤ (c : NNReal) / m + ((n * c : Nat) : NNReal) / m := by
-        gcongr
-      _ = _ := by push_cast; rw [← add_div]; congr 1; ring
-
-/-- The challenge reveals one field element. This is the phase switch in
-the whole-game Bellman bound, from pair candidates to a single share. -/
-lemma budget_challenge_step {A B : Type} [DecidableEq A] [DecidableEq B] [Fintype B]
-    (s : Candidates A) (f : A → B) (n : Nat) :
-    ((PMF.uniformOfFinset s.val s.property).map f).expectation
-      (fun b => (budget n (fiber s f b).val.card : ENNReal)) ≤
-        (budget ((n + 1) * Fintype.card B) s.val.card : ENNReal) := by
-  calc
-    _ ≤ (budget (n * Fintype.card B) s.val.card : ENNReal) := by
-      simpa [budget] using observed_budget_le s f n
-    _ ≤ _ := by
-      apply ENNReal.coe_le_coe.mpr
-      unfold budget
-      gcongr
-      exact_mod_cast Nat.le_succ n
-
-lemma expectation_map {A B : Type} (p : PMF A) (f : A → B) (g : B → ENNReal) :
-    (p.map f).expectation g = p.expectation (fun a => g (f a)) := by
-  simp only [PMF.map_eq_bind_pure, PMF.expectation_bind, PMF.expectation_pure]
-
-/-- Average the hit branch and the surviving-candidate branch of a subset test. -/
-lemma subset_budget_expectation {A : Type} [DecidableEq A]
-    (s : Candidates A) (hit : A → Bool) (n c : Nat)
-    (hk : (s.val.filter (fun a => hit a = true)).card ≤ c) :
-    (PMF.uniformOfFinset s.val s.property).expectation
-      (fun a => if hit a then 1 else
-        (budget (n * c) (s.val.filter (fun x => hit x = false)).card : ENNReal)) ≤
-      (budget ((n + 1) * c) s.val.card : ENNReal) := by
-  classical
-  let k := (s.val.filter (fun a => hit a = true)).card
-  let l := (s.val.filter (fun a => hit a = false)).card
-  have hsum : k + l = s.val.card := by
-    simpa [k, l, Bool.not_eq_true] using
-      Finset.card_filter_add_card_filter_not (s := s.val) (fun a => hit a = true)
-  have hk' : k ≤ s.val.card := Finset.card_filter_le _ _
-  have hl : l = s.val.card - k := by omega
-  have hm0 : (s.val.card : NNReal) ≠ 0 := by exact_mod_cast Nat.ne_of_gt (card_pos s)
-  rw [← expectation_map (PMF.uniformOfFinset s.val s.property) hit
-    (fun b => if b then 1 else (budget (n * c) l : ENNReal))]
-  simp only [PMF.expectation, tsum_fintype, Fintype.sum_bool, Bool.false_eq_true,
-    ↓reduceIte, mul_one, uniform_image_mass]
-  change (k : ENNReal) / s.val.card +
-    (l : ENNReal) / s.val.card * (budget (n * c) l : ENNReal) ≤ _
-  have hnum := ENNReal.coe_le_coe.mpr
-    (budget_subset_step n s.val.card k c (card_pos s) hk' hk)
-  rw [← hl] at hnum
-  simpa only [ENNReal.coe_add, ENNReal.coe_mul, ENNReal.coe_div hm0,
-    ENNReal.coe_natCast, add_comm] using hnum
-
-end Hopscotch.CramerShoup.RemainingAuth
 
 namespace Hopscotch.CramerShoup
 
@@ -1572,19 +1239,11 @@ theorem ciphertext_eq_of_same_input_of_valid (hf : HashFamily F V HashKey)
   subst v
   rfl
 
-/-- Reachable post-challenge candidate pairs all authenticate the challenge.
-Before the challenge there is no extra condition. -/
-def lazyAuthInvariant (hf : HashFamily F V HashKey) (w : F)
-    (st : LazyAuthState F V HashKey) : Prop :=
-  ∀ target, st.1.target = some target →
-    target.u2 ≠ w • target.u1 ∧
-      ∀ p ∈ st.2.val, valid hf (lazyAuthState w st.1 p).secretKey target
-
 omit [Fintype F] in
 /-- The ordinary query driver preserves challenge authentication. -/
 lemma guardedQueryStep_authInvariant (real : Bool) (hf : HashFamily F V HashKey)
     (g1 g2 : V) (hg1 : CyclicGenerator F V g1) (w : F) (hw : w ≠ 0)
-    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaQuery V)
+    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : GameState F V HashKey)
     (hst : ∀ target, st.target = some target →
       target.u2 ≠ w • target.u1 ∧ valid hf st.secretKey target) :
@@ -1618,12 +1277,12 @@ open scoped Classical in
 recorded challenge. The total default for an empty fiber is never used here. -/
 lemma lazyAuthInvariant_observe (real : Bool) (hf : HashFamily F V HashKey)
     (g1 g2 : V) (hg1 : CyclicGenerator F V g1) (w : F) (hw : w ≠ 0)
-    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaQuery V)
+    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : LazyAuthState F V HashKey)
     (hs : lazyAuthInvariant hf w st) (p : F × F) (hp : p ∈ st.2.val) :
     lazyAuthInvariant hf w
       ((lazyAuthObservation real hf g1 g2 w right q coins st.1 p).2,
-        RemainingAuth.fiber st.2 (lazyAuthObservation real hf g1 g2 w right q coins st.1)
+        RemainingCandidates.fiber st.2 (lazyAuthObservation real hf g1 g2 w right q coins st.1)
           (lazyAuthObservation real hf g1 g2 w right q coins st.1 p)) := by
   classical
   let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
@@ -1642,8 +1301,8 @@ lemma lazyAuthInvariant_observe (real : Bool) (hf : HashFamily F V HashKey)
     exact ht
   refine ⟨(full_inv p hp target htp).1, ?_⟩
   intro a ha
-  change a ∈ (RemainingAuth.fiber st.2 observe (observe p)).val at ha
-  rw [RemainingAuth.fiber, dif_pos hfiber] at ha
+  change a ∈ (RemainingCandidates.fiber st.2 observe (observe p)).val at ha
+  rw [RemainingCandidates.fiber, dif_pos hfiber] at ha
   rcases Finset.mem_filter.mp ha with ⟨ha, hobs⟩
   have hta : (guardedQueryStep real hf g1 g2 w right q coins
       (lazyAuthState w st.1 a)).2.target = some target := by
@@ -1656,23 +1315,12 @@ lemma lazyAuthInvariant_observe (real : Bool) (hf : HashFamily F V HashKey)
   change valid hf (lazyAuthState w (observe a).2 a).secretKey target at hva
   rwa [hobs] at hva
 
-/-- Candidate-set Bellman valuation. Invalid states conservatively have value
-one; the one-share bound is only used for compatible post-challenge states. -/
-noncomputable def lazyAuthValuation (hf : HashFamily F V HashKey) (w : F)
-    (st : LazyAuthState F V HashKey) (q : ENat) : NNReal := by
-  classical
-  exact if st.1.rejectionBad ∨ ¬ lazyAuthInvariant hf w st then 1 else
-    match q with
-    | none => 1
-    | some n => RemainingAuth.budget
-        (n * if st.1.target.isSome then 1 else Fintype.card F) st.2.val.card
-
 omit [DecidableEq F] [DecidableEq V] in
 lemma lazyAuthValuation_le_one (hf : HashFamily F V HashKey) (w : F)
     (st : LazyAuthState F V HashKey) (q : ENat) : lazyAuthValuation hf w st q ≤ 1 := by
   classical
   cases q <;> unfold lazyAuthValuation
-  all_goals split_ifs <;> first | exact le_rfl | exact RemainingAuth.budget_le_one _ _
+  all_goals split_ifs <;> first | exact le_rfl | exact RemainingCandidates.budget_le_one _ _
 
 omit [DecidableEq F] [DecidableEq V] in
 lemma lazyAuthValuation_of_bad (hf : HashFamily F V HashKey) (w : F)
@@ -1681,146 +1329,8 @@ lemma lazyAuthValuation_of_bad (hf : HashFamily F V HashKey) (w : F)
   classical
   simp [lazyAuthValuation, hb]
 
-omit [DecidableEq F] [DecidableEq V] in
-lemma lazyAuthValuation_initial (hf : HashFamily F V HashKey) (w : F) (n : Nat)
-    (hk : HashKey) (x y z1 z2 : F) :
-    lazyAuthValuation hf w
-      ({ secretKey := ⟨hk, x, 0, y, 0, z1, z2⟩, target := none,
-          pairBad := false, rejectionBad := false, hashBad := false },
-        ⟨Finset.univ, Finset.univ_nonempty⟩) n =
-      RemainingAuth.budget n (Fintype.card F) := by
-  classical
-  simp [lazyAuthValuation, lazyAuthInvariant, RemainingAuth.budget, Fintype.card_prod]
-  congr 1
-  have hp : (Fintype.card F : NNReal) ≠ 0 := by
-    exact_mod_cast Fintype.card_ne_zero
-  field_simp
-
-omit [DecidableEq F] [DecidableEq V] in
-/-- The initial expected Bellman value is `min 1 (n / |F|)`. -/
-lemma lazyAuthValuation_initialBound (hf : HashFamily F V HashKey) (w : F) (n : Nat) :
-    initialBadEventBound (lazyAuthInitial hf) (lazyAuthValuation hf w) n =
-      RemainingAuth.budget n (Fintype.card F) := by
-  apply initialBadEventBound_constant_on_support
-  intro st hs
-  simp only [lazyAuthInitial, PMF.monad_bind_eq_bind, PMF.monad_pure_eq_pure, PMF.mem_support_bind_iff,
-    PMF.mem_support_pure_iff] at hs
-  rcases hs with ⟨hk, _, x, _, y, _, z1, _, z2, _, rfl⟩
-  exact lazyAuthValuation_initial hf w n hk x y z1 z2
-
 end Hopscotch.CramerShoup
 
-
-
-namespace Hopscotch.CramerShoup.RemainingAuth
-
-lemma expectation_le_on_support {A : Type} (p : PMF A) (f g : A → ENNReal)
-    (h : ∀ a ∈ p.support, f a ≤ g a) : p.expectation f ≤ p.expectation g := by
-  apply ENNReal.tsum_le_tsum
-  intro a
-  by_cases ha : p a = 0
-  · simp [ha]
-  · exact mul_le_mul_right (h a (by simpa only [PMF.mem_support_iff] using ha)) _
-
-open scoped Classical in
-lemma fiber_eq_of_partition {A B C : Type} [DecidableEq A] [DecidableEq B] [DecidableEq C]
-    (s : Candidates A) (f : A → B) (label : A → C)
-    (h : ∀ a b, f a = f b ↔ label a = label b) (a : A) :
-    fiber s f (f a) = fiber s label (label a) := by
-  have hf : s.val.filter (fun b => f b = f a) =
-      s.val.filter (fun b => label b = label a) := by
-    ext b
-    simp only [Finset.mem_filter, h]
-  unfold fiber
-  rw [hf]
-
-open scoped Classical in
-lemma fiber_val_of_mem {A B : Type} [DecidableEq A] [DecidableEq B]
-    (s : Candidates A) (f : A → B) (a : A) (ha : a ∈ s.val) :
-    (fiber s f (f a)).val = s.val.filter (fun b => f b = f a) := by
-  have hf : (s.val.filter (fun b => f b = f a)).Nonempty :=
-    ⟨a, Finset.mem_filter.mpr ⟨ha, rfl⟩⟩
-  simp only [fiber, dif_pos hf]
-
-open scoped Classical in
-lemma fiber_card_le_of_factor {A B C : Type} [DecidableEq A] [DecidableEq B] [DecidableEq C]
-    (s : Candidates A) (f : A → B) (label : A → C)
-    (h : ∀ a b, label a = label b → f a = f b)
-    (a : A) (ha : a ∈ s.val) :
-    (fiber s label (label a)).val.card ≤ (fiber s f (f a)).val.card := by
-  rw [fiber_val_of_mem s label a ha, fiber_val_of_mem s f a ha]
-  apply Finset.card_le_card
-  intro b hb
-  rcases Finset.mem_filter.mp hb with ⟨hb, he⟩
-  exact Finset.mem_filter.mpr ⟨hb, h b a he⟩
-
-lemma budget_antitone (n m k : Nat) (hm : 0 < m) (h : m ≤ k) :
-    budget n k ≤ budget n m := by
-  unfold budget
-  gcongr
-
-open scoped Classical in
-lemma fiber_const {A B : Type} [DecidableEq A] [DecidableEq B] (s : Candidates A) (f : A → B)
-    (h : ∀ a b, f a = f b) (a : A) : fiber s f (f a) = s := by
-  have hf : s.val.filter (fun b => f b = f a) = s.val := by
-    ext b
-    simp only [Finset.mem_filter, and_iff_left_iff_imp]
-    intro _
-    exact h b a
-  unfold fiber
-  rw [hf]
-  simp [s.property]
-
-lemma budget_mono_n (n k m : Nat) (h : n ≤ k) : budget n m ≤ budget k m := by
-  unfold budget
-  gcongr
-
-open scoped Classical in
-/-- Conditioning on a good observation gives the same fiber for both kernels. -/
-lemma fiber_lift_eq_of_good {A B S : Type} [DecidableEq A] [DecidableEq B] [DecidableEq S]
-    (s : Candidates A) (f g : A → B × S) (bad : S → Bool)
-    (hbad : ∀ a, bad (f a).2 = bad (g a).2)
-    (hagree : ∀ a, bad (f a).2 = false → f a = g a)
-    (z : B × (S × Candidates A)) (hz : bad z.2.1 = false) :
-    (((PMF.uniformOfFinset s.val s.property).map f).map
-      (fun b => (b.1, (b.2, fiber s f b)))) z =
-    (((PMF.uniformOfFinset s.val s.property).map g).map
-      (fun b => (b.1, (b.2, fiber s g b)))) z := by
-  have hpre (b : B × S) (hb : bad b.2 = false) (a : A) : f a = b ↔ g a = b := by
-    constructor
-    · intro ha
-      have hf : bad (f a).2 = false := by rw [ha]; exact hb
-      exact (hagree a hf).symm.trans ha
-    · intro ha
-      have hf : bad (f a).2 = false := (hbad a).trans (by rw [ha]; exact hb)
-      exact (hagree a hf).trans ha
-  have hfiber (b : B × S) (hb : bad b.2 = false) : fiber s f b = fiber s g b := by
-    have hfilter : s.val.filter (fun a => f a = b) = s.val.filter (fun a => g a = b) := by
-      ext a
-      simp only [Finset.mem_filter, hpre b hb a]
-    unfold fiber
-    rw [hfilter]
-  rw [PMF.map_comp, PMF.map_comp, PMF.map_apply, PMF.map_apply]
-  apply tsum_congr
-  intro a
-  have hlift :
-      (f a).1 = z.1 ∧ (f a).2 = z.2.1 ∧ fiber s f (f a) = z.2.2 ↔
-      (g a).1 = z.1 ∧ (g a).2 = z.2.1 ∧ fiber s g (g a) = z.2.2 := by
-    constructor
-    · rintro ⟨ho, hs, hc⟩
-      have hb : bad (f a).2 = false := hs ▸ hz
-      rw [← hagree a hb, ← hfiber (f a) hb]
-      exact ⟨ho, hs, hc⟩
-    · rintro ⟨ho, hs, hc⟩
-      have hb : bad (f a).2 = false := (hbad a).trans (hs ▸ hz)
-      rw [hagree a hb, hfiber (g a) (hs ▸ hz)]
-      exact ⟨ho, hs, hc⟩
-  have heq : ((f a).1, ((f a).2, fiber s f (f a))) = z ↔
-      ((g a).1, ((g a).2, fiber s g (g a))) = z := by
-    simpa only [Prod.ext_iff] using hlift
-  simp only [Function.comp_apply, eq_comm (a := z), heq]
-
-end Hopscotch.CramerShoup.RemainingAuth
 
 namespace Hopscotch.CramerShoup
 
@@ -2043,25 +1553,27 @@ open scoped Classical in
 lemma lazyAuthValuation_good (hf : HashFamily F V HashKey) (w : F)
     (st : LazyAuthState F V HashKey) (hb : st.1.rejectionBad = false)
     (hs : lazyAuthInvariant hf w st) (n : Nat) :
-    lazyAuthValuation hf w st n = RemainingAuth.budget
+    lazyAuthValuation hf w st n = RemainingCandidates.budget
       (n * if st.1.target.isSome then 1 else Fintype.card F) st.2.val.card := by
   simp [lazyAuthValuation, hb, hs]
 
 open scoped Classical in
 lemma lazyAuthQueries_expectation (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
-    (st : LazyAuthState F V HashKey) (f : LazyAuthState F V HashKey → ENNReal) :
-    (lazyAuthQueries real hf g1 g2 w right q st).expectation (fun z => f z.2) =
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
+    (st : LazyAuthState F V HashKey)
+    (f : IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q ×
+      LazyAuthState F V HashKey → ENNReal) :
+    (lazyAuthQueries real hf g1 g2 w right q st).expectation f =
       (PMF.uniformOfFintype (DistinctPair F)).expectation (fun coins =>
         (PMF.uniformOfFinset st.2.val st.2.property).expectation (fun p =>
           let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
-          f ((observe p).2, RemainingAuth.fiber st.2 observe (observe p)))) := by
-  simp only [lazyAuthQueries, PMF.expectation_bind, RemainingAuth.expectation_map]
+          f ((observe p).1, (observe p).2, RemainingCandidates.fiber st.2 observe (observe p)))) := by
+  simp only [lazyAuthQueries, PMF.expectation_bind, RemainingCandidates.expectation_map]
 
 open scoped Classical in
 lemma lazyAuthCoin_safe_bound (real : Bool) (hf : HashFamily F V HashKey)
     (g1 g2 : V) (hg1 : CyclicGenerator F V g1) (w : F) (hw : w ≠ 0)
-    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaQuery V) (coins : DistinctPair F)
+    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaPubQ V (Ciphertext V)) (coins : DistinctPair F)
     (st : LazyAuthState F V HashKey) (hb : st.1.rejectionBad = false)
     (hs : lazyAuthInvariant hf w st) (n : Nat)
     (hc : ∀ p r, lazyAuthObservation real hf g1 g2 w right q coins st.1 p =
@@ -2070,34 +1582,34 @@ lemma lazyAuthCoin_safe_bound (real : Bool) (hf : HashFamily F V HashKey)
     (hfBad : ∀ p, (lazyAuthObservation real hf g1 g2 w right q coins st.1 p).2.rejectionBad = st.1.rejectionBad) :
     (PMF.uniformOfFinset st.2.val st.2.property).expectation (fun p =>
       let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
-      (lazyAuthValuation hf w ((observe p).2, RemainingAuth.fiber st.2 observe (observe p)) n : ENNReal)) ≤
+      (lazyAuthValuation hf w ((observe p).2, RemainingCandidates.fiber st.2 observe (observe p)) n : ENNReal)) ≤
         (lazyAuthValuation hf w st ((n + 1 : Nat) : ENat) : ENNReal) := by
   rw [lazyAuthValuation_good hf w st hb hs (n + 1)]
   calc
     _ ≤ (PMF.uniformOfFinset st.2.val st.2.property).expectation (fun _ =>
-        (RemainingAuth.budget ((n + 1) * if st.1.target.isSome then 1 else Fintype.card F)
+        (RemainingCandidates.budget ((n + 1) * if st.1.target.isSome then 1 else Fintype.card F)
           st.2.val.card : ENNReal)) := by
-      apply RemainingAuth.expectation_le_on_support
+      apply RemainingCandidates.expectation_le_on_support
       intro p hp
       have hp' := (PMF.mem_support_uniformOfFinset_iff _ _).mp hp
       have hi := lazyAuthInvariant_observe real hf g1 g2 hg1 w hw hg2 right q coins st hs p hp'
       dsimp only
       rw [lazyAuthValuation_good hf w _ ((hfBad p).trans hb) hi n,
-        RemainingAuth.fiber_const st.2 _ hc p, ht p]
+        RemainingCandidates.fiber_const st.2 _ hc p, ht p]
       apply ENNReal.coe_le_coe.mpr
-      apply RemainingAuth.budget_mono_n
+      apply RemainingCandidates.budget_mono_n
       exact Nat.mul_le_mul_right _ (Nat.le_succ n)
     _ = _ := PMF.expectation_const _ _
 
 open scoped Classical in
 lemma lazyAuthCoin_bound (real : Bool) (hf : HashFamily F V HashKey)
     (g1 g2 : V) (hg1 : CyclicGenerator F V g1) (w : F) (hw : w ≠ 0)
-    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaQuery V) (coins : DistinctPair F)
+    (hg2 : g2 = w • g1) (right : Bool) (q : IndCcaPubQ V (Ciphertext V)) (coins : DistinctPair F)
     (st : LazyAuthState F V HashKey) (hb : st.1.rejectionBad = false)
     (hs : lazyAuthInvariant hf w st) (n : Nat) :
     (PMF.uniformOfFinset st.2.val st.2.property).expectation (fun p =>
       let observe := lazyAuthObservation real hf g1 g2 w right q coins st.1
-      (lazyAuthValuation hf w ((observe p).2, RemainingAuth.fiber st.2 observe (observe p)) n : ENNReal)) ≤
+      (lazyAuthValuation hf w ((observe p).2, RemainingCandidates.fiber st.2 observe (observe p)) n : ENNReal)) ≤
         (lazyAuthValuation hf w st ((n + 1 : Nat) : ENat) : ENNReal) := by
   cases q with
   | getPublicKey =>
@@ -2131,8 +1643,8 @@ lemma lazyAuthCoin_bound (real : Bool) (hf : HashFamily F V HashKey)
       simp only [ht, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
       calc
         _ ≤ (PMF.uniformOfFinset st.2.val st.2.property).expectation
-            (fun p => (RemainingAuth.budget n (RemainingAuth.fiber st.2 label (label p)).val.card : ENNReal)) := by
-          apply RemainingAuth.expectation_le_on_support
+            (fun p => (RemainingCandidates.budget n (RemainingCandidates.fiber st.2 label (label p)).val.card : ENNReal)) := by
+          apply RemainingCandidates.expectation_le_on_support
           intro p hp
           have hp' := (PMF.mem_support_uniformOfFinset_iff _ _).mp hp
           have hi := lazyAuthInvariant_observe real hf g1 g2 hg1 w hw hg2 right (.challenge m0 m1) coins st hs p hp'
@@ -2140,11 +1652,11 @@ lemma lazyAuthCoin_bound (real : Bool) (hf : HashFamily F V HashKey)
           rw [lazyAuthValuation_good hf w _ (hfields.2.trans hb) hi n]
           simp only [hfields.1, ↓reduceIte, mul_one]
           apply ENNReal.coe_le_coe.mpr
-          apply RemainingAuth.budget_antitone n _ _ (RemainingAuth.card_pos _)
-          exact RemainingAuth.fiber_card_le_of_factor st.2 observe label hfactor p hp'
+          apply RemainingCandidates.budget_antitone n _ _ (RemainingCandidates.card_pos _)
+          exact RemainingCandidates.fiber_card_le_of_factor st.2 observe label hfactor p hp'
         _ ≤ _ := by
-          have h := RemainingAuth.budget_challenge_step st.2 label n
-          simpa only [RemainingAuth.expectation_map] using h
+          have h := RemainingCandidates.budget_challenge_step st.2 label n
+          simpa only [RemainingCandidates.expectation_map] using h
   | decrypt ct =>
     let observe := lazyAuthObservation real hf g1 g2 w right (.decrypt ct) coins st.1
     let hit := fun p => (observe p).2.rejectionBad
@@ -2155,8 +1667,8 @@ lemma lazyAuthCoin_bound (real : Bool) (hf : HashFamily F V HashKey)
     calc
       _ ≤ (PMF.uniformOfFinset st.2.val st.2.property).expectation (fun p =>
           if hit p then 1 else
-            (RemainingAuth.budget (n * c) (st.2.val.filter (fun r => hit r = false)).card : ENNReal)) := by
-        apply RemainingAuth.expectation_le_on_support
+            (RemainingCandidates.budget (n * c) (st.2.val.filter (fun r => hit r = false)).card : ENNReal)) := by
+        apply RemainingCandidates.expectation_le_on_support
         intro p hp
         have hp' := (PMF.mem_support_uniformOfFinset_iff _ _).mp hp
         by_cases hhit : hit p = true
@@ -2166,11 +1678,11 @@ lemma lazyAuthCoin_bound (real : Bool) (hf : HashFamily F V HashKey)
           have hi := lazyAuthInvariant_observe real hf g1 g2 hg1 w hw hg2 right (.decrypt ct) coins st hs p hp'
           dsimp only
           rw [lazyAuthValuation_good hf w _ hmiss hi n]
-          rw [RemainingAuth.fiber_eq_of_partition st.2 observe hit hpartition p,
-            RemainingAuth.fiber_val_of_mem st.2 hit p hp', hmiss]
+          rw [RemainingCandidates.fiber_eq_of_partition st.2 observe hit hpartition p,
+            RemainingCandidates.fiber_val_of_mem st.2 hit p hp', hmiss]
           simp only [lazyAuthObservation_decrypt_target, hmiss, Bool.false_eq_true, ↓reduceIte]
           exact le_rfl
-      _ ≤ _ := RemainingAuth.subset_budget_expectation st.2 hit n c
+      _ ≤ _ := RemainingCandidates.subset_budget_expectation st.2 hit n c
         (lazyAuthObservation_decrypt_hit_card real hf g1 g2 hg1 w right ct coins st hb hs)
 
 open scoped Classical in
@@ -2178,42 +1690,19 @@ open scoped Classical in
 lemma lazyAuthValuation_valid (real : Bool) (hf : HashFamily F V HashKey)
     (g1 g2 : V) (hg1 : CyclicGenerator F V g1) (w : F) (hw : w ≠ 0)
     (hg2 : g2 = w • g1) (right : Bool) :
-    IsValidBadEventBound (IndCcaSpec F V HashKey)
+    IsValidBadEventBound (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V))
       (fun st : LazyAuthState F V HashKey => st.1.rejectionBad)
       (lazyAuthQueries real hf g1 g2 w right) (lazyAuthValuation hf w) := by
-  constructor
-  · exact lazyAuthValuation_le_one hf w
-  · exact lazyAuthValuation_of_bad hf w
-  · intro q st b
-    have hunit : (lazyAuthQueries real hf g1 g2 w right q st).expectation
-        (fun z => (lazyAuthValuation hf w z.2 b : ENNReal)) ≤ 1 := by
-      calc
-        _ ≤ (lazyAuthQueries real hf g1 g2 w right q st).expectation (fun _ => 1) := by
-          apply RemainingAuth.expectation_le_on_support
-          intro z _
-          exact ENNReal.coe_le_coe.mpr (lazyAuthValuation_le_one hf w z.2 b)
-        _ = 1 := PMF.expectation_const _ _
-    by_cases hb : st.1.rejectionBad = true
-    · simpa only [lazyAuthValuation_of_bad hf w st _ hb, ENNReal.coe_one] using hunit
-    have hb : st.1.rejectionBad = false := Bool.eq_false_of_not_eq_true hb
-    by_cases hs : lazyAuthInvariant hf w st
-    · cases b with
-      | top => simpa [lazyAuthValuation] using hunit
-      | coe n =>
-        rw [show ((n : Nat) : ENat) + 1 = ((n + 1 : Nat) : ENat) by rfl,
-          lazyAuthQueries_expectation real hf g1 g2 w right q st
-            (fun t => (lazyAuthValuation hf w t (n : ENat) : ENNReal))]
-        calc
-          _ ≤ (PMF.uniformOfFintype (DistinctPair F)).expectation
-              (fun _ => (lazyAuthValuation hf w st ((n + 1 : Nat) : ENat) : ENNReal)) := by
-            apply RemainingAuth.expectation_le_on_support
-            intro coins _
-            exact lazyAuthCoin_bound real hf g1 g2 hg1 w hw hg2 right q coins st hb hs n
-          _ = _ := PMF.expectation_const _ _
-    · simpa [lazyAuthValuation, hs] using hunit
+  valid_bad_bound [lazyAuthValuation] using [
+    lazyAuthValuation_le_one hf w, lazyAuthValuation_of_bad hf w]
+  rename_i st n _ hgood
+  rw [lazyAuthQueries_expectation]
+  bound_expectation
+  rename_i coins _
+  exact lazyAuthCoin_bound real hf g1 g2 hg1 w hw hg2 right _ coins st hgood.1 hgood.2 n
 
 lemma lazyAuthObservation_bad (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : GameState F V HashKey) (p : F × F) :
     (lazyAuthObservation real hf g1 g2 w right q coins st p).2.rejectionBad =
       (lazyAuthObservation true hf g1 g2 w right q coins st p).2.rejectionBad := by
@@ -2221,7 +1710,7 @@ lemma lazyAuthObservation_bad (real : Bool) (hf : HashFamily F V HashKey)
   all_goals split_ifs <;> rfl
 
 lemma lazyAuthObservation_bad_absorbing (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : GameState F V HashKey) (p : F × F)
     (hb : st.rejectionBad = true) :
     (lazyAuthObservation real hf g1 g2 w right q coins st p).2.rejectionBad = true := by
@@ -2229,7 +1718,7 @@ lemma lazyAuthObservation_bad_absorbing (real : Bool) (hf : HashFamily F V HashK
   all_goals (try split_ifs) <;> simp [lazyAuthFrame, lazyAuthState, hb]
 
 lemma lazyAuthObservation_agree (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (coins : DistinctPair F) (st : GameState F V HashKey) (p : F × F)
     (hb : (lazyAuthObservation true hf g1 g2 w right q coins st p).2.rejectionBad = false) :
     lazyAuthObservation true hf g1 g2 w right q coins st p =
@@ -2247,9 +1736,9 @@ lemma lazyAuthObservation_agree (hf : HashFamily F V HashKey)
 
 open scoped Classical in
 lemma lazyAuthQueries_bad_absorbing (real : Bool) (hf : HashFamily F V HashKey)
-    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaQuery V)
+    (g1 g2 : V) (w : F) (right : Bool) (q : IndCcaPubQ V (Ciphertext V))
     (st : LazyAuthState F V HashKey) (hb : st.1.rejectionBad = true)
-    (z : IndCcaSpec F V HashKey q × LazyAuthState F V HashKey)
+    (z : IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V) q × LazyAuthState F V HashKey)
     (hz : z ∈ (lazyAuthQueries real hf g1 g2 w right q st).support) :
     z.2.1.rejectionBad = true := by
   simp only [lazyAuthQueries, PMF.mem_support_bind_iff, PMF.mem_support_map_iff] at hz
@@ -2259,28 +1748,27 @@ lemma lazyAuthQueries_bad_absorbing (real : Bool) (hf : HashFamily F V HashKey)
 /-- Both lazy kernels agree outside the absorbing rejection event. -/
 lemma G2Lazy_G3Lazy_correctUntilBad (hf : HashFamily F V HashKey)
     (g1 g2 : V) (w : F) (right : Bool) :
-    IsCorrectUntilBad (IndCcaSpec F V HashKey)
+    IsCorrectUntilBad (IndCcaPubSpec (PublicKey F V HashKey) V (Ciphertext V))
       (fun st : LazyAuthState F V HashKey => st.1.rejectionBad)
       (G2Lazy hf g1 g2 w right).initialState (G3Lazy hf g1 g2 w right).initialState
       (G2Lazy hf g1 g2 w right).queries (G3Lazy hf g1 g2 w right).queries := by
   classical
-  constructor
-  · exact lazyAuthQueries_bad_absorbing true hf g1 g2 w right
-  · exact lazyAuthQueries_bad_absorbing false hf g1 g2 w right
-  · intros; rfl
-  · intro q st _ out st' hb'
-    change lazyAuthQueries true hf g1 g2 w right q st (out, st') =
-      lazyAuthQueries false hf g1 g2 w right q st (out, st')
-    simp only [lazyAuthQueries, PMF.bind_apply]
-    apply tsum_congr
-    intro coins
-    congr 1
-    exact RemainingAuth.fiber_lift_eq_of_good st.2
-      (lazyAuthObservation true hf g1 g2 w right q coins st.1)
-      (lazyAuthObservation false hf g1 g2 w right q coins st.1)
-      GameState.rejectionBad
-      (fun p => (lazyAuthObservation_bad false hf g1 g2 w right q coins st.1 p).symm)
-      (lazyAuthObservation_agree hf g1 g2 w right q coins st.1) (out, st') hb'
+  correct_until_bad [] using [
+    lazyAuthQueries_bad_absorbing true hf g1 g2 w right,
+    lazyAuthQueries_bad_absorbing false hf g1 g2 w right]
+  intro q st _ out st' hb'
+  change lazyAuthQueries true hf g1 g2 w right q st (out, st') =
+    lazyAuthQueries false hf g1 g2 w right q st (out, st')
+  simp only [lazyAuthQueries, PMF.bind_apply]
+  apply tsum_congr
+  intro coins
+  congr 1
+  exact RemainingCandidates.fiber_lift_eq_of_good st.2
+    (lazyAuthObservation true hf g1 g2 w right q coins st.1)
+    (lazyAuthObservation false hf g1 g2 w right q coins st.1)
+    GameState.rejectionBad
+    (fun p => (lazyAuthObservation_bad false hf g1 g2 w right q coins st.1 p).symm)
+    (lazyAuthObservation_agree hf g1 g2 w right q coins st.1) (out, st') hb'
 
 end Hopscotch.CramerShoup
 
@@ -2296,6 +1784,8 @@ attribute [local game_hopping_unfold]
   G0 G1 G2Raw G2PairTracked G2 G2Tracked gameOracle initialGameState
   g0Challenge g1Challenge g2RawChallenge g2PairTrackedChallenge g2Challenge
   normalDecryptRule g2DecryptRule forgetPairBadAbstraction forgetRejectionBadAbstraction
+
+/-! ## IND-CCA security -/
 
 -- Elaborating the explicit chain requires more than the default heartbeat budget.
 set_option maxHeartbeats 1000000 in
@@ -2326,8 +1816,7 @@ noncomputable def cramerShoupIndCca
     G3Lazy hf g1 g2 w false,
     G3Guarded hf g1 g2 w false,
     G3 hf g1 g2 w false,
-    G4 hf g1 g2 w false,
-    G4 hf g1 g2 w true,
+    G4 hf g1 g2 w,
     G3 hf g1 g2 w true,
     G3Guarded hf g1 g2 w true,
     G3Lazy hf g1 g2 w true,
@@ -2342,8 +1831,7 @@ noncomputable def cramerShoupIndCca
     (CramerShoupDDHReduction hf g1 g2 true) ◇ (DDHReal (F := F) g1 g2),
     G1 hf g1 g2 true,
     G0 hf g1 g2 true]
-  · by_abstraction id
-    all_goals simp [encryptWithSecretPair_eq_encryptWithCoins]
+  · by_abstraction id using [encryptWithSecretPair_eq_encryptWithCoins]
   · by_abstraction ← (fun x => x.1)
   · reduction hDDH
   · by_abstraction (fun x => x.1)
@@ -2355,31 +1843,34 @@ noncomputable def cramerShoupIndCca
     exact hop_G2Coupled_G2 hf g1 g2 false
   · by_abstraction ← forgetRejectionBadAbstraction
   · exact hop_G2Tracked_G2Guarded Assumptions hf g1 g2 w false hHash q
-  · obs_eq
-    exact hop_G2Guarded_G2Lazy hf g1 g2 w false
+  · by_rand_abstraction ← (lazyAuthReconstruct w) using [
+      (lazyAuthInitial_correct hf g1 g2 w),
+      (lazyAuthQueries_correct true hf g1 g2 w false)]
   · by_correct_until_bad (fun st : LazyAuthState F V HashKey => st.1.rejectionBad)
       using (lazyAuthValuation hf w)
     · exact G2Lazy_G3Lazy_correctUntilBad hf g1 g2 w false
     · exact lazyAuthValuation_valid true hf g1 g2 hg1 w hw hg2 false
-  · obs_eq
-    exact hop_G3Lazy_G3Guarded hf g1 g2 w false
+  · by_rand_abstraction (lazyAuthReconstruct w) using [
+      (lazyAuthInitial_correct hf g1 g2 w),
+      (lazyAuthQueries_correct false hf g1 g2 w false)]
   · obs_eq
     exact G3Guarded_G3 hf g1 g2 w false
   · obs_eq
     exact hop_G3_G4 hf g1 g2 w false hg1 hw hg2
-  · exact Indistinguishable.reflexive
   · obs_eq
     exact (hop_G3_G4 hf g1 g2 w true hg1 hw hg2).symm
   · obs_eq
     exact (G3Guarded_G3 hf g1 g2 w true).symm
-  · obs_eq
-    exact (hop_G3Lazy_G3Guarded hf g1 g2 w true).symm
+  · by_rand_abstraction ← (lazyAuthReconstruct w) using [
+      (lazyAuthInitial_correct hf g1 g2 w),
+      (lazyAuthQueries_correct false hf g1 g2 w true)]
   · by_correct_until_bad ← (fun st : LazyAuthState F V HashKey => st.1.rejectionBad)
       using (lazyAuthValuation hf w)
     · exact G2Lazy_G3Lazy_correctUntilBad hf g1 g2 w true
     · exact lazyAuthValuation_valid true hf g1 g2 hg1 w hw hg2 true
-  · obs_eq
-    exact (hop_G2Guarded_G2Lazy hf g1 g2 w true).symm
+  · by_rand_abstraction (lazyAuthReconstruct w) using [
+      (lazyAuthInitial_correct hf g1 g2 w),
+      (lazyAuthQueries_correct true hf g1 g2 w true)]
   · exact Indistinguishable.symmetric
       (hop_G2Tracked_G2Guarded Assumptions hf g1 g2 w true hHash q)
   · by_abstraction forgetRejectionBadAbstraction
@@ -2392,7 +1883,6 @@ noncomputable def cramerShoupIndCca
   · by_abstraction ← (fun x => x.1)
   · reduction ← hDDH
   · by_abstraction (fun x => x.1)
-  · by_abstraction ← id
-    all_goals simp [encryptWithSecretPair_eq_encryptWithCoins]
+  · by_abstraction ← id using [encryptWithSecretPair_eq_encryptWithCoins]
 
 end Hopscotch.CramerShoup

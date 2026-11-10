@@ -10,6 +10,15 @@ applying an `RState` computation.
 
 namespace RState
 
+@[sRState] lemma set_apply {σ : Type} (t s : σ) :
+    (set t : RState σ Unit) s = PMF.pure ((), t) := rfl
+
+@[sRState] lemma map_set_apply {σ α : Type} (f : Unit → α) (t s : σ) :
+    (f <$> (set t : RState σ Unit)) s = PMF.pure (f (), t) := by
+  change (PMF.pure ((), t)).map (fun z => (f z.1, z.2)) = _
+  exact PMF.pure_map _ _
+
+
 @[sRState] lemma run_get {σ} (s : σ) :
     StateT.run (get : RState σ σ) s = PMF.pure (s, s) := rfl
 

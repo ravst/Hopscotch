@@ -1,5 +1,7 @@
 import Hopscotch.Indistinguishability.Def
 import Hopscotch.ApproxEq.CorrectUntilBad
+import Hopscotch.Tactic.CorrectUntilBad
+import Hopscotch.Tactic.BadEventBound
 import Hopscotch.Tactic.SimpAttrLemmas
 import Lean
 
@@ -53,6 +55,7 @@ Turn an indistinguishability goal into an observational-equivalence goal, prove 
 the supplied abstraction map, and discharge the generated correctness conditions.
 
 Use `by_abstraction ← f` for the symmetric direction.
+Add `using [lemmas]` to supply simplification lemmas or named simp theories.
 -/
 syntax (name := byAbstractionForward) "by_abstraction" term : tactic
 syntax (name := byAbstractionSymm) "by_abstraction" "←" term : tactic
@@ -152,6 +155,85 @@ macro_rules (kind := byRandAbstractionBasicSymm)
          symm
          refine correctAbstractionBindImpliesObsEq _ _ $f ?_
          solveCorrectAbstractionBasic[]))
+
+/-- Supply proved abstraction conditions, simplification lemmas, or named simp
+theories. Proof rules are tried before normalization; remaining diagrams use the
+supplied simplification theory. These forms also accept `ObsEq` goals directly. -/
+syntax (name := byAbstractionUsing) "by_abstraction" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := byAbstractionUsing)
+  | `(tactic| by_abstraction $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := byAbstractionSymmUsing) "by_abstraction" "←" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := byAbstractionSymmUsing)
+  | `(tactic| by_abstraction ← $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         symm
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := byRandAbstractionUsing) "by_rand_abstraction" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := byRandAbstractionUsing)
+  | `(tactic| by_rand_abstraction $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := byRandAbstractionSymmUsing) "by_rand_abstraction" "←" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := byRandAbstractionSymmUsing)
+  | `(tactic| by_rand_abstraction ← $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         symm
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := obsEqByAbstractionUsing) "obs_eq_by_abstraction" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := obsEqByAbstractionUsing)
+  | `(tactic| obs_eq_by_abstraction $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := obsEqByAbstractionSymmUsing) "obs_eq_by_abstraction" "←" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := obsEqByAbstractionSymmUsing)
+  | `(tactic| obs_eq_by_abstraction ← $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         symm
+         refine correctAbstractionImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := obsEqByRandAbstractionUsing) "obs_eq_by_rand_abstraction" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := obsEqByRandAbstractionUsing)
+  | `(tactic| obs_eq_by_rand_abstraction $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
+
+syntax (name := obsEqByRandAbstractionSymmUsing) "obs_eq_by_rand_abstraction" "←" term " using " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+
+macro_rules (kind := obsEqByRandAbstractionSymmUsing)
+  | `(tactic| obs_eq_by_rand_abstraction ← $f:term using [$simps,*]) =>
+      `(tactic|
+        (first | obs_eq | skip
+         symm
+         refine correctAbstractionBindImpliesObsEq _ _ $f ?_
+         solveCorrectAbstraction [$simps,*]))
 
 private partial def gameHoppingIndexCandidates (idxType : Expr) : TermElabM (Array Expr) := do
   let idxTypeWhnf ← withTransparency .all <| whnf idxType
